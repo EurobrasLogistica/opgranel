@@ -1,0 +1,639 @@
+/*
+.content {
+	margin: 0 auto;
+	width: 80%;
+	color: #8A909B;
+	background-color: #F9FAFB;
+	display: grid;
+	border-radius: 5px;
+	padding: 15px 25px;
+
+}
+
+.navio {
+    font-size: 25px;
+    font-weight: 700;
+    color: #153240;
+    margin-bottom: -30px;
+}
+.notform {
+	text-align: center;
+	font-size: 29px;
+	padding: 150px;
+	color: #1f4d64;
+}
+
+.content {
+	margin: 0 auto;
+	width: 98%;
+	color: #8A909B;
+	background-color: #F9FAFB;
+	display: grid;
+	border-radius: 5px;
+	padding: 15px 25px;
+
+}
+
+.nav {
+	font-size: 25px;
+	border-bottom: 1px solid #bbbbbb;
+	display: flex;
+}
+
+.nav div {
+	padding: 0 1vw;
+	margin-bottom: -1px;
+	cursor: pointer;
+}
+
+.nav a {
+	text-decoration: none;
+	color: #bbbbbb;
+}
+
+.active {
+	color: #1f4d64;
+	border-bottom: 3px solid #1f4d64;
+}
+
+
+
+
+
+
+.flex {
+	margin-top: 0.7vw;
+	display: flex;
+	justify-content: space-between;
+	text-align: center;
+	color: #153240;
+	padding: 0 5px;
+}
+
+.periodo {
+	text-align: center;
+	color: #1f4d64;
+	font-size: 27px;
+	font-weight: 700;
+}
+
+.data {
+	font-weight: 600;
+	font-size: 22px;
+	letter-spacing: -1px;
+	margin-top: -8px;
+	border-top: 2px solid #d9d9d9;
+}
+
+
+.status div {
+	position: relative;
+	top: 50%;
+	font-size: 22px;
+	font-weight: 600;
+	transform: translateY(-50%);
+	padding: 4px 7px;
+	border-radius: 3px;
+}
+
+.OPERANDO {
+	background-color: #bff6cd;
+	color: #004e07;
+}
+
+.PARALISADO {
+	background-color: #f79d9d;
+	color: #790000;
+}
+
+.tara {
+	background-color: #F0F3F5;
+	width: 100%;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+}
+
+
+.lista {
+	background-color: hsl(0, 0%, 100%);
+	height: 200px;
+	width: 108%;
+	margin: auto;
+	margin-bottom: 8px;
+	overflow-y: auto;
+}
+
+.lista::-webkit-scrollbar {
+	width: 10px;
+}
+
+.lista::-webkit-scrollbar-track {
+	box-shadow: inset 0 0 3px grey;
+}
+
+.lista::-webkit-scrollbar-thumb {
+	background: #1f4d64;
+	border-radius: 10px;
+}
+.flex {
+	margin-top: 0.7vw;
+	display: flex;
+	justify-content: space-between;
+	text-align: center;
+	color: #153240;
+	padding: 0 5px;
+}
+
+.seacrch{
+	margin-left: 4%;
+	display: flex;
+	justify-content: space-between;
+	width: 90%;
+	padding-top: 5%;
+}
+
+.table{
+	margin-top: 5%;
+}
+.sumario {
+	color: #2B313F;
+	background-color: #F9FAFB;
+	display: flex;
+	justify-content: space-around;
+	padding: 10px 0;	
+	text-align: center;
+	line-height: 0.3;
+
+}
+.sumario div {	
+	color: #2B313F;	
+	width: 30%;
+	display: flex;
+	font-family: "Titillium Web", sans-serif;
+	font-weight: 500;
+	font-size: 25px;
+	justify-content: space-around;
+	text-align: center;
+	border-bottom: 0.1px solid #CFCFCF;
+	padding: 1%;
+}
+
+.table_item {	
+	color: #2B313F;
+	display: flex;
+	justify-content: space-around;
+	justify-items: center;	
+	cursor: pointer;
+}
+.table_item div {
+	padding: 7px 0;
+	width: 30%;
+	text-align: center;
+	font-family: 'Roboto', sans-serif;
+	font-weight: 300;
+	font-size: 16px;
+	padding: 2%;
+	
+}
+.detalheNavio{
+	border-bottom: 1px solid #CFCFCF;
+}
+
+.tara {
+	background-color: #F0F3F5;
+	width: 100%;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+}
+
+
+.taratitulo input {
+	padding: 3px 35px 3px 15px;
+	background-color: #FFFFFF;
+	border: 1px solid #153240a2;
+	border-radius: 4px;
+}
+.taratitulo select {
+	padding: 3px 35px 3px 15px;
+	background-color: #FFFFFF;
+	border: 1px solid #153240a2;
+	border-radius: 4px;
+}
+.taratitulo input:focus {
+	outline: 2px solid #8ad4ee80;
+}
+
+.taratitulo i {
+	margin: 3px 3px 0px -20px;
+	cursor: pointer
+}
+.form_control {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	margin-top: 2vh;
+	font-size: 16px;
+	height: 70px;
+}
+
+.form_control select{
+	font-size: 16px;
+	width: 96%;
+	padding: 8px 5px;
+	transition: 0.1s;
+	margin-top: 3px;
+	font-size: 15px;
+	border-radius: 3px;
+	border: 1px solid #ccc;
+}
+
+.form_control select:focus {
+	border: 1px solid #8ad4ee;
+	outline: 3px solid #8ad4ee80;
+}
+
+.nome_navio{
+	display: flex;
+	justify-content: center;
+	text-align: center;
+	color: #1f4d64;
+	font-size: 27px;
+	font-weight: 700;
+
+}
+*/
+.content {
+    margin: 0 auto;
+    width: 80%;
+    color: #8A909B;
+    background-color: #F9FAFB;
+    display: grid;
+    border-radius: 5px;
+    padding: 15px 25px;
+}
+
+.navio {
+    font-size: 25px;
+    font-weight: 700;
+    color: #153240;
+    margin-bottom: -30px;
+}
+
+.notform {
+    text-align: center;
+    font-size: 29px;
+    padding: 150px;
+    color: #1f4d64;
+}
+
+.content {
+    margin: 0 auto;
+    width: 98%;
+    color: #8A909B;
+    background-color: #F9FAFB;
+    display: grid;
+    border-radius: 5px;
+    padding: 15px 25px;
+}
+
+.nav {
+    font-size: 25px;
+    border-bottom: 1px solid #bbbbbb;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.nav div {
+    padding: 0 1vw;
+    margin-bottom: -1px;
+    cursor: pointer;
+}
+
+.nav a {
+    text-decoration: none;
+    color: #bbbbbb;
+}
+
+.active {
+    color: #1f4d64;
+    border-bottom: 3px solid #1f4d64;
+}
+
+.flex {
+    margin-top: 0.7vw;
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+    color: #153240;
+    padding: 0 5px;
+    flex-wrap: wrap;
+}
+
+.periodo {
+    text-align: center;
+    color: #1f4d64;
+    font-size: 27px;
+    font-weight: 700;
+}
+
+.data {
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: -1px;
+    margin-top: -8px;
+    border-top: 2px solid #d9d9d9;
+}
+
+.status div {
+    position: relative;
+    top: 50%;
+    font-size: 22px;
+    font-weight: 600;
+    transform: translateY(-50%);
+    padding: 4px 7px;
+    border-radius: 3px;
+}
+
+.OPERANDO {
+    background-color: #bff6cd;
+    color: #004e07;
+}
+
+.PARALISADO {
+    background-color: #f79d9d;
+    color: #790000;
+}
+
+.tara {
+    background-color: #F0F3F5;
+    width: 100%;
+    border: 1px dashed #153240a2;
+    font-weight: 600;
+    padding-top: 5px;
+}
+
+.lista {
+    background-color: hsl(0, 0%, 100%);
+    height: 200px;
+    width: 108%;
+    margin: auto;
+    margin-bottom: 8px;
+    overflow-y: auto;
+}
+
+.lista::-webkit-scrollbar {
+    width: 10px;
+}
+
+.lista::-webkit-scrollbar-track {
+    box-shadow: inset 0 0 3px grey;
+}
+
+.lista::-webkit-scrollbar-thumb {
+    background: #1f4d64;
+    border-radius: 10px;
+}
+
+.search {
+    margin-left: 4%;
+    display: flex;
+    justify-content: space-between;
+    width: 90%;
+    padding-top: 5%;
+}
+
+.table {
+    margin-top: 5%;
+}
+
+.sumario {
+    color: #2B313F;
+    background-color: #F9FAFB;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    text-align: center;
+    line-height: 0.3;
+}
+
+.sumario div {
+    color: #2B313F;
+    width: 30%;
+    display: flex;
+    font-family: "Titillium Web", sans-serif;
+    font-weight: 500;
+    font-size: 25px;
+    justify-content: space-around;
+    text-align: center;
+    border-bottom: 0.1px solid #CFCFCF;
+    padding: 1%;
+}
+
+.table_item {
+    color: #2B313F;
+    display: flex;
+    justify-content: space-around;
+    cursor: pointer;
+    flex-wrap: wrap;
+}
+
+.table_item div {
+    padding: 7px 0;
+    width: 20%;
+    text-align: center;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+    font-size: 16px;
+    padding: 2%;
+}
+
+.detalheNavio {
+    border-bottom: 1px solid #CFCFCF;
+}
+
+.tara {
+    background-color: #F0F3F5;
+    width: 100%;
+    border: 1px dashed #153240a2;
+    font-weight: 600;
+    padding-top: 5px;
+}
+
+.taratitulo input {
+    padding: 3px 35px 3px 15px;
+    background-color: #FFFFFF;
+    border: 1px solid #153240a2;
+    border-radius: 4px;
+}
+
+.taratitulo select {
+    padding: 3px 35px 3px 15px;
+    background-color: #FFFFFF;
+    border: 1px solid #153240a2;
+    border-radius: 4px;
+}
+
+.taratitulo input:focus {
+    outline: 2px solid #8ad4ee80;
+}
+
+.taratitulo i {
+    margin: 3px 3px 0px -20px;
+    cursor: pointer
+}
+
+.form_control {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-top: 2vh;
+    font-size: 16px;
+    height: 70px;
+}
+
+.form_control select {
+    font-size: 16px;
+    width: 96%;
+    padding: 8px 5px;
+    transition: 0.1s;
+    margin-top: 3px;
+    font-size: 15px;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+}
+
+.form_control select:focus {
+    border: 1px solid #8ad4ee;
+    outline: 3px solid #8ad4ee80;
+}
+
+.nome_navio {
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    color: #1f4d64;
+    font-size: 27px;
+    font-weight: 700;
+}
+
+/* Media Queries for Responsiveness */
+@media (max-width: 1200px) {
+    .content {
+        width: 90%;
+    }
+
+    .navio {
+        font-size: 22px;
+    }
+
+    .notform {
+        font-size: 25px;
+        padding: 100px;
+    }
+
+    .periodo {
+        font-size: 24px;
+    }
+
+    .data {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 992px) {
+    .nav {
+        font-size: 20px;
+    }
+
+    .sumario div {
+        width: 45%;
+        font-size: 20px;
+    }
+
+    .table_item div {
+        width: 30%;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav {
+        justify-content: center;
+    }
+
+    .flex {
+        flex-direction: column;
+    }
+
+    .sumario {
+        flex-direction: column;
+    }
+
+    .sumario div {
+        width: 80%;
+        margin-bottom: 10px;
+    }
+
+    .table_item {
+        flex-wrap: nowrap;
+        flex-direction: row;
+    }
+
+    .table_item div {
+        width: 20%;
+    }
+
+    .notform {
+        padding: 50px;
+    }
+
+    .tara {
+        padding: 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .nav {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .nav div {
+        padding: 5px 0;
+    }
+
+    .search {
+        flex-direction: column;
+        width: 100%;
+        margin-left: 0;
+        padding-top: 2%;
+    }
+
+    .sumario div {
+        width: 100%;
+    }
+
+    .table_item {
+        flex-direction: column;
+    }
+
+    .table_item div {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .form_control {
+        flex-direction: column;
+        align-items: flex-start;
+        height: auto;
+    }
+
+    .form_control select {
+        width: 100%;
+    }
+
+    .nome_navio {
+        font-size: 22px;
+    }
+}

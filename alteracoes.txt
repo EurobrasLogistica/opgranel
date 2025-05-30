@@ -1,0 +1,13 @@
+mergeado:
+	server/index.js
+	server/package.json
+
+	client/src/routes/index.js
+	client/src/pages/operacao/Operacao/index.js
+	client/src/pages/operacao/Operacao/Modal.module.css
+	client/src/pages/operacao/Operacao/Operacao.module.css
+	client/src/pages/operacao/PesagemFinal/index.js
+	client/src/pages/operacao/PesagemFinal/Modal.module.css
+	client/src/pages/operacao/PesagemFinal/PesagemFinal.module.css
+	client/src/pages/operacao/RelatorioPeriodo/index.js
+	client/src/pages/operacao/RelatorioPeriodo/RelatorioPeriodo.js

@@ -1,0 +1,88 @@
+/*CSS DO MODAL */
+
+.modal {
+	margin: 0 auto;
+	width: 100%;
+	background-color: #F9FAFB;
+	border-radius: 5px;
+	padding:  15px 5px;
+	color: #1f4d64;
+}
+
+.nav {
+	font-size: 25px;
+	margin-top: -10px;
+	border-bottom: 1px solid #bbbbbb;
+	color: #8A909B;
+	display: flex;
+}
+
+.nav div {
+	padding: 0 1vw;
+	margin-bottom: -1px;
+	cursor: pointer;
+}
+
+.nav a {
+	text-decoration: none;
+	color: #bbbbbb;
+}
+
+.active {
+	color: #1f4d64;
+	border-bottom: 3px solid #1f4d64;
+}
+
+/*-----------------------------------------------*/
+
+
+.center{
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	margin: 3% auto;
+	margin-top: 4%;
+}
+
+.flex {
+	display: flex;
+	justify-content: space-between;
+    width: 100%;
+    margin:0 auto;
+}
+
+.status{
+	background-color: #8ad4ee;
+	color: #1f4d64;
+	font-size: 22px;
+	font-weight: 600;
+	padding: 4px 10px;
+	text-align: center;
+	border-radius: 3px;
+}
+
+.detalhebox{
+	margin: 1% auto ;
+	font-size: 19px;
+	color: #000;
+}.detalhebox b{
+	color: #1f4d64;
+	font-size: 18px;
+}
+
+.finalizar{
+	background-color: #0b9c48;
+	color: #ffffff;
+	border: none;
+	padding: 8px 28px;
+	font-weight: 500;
+	border-radius: 3px;
+	margin: auto;
+	margin-top: 25px;
+	cursor: pointer;
+}.finalizar:hover{
+	background-color: #07c455;
+}
+
+
+

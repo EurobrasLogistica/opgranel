@@ -1,0 +1,19 @@
+.teste{
+    display: flex;
+    justify-content: center;
+    margin: auto;
+}
+.porc {
+ 
+    font-size: 50px;
+    color: #153240;
+    font-weight: 600;
+    position: absolute;
+    margin-top: 300px;
+    margin-left: 310px;
+}
+.info{
+    font-size: 20px;
+    margin-top: -55px;
+    margin-left: 280px;
+}

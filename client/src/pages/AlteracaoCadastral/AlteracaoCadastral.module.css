@@ -1,0 +1,123 @@
+.teste{
+    display: flex;
+    justify-content: center;
+    margin: auto;
+}
+.porc {
+ 
+    font-size: 50px;
+    color: #153240;
+    font-weight: 600;
+    position: absolute;
+    margin-top: 300px;
+    margin-left: 310px;
+}
+.info{
+    font-size: 20px;
+    margin-top: -55px;
+    margin-left: 280px;
+}
+.content {
+	margin: 0 auto;
+	width: 98%;
+	color: #8A909B;
+	background-color: #F9FAFB;
+	display: grid;
+	border-radius: 5px;
+	padding: 5px 25px;
+}
+.nav {
+	font-size: 25px;
+	border-bottom: 1px solid #bbbbbb;
+	display: flex;
+	cursor: pointer;
+}
+.card {
+    background-color: #fffafa; 
+    padding: 20px;      
+    border-radius: 8px ;      
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+    margin: 100px;           
+  }
+  .buttontline {
+	width: 40px;
+	height: 40px;
+	padding: 1%;
+	margin-left: 2px;
+	color: #ffffff;
+	background-color: #0A883F;	
+	border: none;	
+	cursor: pointer;
+    align-items: center; 
+    justify-content: center; 
+}
+.buttontlinecancel {
+	width: 40px;
+	height: 40px;
+	padding: 1%;
+	margin-left: 2px;
+	color: red;
+	background-color: red;
+	margin-right: 3px;
+	color: #ffffff;
+	background-color: #ff0000;	
+	border: none;	
+	cursor: pointer;
+    align-items: center;
+    justify-content: center;
+
+}
+.searchContainer {
+    display: flex;
+    flex-direction: column; /* Organiza os elementos verticalmente */
+    align-items: center; /* Centraliza horizontalmente */
+    margin-top: 20px; /* Espaçamento opcional para posicionar o contêiner */
+}
+
+.searchContainer input {
+    width: 200px; /* Define a largura do input */
+    height: 40px; /* Define a altura do input */
+    padding: 5px;
+    border: 1px solid #ccc; /* Borda para melhor visualização */
+    border-radius: 5px; /* Bordas arredondadas */
+    font-size: 14px; /* Tamanho da fonte */
+    margin-bottom: 10px; /* Espaçamento entre o input e o botão */
+    text-align: center; /* Centraliza o texto dentro do input */
+}
+
+input {
+    width: 200px; /* Define a largura do input */
+    height: 40px; /* Define a altura do input */
+    padding: 5px;
+}
+
+.searchContainer button {
+    width: 200px; /* Mesmo tamanho do input */
+    height: 40px; /* Mesmo tamanho do input */
+    background-color: #0A883F; /* Cor de fundo */
+    color: #ffffff; /* Cor do texto */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.searchContainer button:hover {
+    background-color: #087037; /* Cor ao passar o mouse */
+}
+.deleteButton {
+    background-color: #e74c3c;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .deleteButton:hover {
+    background-color: #c0392b;
+  }
+  

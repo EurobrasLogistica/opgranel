@@ -1,0 +1,170 @@
+.content {
+	margin: 0 auto;
+	width: 98%;
+	color: #8A909B;
+	background-color: #F9FAFB;
+	display: grid;
+	border-radius: 5px;
+	padding: 15px 25px;
+
+}
+
+.nav {
+	font-size: 25px;
+	border-bottom: 1px solid #bbbbbb;
+	display: flex;
+	cursor: pointer;
+}
+.nav div{
+	padding: 0 1vw;
+	margin-bottom: -1px;
+}
+.nav a{
+	text-decoration: none;
+	color: #bbbbbb;
+}
+
+.active{
+	color: #1f4d64;
+	border-bottom: 3px solid #1f4d64;
+}
+
+/*---------------------------------------------------------*/
+
+.flex {	
+	display: flex;
+	justify-content: space-around;	
+	
+}
+
+.align{
+	margin-left: 20px;
+	
+}
+
+.box{
+	margin-top: 30px;
+	border: 1px dashed #153240a2;
+}
+.placas{
+	display: flex;
+	justify-content: space-around;
+	
+	margin-right: 5px;
+}
+.radio{
+	margin-top: 5px;
+	margin-bottom: -10px;
+}
+
+.placaContainer {
+	width: 75%;
+	margin-top: 10px;
+	font-size: 17px;
+	height: 70px;
+
+}
+
+.placaContainer input {
+	width: 90%;
+	height: 40px;
+	border: 1px solid #ccc;
+	font-size: 17px;
+	
+}
+
+.form_control {
+	width: 90%;
+	margin-top: 2vh;
+	font-size: 17px;
+	height: 70px;
+}
+
+.form_control input{
+	width: 90%;
+	margin-top: 2vh;
+	font-size: 17px;
+	height: 70px;
+}
+
+
+.form_control select{
+	font-size: 17px;
+	width: 80%;
+	padding: 8px 5px;
+	transition: 0.1s;
+	margin-top: 3px;
+	font-size: 15px;
+	border-radius: 3px;
+	border: 1px solid #ccc;
+	margin-bottom: 5px;
+}
+.form_input {
+	width: 75%;
+	margin-top: 1px;
+	font-size: 17px;
+	height: 40px;
+
+}.form_input_div {
+	margin-top: 15px;
+}
+
+
+.form_control select:focus {
+	border: 1px solid #8ad4ee;
+	outline: 3px solid #8ad4ee80;
+}
+
+.button{
+	display:flex;
+	justify-content: end;
+	padding-top: 1%;
+}
+
+.cabecario{
+	margin-top: -10px;
+	margin-bottom: 5px;
+	font-weight: 650;
+	font-size: 20px;
+	color:#153240;
+	text-align: start;
+}
+
+.name{
+	color: #153240;
+	margin-right: 5px;
+}
+ .radio{
+	font-size: 16px;
+	margin: 20px;
+	
+}
+
+.form_control {
+	margin-bottom: 20px;
+	display: flex;
+	flex-direction: column; /* Coloca o texto e os botões de rádio em colunas */
+	align-items: flex-start; /* Alinha o conteúdo à esquerda */
+	gap: 10px; /* Espaçamento entre o texto e os botões de rádio */
+  }
+  
+  .radio_group {
+	display: flex;
+	gap: 25px; /* Espaçamento entre os dois botões de rádio */
+	font-size: 18px;
+  }
+  
+  .radio_motiva {
+	display: center;
+	align-items: center; /* Alinha o texto "Sim" e "Não" com os botões de rádio */
+	gap: 20px; /* Espaço entre o botão e o texto */
+	font-size: 22px;
+  }
+  
+  .radio_motiva input {
+	width: 18px;  /* Tamanho menor para o botão de rádio */
+	height: 18px; /* Tamanho menor para o botão de rádio */
+  }
+  
+  
+  

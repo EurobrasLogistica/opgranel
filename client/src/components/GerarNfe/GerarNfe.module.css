@@ -1,0 +1,18 @@
+.btn{
+	width: auto;
+	background: #2793ae;
+    font-size: 16px; 
+	color: white;
+	font-family: 'Titillium Web', sans-serif;
+	border: 0 none;
+	border-radius: 1px;
+	cursor: pointer;
+	transition: 0.3s;
+	margin: auto;
+}
+.btn:hover{
+	background: #2793ae;
+	box-shadow: 
+	0 0 0 3px #ffffffd8,
+	 0 0 0 4px #27AE60;
+}

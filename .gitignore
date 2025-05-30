@@ -1,0 +1,35 @@
+# Ignorar a pasta de logs
+logs/
+*.log
+
+# Ignorar arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Ignorar dependências
+node_modules/
+vendor/
+
+# Ignorar arquivos temporários
+*.tmp
+*.swp
+*.swo
+
+# Ignorar arquivos de build
+dist/
+build/
+
+# Ignorar variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Ignorar arquivos de banco de dados locais
+*.sqlite
+*.sqlite3
+*.db
+
+# Ignorar arquivos do editor
+.idea/
+.vscode/
+*.code-workspace

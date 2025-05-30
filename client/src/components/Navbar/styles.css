@@ -1,0 +1,146 @@
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.0.3/css/font-awesome.min.css");
+@import url("https://fonts.googleapis.com/css?family=Titillium+Web:300");
+
+/* Estilos de fonte */
+body, html {
+    font-family: "Titillium Web", sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Estilos do menu */
+#menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 60px; /* Largura inicial quando colapsado */
+    z-index: 1000;
+    transition: width 0.3s ease;
+    background-color: #153240;
+    overflow: hidden;
+}
+
+#menu:not(.collapsed) {
+    width: 300px; /* Largura quando expandido */
+}
+
+nav {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 60px; /* Espaço no topo */
+}
+
+nav ul li {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px; /* Preenchimento para alinhamento vertical */
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    color: #fff; /* Cor do texto */
+}
+
+nav ul li:hover,
+nav ul li.active {
+    background-color: #1a3e50; /* Destaque ao passar o mouse e ativo */
+}
+
+.nav_bar {
+    display: flex;
+    align-items: center;
+    width: 100%; /* Para preenchimento completo da área do item */
+    font-size: 17px;
+}
+
+.nav_bar .item-icon {
+    width: 30px; /* Largura fixa para ícones */
+    text-align: center;
+    margin-right: 10px; /* Espaço entre ícone e texto */
+}
+
+.nav_bar .item-text {
+    display: none; /* Esconde o texto por padrão */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#menu:not(.collapsed) .item-text {
+    display: inline-block; /* Mostra texto quando expandido */
+}
+
+.logout {
+    margin-top: auto; /* Alinha ao final do menu */
+    padding: 10px 15px; /* Preenchimento consistente com outros itens */
+    color: #999;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.logout:hover {
+    color: #fff;
+    background-color: #1a3e50;
+}
+
+.version {
+    padding: 10px;
+    margin-top: 20px; /* Margem no fim do menu */
+    color: #999;
+    font-size: 12px; /* Fonte menor para informações de versão */
+}
+
+@media (max-width: 768px) {
+    #menu {
+        width: 50px; /* Largura reduzida quando colapsado */
+    }
+
+    #menu:not(.collapsed) {
+        width: 240px; /* Largura reduzida quando expandido */
+    }
+
+    .nav_bar {
+        font-size: 15px; /* Reduz o tamanho da fonte */
+    }
+
+    .nav_bar .item-icon {
+        width: 25px; /* Reduz o tamanho do ícone */
+        margin-right: 5px; /* Reduz o espaço entre ícone e texto */
+    }
+
+    .logout, .version {
+        font-size: 14px; /* Reduz o tamanho da fonte */
+        padding: 8px 10px; /* Reduz o padding */
+    }
+}
+
+/* Estilos para tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+    #menu {
+        width: 60px; /* Mantém a largura colapsada */
+    }
+
+    #menu:not(.collapsed) {
+        width: 280px; /* Largura ligeiramente reduzida quando expandido */
+    }
+
+    .nav_bar {
+        font-size: 16px; /* Ajusta o tamanho da fonte */
+    }
+
+    .nav_bar .item-icon {
+        width: 28px; /* Ajusta o tamanho do ícone */
+        margin-right: 8px; /* Ajusta o espaço entre ícone e texto */
+    }
+
+    .logout, .version {
+        font-size: 14px; /* Ajusta o tamanho da fonte */
+        padding: 10px 12px; /* Ajusta o padding */
+    }
+}

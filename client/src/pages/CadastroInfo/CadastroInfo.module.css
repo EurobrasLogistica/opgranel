@@ -1,0 +1,146 @@
+.content {
+	margin: 0 auto;
+	width: 98%;
+	color: #8A909B;
+	background-color: #F9FAFB;
+	display: grid;
+	border-radius: 5px;
+	padding: 5px 25px;
+}
+
+.nav {
+	font-size: 25px;
+	border-bottom: 1px solid #bbbbbb;
+	display: flex;
+	cursor: pointer;
+}
+.nav div{
+	padding: 0 1vw;
+	margin-bottom: -1px;
+}
+.nav a{
+	text-decoration: none;
+	color: #bbbbbb;
+}
+
+.active{
+	color: #1f4d64;
+	border-bottom: 3px solid #1f4d64;
+}
+
+
+
+.form {
+  margin-top: 20px;
+}
+
+.form input {
+  padding: 10px;
+  margin-right: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.form button {
+  padding: 10px 20px;
+  background-color: #0366d1;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-right: 10px
+}
+
+.form button:hover {
+  background-color: #03468f;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 20px; /* Espaço entre os botões */
+  justify-content: space-around; /* Distribui os botões uniformemente */
+  margin-top: 20px; /* Espaço acima do grupo de botões */
+}
+
+.button {
+  padding: 15px 20px; /* Aumenta o tamanho dos botões (mais "gordinhos") */
+  font-size: 16px; /* Tamanho da fonte */
+  cursor: pointer;
+  background-color: #2b5480;
+  color: white;
+  border: none;
+  border-radius: 10px; /* Bordas arredondadas */
+  transition: background-color 0.3s ease;
+}
+
+.button:hover {
+  background-color: #1a2d42; /* Cor ao passar o mouse */
+}
+.form_control {
+  margin-top: 20px;
+  display: flex;
+  align-items: center; /* Centraliza verticalmente o conteúdo */
+  gap: 15px; /* Espaço entre o select e o input */
+}
+
+.form_control select {
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  width: 30%; /* Define uma largura maior para o select */
+}
+
+.form_control input {
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  width: 25%; /* Define uma largura menor para o input do pedido */
+}
+
+.form_control label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 1em;
+  min-width: 400px;
+  border: 1px solid #ddd;
+}
+
+.table th,
+.table td {
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+@media (max-width: 768px) {
+  .table {
+      font-size: 0.9em;
+  }
+
+  .table th,
+  .table td {
+      padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .table {
+      font-size: 0.8em;
+  }
+
+  .table th,
+  .table td {
+      padding: 8px;
+  }
+}

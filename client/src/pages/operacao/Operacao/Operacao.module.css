@@ -1,0 +1,555 @@
+.notform {
+	text-align: center;
+	font-size: 29px;
+	padding: 150px;
+	color: #1f4d64;
+}
+
+.content {
+	margin: 0 auto;
+	width: 98%;
+	color: #8A909B;
+	background-color: #F9FAFB;
+	display: grid;
+	border-radius: 5px;
+	padding: 15px 25px;
+
+}
+
+.nav {
+	font-size: 25px;
+	border-bottom: 1px solid #bbbbbb;
+	display: flex;
+}
+
+.nav div {
+	padding: 0 1vw;
+	margin-bottom: -1px;
+	cursor: pointer;
+}
+
+.nav a {
+	text-decoration: none;
+	color: #bbbbbb;
+}
+
+.active {
+	color: #1f4d64;
+	border-bottom: 3px solid #1f4d64;
+}
+
+
+
+/*-----------------------------------------------*/
+
+
+.flex {
+	margin-top: 0.7vw;
+	display: flex;
+	justify-content: space-between;
+	text-align: center;
+	color: #153240;
+	padding: 0 5px;
+}
+
+.periodo {
+	text-align: center;
+	color: #1f4d64;
+	font-size: 27px;
+	font-weight: 700;
+}
+
+.data {
+	font-weight: 600;
+	font-size: 22px;
+	letter-spacing: -1px;
+	margin-top: -8px;
+	border-top: 2px solid #d9d9d9;
+}
+
+
+.status div {
+	position: relative;
+	top: 50%;
+	font-size: 22px;
+	font-weight: 600;
+	transform: translateY(-50%);
+	padding: 4px 7px;
+	border-radius: 3px;
+}
+
+.OPERANDO {
+	background-color: #bff6cd;
+	color: #004e07;
+}
+
+.PARALISADO {
+	background-color: #f79d9d;
+	color: #790000;
+}
+
+.tara {
+	background-color: #F0F3F5;
+	width: 40%;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+}
+
+.taratitulo {
+	display: flex;
+	justify-content: space-between;
+	width: 90%;
+	margin: 3% auto;
+}
+
+.taratitulo input {
+	padding: 3px 10px;
+	background-color: #FFFFFF;
+	border: 1px solid #153240a2;
+	border-radius: 4px;
+}
+
+.taratitulo input:focus {
+	outline: 2px solid #8ad4ee80;
+}
+
+.taratitulo i {
+	margin: 3px 3px 0px -20px;
+	cursor: pointer
+}
+
+.sumario {
+	display: flex;
+	justify-content: space-around;
+	margin: 5px 0;
+}
+
+.sumario div {
+	border-right: 1px solid #1f4d6473;
+	width: 34%;
+}
+
+.lista {
+	background-color: hsl(0, 0%, 100%);
+	height: 200px;
+	width: 95%;
+	margin: auto;
+	margin-bottom: 8px;
+	overflow-y: auto;
+}
+
+.lista::-webkit-scrollbar {
+	width: 10px;
+}
+
+.lista::-webkit-scrollbar-track {
+	box-shadow: inset 0 0 3px grey;
+}
+
+.lista::-webkit-scrollbar-thumb {
+	background: #1f4d64;
+	border-radius: 10px;
+}
+
+.item {
+	display: flex;
+	justify-content: space-between;
+	border-top: 1px solid #d8d8d8;
+	cursor: pointer;
+}
+
+.item:hover > .item_cell {
+	background-color: #c7fff6;
+	color: #585858;
+}
+
+.item_cell {
+	width: 100%;
+	font-weight: 400;
+	color: #585858;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.item_status_def {
+	background-color: #FFFFFF;
+}
+
+.item_status_2 {
+	background-color: #FFC300;
+}
+
+.item_status_3 {
+	background-color: #C70039;
+}
+
+.item_status_3 div {
+	color: #FFFFFF;
+}
+
+.item_status_4 {
+	background-color: #DAF7A6;
+}
+
+.item_status_5 {
+	background-color: #FF5733;
+}
+
+.autos {
+	width: 23%;
+	background-color: #F0F3F5;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+}
+
+.autos div {
+	font-size: 20px;
+	padding: 7px 0;
+}
+
+.autos div i {
+	font-size: 23px;
+}
+
+.motivo {
+	width: 35%;
+	background-color: #F0F3F5;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+}
+
+.sumariob {
+	display: flex;
+	justify-content: space-between;
+	margin: 5px auto;
+	width: 95%;
+}
+
+.motivobox {
+	border-right: 1px solid #1f4d6473;
+	width: 78%;
+}
+
+.sumariobox {
+	width: 20%;
+}
+
+.listab {
+	background-color: #fff;
+	height: 240px;
+	width: 95%;
+	margin: auto;
+	margin-bottom: 8px;
+	overflow-y: auto;
+}
+
+.lista::-webkit-scrollbar {
+	width: 10px;
+}
+
+.lista::-webkit-scrollbar-track {
+	box-shadow: inset 0 0 3px grey;
+}
+
+.lista::-webkit-scrollbar-thumb {
+	background: #1f4d64;
+	border-radius: 10px;
+}
+
+.itemb {
+	text-align: center;
+	display: grid;
+	grid-template-columns: 3.5fr 1fr;
+	justify-content: space-between;
+	border-top: 1px solid #d8d8d8;
+	font-weight: 500;
+}
+
+.itemb div {
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.pesos {
+	background-color: #F0F3F5;
+	width: 100%;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+	display: flex;
+	justify-content: space-around;
+}
+
+.pesos div {
+	width: 20%;
+	font-weight: 700;
+	font-size: 20px;
+	border-right: 1px solid #1f4d6473;
+}
+
+.pesos div div {
+	border: none;
+	width: 100%;
+	color: #000;
+	font-size: 18px;
+	font-weight: 300;
+	margin-top: -5px;
+}
+
+
+.abrirp {
+	background-color: #b80000;
+	color: #ffffff;
+	border: none;
+	padding: 8px 28px;
+	font-weight: 500;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+.abrirp:hover {
+	background-color: #ff0000;
+}
+
+.navio {
+	font-size: 25px;
+	font-weight: 700;
+}
+
+.finalizar {
+	background-color: #0A883F;
+	color: #ffffff;
+	border: none;
+	padding: 8px 28px;
+	font-weight: 500;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+.finalizar:hover {
+	background-color: #00df5d;
+}
+
+.finalizar:disabled {
+	background-color: #6f8b7b;
+}
+
+.finalizar:disabled:hover {
+	background-color: auto;
+	cursor: auto;
+}
+
+.line {
+	display: flex;
+	justify-content: space-between;
+	flex-wrap: nowrap;
+}
+
+.inputline {
+	display: flex;
+	height: 25px;
+	width: 90%;
+	margin-bottom: 2px;
+	flex-wrap: nowrap;
+}
+
+.buttontline {
+	width: 40px;
+	height: 25px;
+	padding: 1%;
+	margin-left: 2px;
+	color: #ffffff;
+	background-color: #0A883F;	
+	border: none;	
+	cursor: pointer;
+}
+
+
+
+.buttontlinecancel {
+	width: 40px;
+	height: 25px;
+	padding: 1%;
+	margin-left: 2px;
+	color: red;
+	background-color: red;
+	margin-right: 3px;
+	color: #ffffff;
+	background-color: #ff0000;	
+	border: none;	
+	cursor: pointer;
+
+}
+
+.title {
+	display: flex;
+	flex-wrap: wrap;
+}
+.inputlinedate{
+	width: 110%;
+}
+/* Estilos para dispositivos móveis */
+@media (max-width: 768px) {
+    .notform {
+        font-size: 18px; /* Reduz o tamanho da fonte */
+        padding: 50px 20px; /* Ajusta o padding */
+    }
+
+    .content {
+        width: 100%; /* Ajusta a largura para ocupar a tela */
+        padding: 10px; /* Reduz o padding */
+    }
+
+    .nav {
+        font-size: 20px; /* Reduz o tamanho da fonte */
+    }
+
+    .nav div {
+        padding: 0 2vw; /* Ajusta o padding lateral */
+    }
+
+    .flex, .sumario, .sumariob, .line {
+        flex-wrap: wrap; /* Permite que os elementos se ajustem em linhas múltiplas */
+        justify-content: space-around; /* Mantém o espaçamento */
+    }
+
+    .periodo {
+        font-size: 22px; /* Reduz o tamanho da fonte */
+    }
+
+    .data, .status div {
+        font-size: 18px; /* Reduz o tamanho da fonte */
+    }
+
+    .tara, .autos, .motivo, .pesos {
+        width: 100%; /* Ocupa toda a largura */
+        font-size: 16px; /* Reduz o tamanho da fonte */
+    }
+
+    .taratitulo input, .buttontline, .buttontlinecancel {
+        width: 100%; /* Ocupa toda a largura */
+    }
+
+    .item, .itemb {
+        font-size: 16px; /* Reduz o tamanho da fonte */
+    }
+
+    .abrirp, .finalizar {
+        width: 100%; /* Ocupa toda a largura */
+        font-size: 18px; /* Ajusta o tamanho da fonte */
+        padding: 10px; /* Ajusta o padding */
+    }
+
+    .lista, .listab {
+        height: 150px; /* Reduz a altura das listas para caber melhor na tela */
+    }
+}
+
+@media (max-width: 768px) {
+    .notform {
+        font-size: 18px; /* Reduz o tamanho da fonte */
+        padding: 50px 20px; /* Ajusta o padding */
+    }
+
+    .content {
+        width: 100%; /* Ajusta a largura para ocupar a tela */
+        padding: 10px; /* Reduz o padding */
+    }
+
+    .nav {
+        font-size: 20px; /* Reduz o tamanho da fonte */
+    }
+
+    .nav div {
+        padding: 0 2vw; /* Ajusta o padding lateral */
+    }
+
+    .flex, .sumario, .sumariob, .line {
+        flex-wrap: wrap; /* Permite que os elementos se ajustem em linhas múltiplas */
+        justify-content: space-around; /* Mantém o espaçamento */
+    }
+
+    .periodo {
+        font-size: 22px; /* Reduz o tamanho da fonte */
+    }
+
+    .data, .status div {
+        font-size: 18px; /* Reduz o tamanho da fonte */
+    }
+
+    .tara, .autos, .motivo, .pesos {
+        width: 100%; /* Ocupa toda a largura */
+        font-size: 16px; /* Reduz o tamanho da fonte */
+    }
+
+    .taratitulo input, .buttontline, .buttontlinecancel {
+        width: 100%; /* Ocupa toda a largura */
+    }
+
+    .item, .itemb {
+        font-size: 16px; /* Reduz o tamanho da fonte */
+    }
+
+    .abrirp, .finalizar {
+        width: 100%; /* Ocupa toda a largura */
+        font-size: 18px; /* Ajusta o tamanho da fonte */
+        padding: 10px; /* Ajusta o padding */
+    }
+
+    .lista, .listab {
+        height: 150px; /* Reduz a altura das listas para caber melhor na tela */
+    }
+}
+
+/* Estilos para tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .notform {
+        font-size: 24px; /* Ajusta o tamanho da fonte */
+        padding: 100px 40px; /* Ajusta o padding */
+    }
+
+    .content {
+        width: 95%; /* Ajusta a largura */
+        padding: 15px 20px; /* Ajusta o padding */
+    }
+
+    .nav {
+        font-size: 22px; /* Ajusta o tamanho da fonte */
+    }
+
+    .periodo {
+        font-size: 24px; /* Ajusta o tamanho da fonte */
+    }
+
+    .data, .status div {
+        font-size: 20px; /* Ajusta o tamanho da fonte */
+    }
+
+    .tara, .autos, .motivo, .pesos {
+        width: 100%; /* Ocupa toda a largura */
+        font-size: 18px; /* Ajusta o tamanho da fonte */
+    }
+
+    .taratitulo input, .buttontline, .buttontlinecancel {
+        width: 100%; /* Ocupa toda a largura */
+    }
+
+    .item, .itemb {
+        font-size: 18px; /* Ajusta o tamanho da fonte */
+    }
+
+    .abrirp, .finalizar {
+        width: 100%; /* Ocupa toda a largura */
+        font-size: 20px; /* Ajusta o tamanho da fonte */
+        padding: 12px; /* Ajusta o padding */
+    }
+
+    .lista, .listab {
+        height: 180px; /* Ajusta a altura das listas */
+    }
+}

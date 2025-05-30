@@ -1,0 +1,295 @@
+.content {
+	margin: 0 auto;
+	width: 98%;
+	color: #8A909B;
+	background-color: #F9FAFB;
+	display: grid;
+	border-radius: 5px;
+	padding: 15px 25px;
+
+}
+
+.nav {
+	font-size: 25px;
+	border-bottom: 1px solid #bbbbbb;
+	display: flex;
+	cursor: pointer;
+}
+.nav div {
+	padding: 0 1vw;
+	margin-bottom: -1px;
+	cursor: pointer;
+}
+.nav a{
+	text-decoration: none;
+	color: #bbbbbb;
+}
+
+.active{
+	color: #1f4d64;
+	border-bottom: 3px solid #1f4d64;
+}
+
+
+/*-----------------------------------------------*/
+
+.flex {
+	margin-top: 0.7vw;
+	display: flex;
+	justify-content: space-between;
+	color: #153240;
+	padding: 0 5px;
+}
+
+.periodo {
+	text-align: center;
+	color: #1f4d64;
+	font-size: 27px;
+	font-weight: 700;
+}
+
+.data {
+	font-weight: 600;
+	font-size: 22px;
+	letter-spacing: -1px;
+	margin-top: -8px;
+	border-top: 2px solid #d9d9d9;
+}
+
+
+.status div {
+	position: relative;
+	top: 50%;
+	font-size: 22px;
+	font-weight: 600;
+	transform: translateY(-50%);
+	background-color: #F6BFBF;
+	color: #C00000;
+	padding: 4px 7px;
+	border-radius: 3px;
+}
+
+.tara {
+	background-color: #F0F3F5;
+	width: 40%;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+}
+
+.sumario {
+	display: flex;
+	justify-content: space-around;
+	margin: 5px 0;
+}
+
+.sumario div {
+	border-right: 1px solid #1f4d6473;
+	width: 34%;
+}
+
+.lista {
+	background-color: #fff;
+	height: 220px;
+	width: 95%;
+	margin: auto;
+	margin-bottom: 8px;
+	overflow-y: auto;
+}
+
+.lista::-webkit-scrollbar {
+	width: 10px;
+}
+
+.lista::-webkit-scrollbar-track {
+	box-shadow: inset 0 0 3px grey;
+}
+
+.lista::-webkit-scrollbar-thumb {
+	background: #1f4d64;
+	border-radius: 10px;
+}
+
+.item {
+	display: flex;
+	justify-content: space-between;
+	border-top: 1px solid #d8d8d8;
+	cursor: pointer;
+}.item:hover{
+	background-color: #c7fff6;
+}
+
+.item div {
+	width: 30%;
+	font-weight: 400;
+	color: #585858;
+}
+
+.autos {
+	width: 23%;
+	background-color: #F0F3F5;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+}
+
+.autos div {
+	font-size: 20px;
+	padding: 7px 0;
+}
+
+.autos div i {
+	font-size: 23px;
+}
+
+.motivo {
+	width: 35%;
+	background-color: #F0F3F5;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+}
+
+.sumariob {
+	display: flex;
+	justify-content: space-between;
+	margin: 5px auto;
+	width: 95%;
+}
+
+.motivobox {
+	border-right: 1px solid #1f4d6473;
+	width: 78%;
+}
+
+.sumariobox {
+	width: 20%;
+}
+
+.listab {
+	background-color: #fff;
+	height: 240px;
+	width: 95%;
+	margin: auto;
+	margin-bottom: 8px;
+	overflow-y: auto;
+}
+
+.lista::-webkit-scrollbar {
+	width: 10px;
+}
+
+.lista::-webkit-scrollbar-track {
+	box-shadow: inset 0 0 3px grey;
+}
+
+.lista::-webkit-scrollbar-thumb {
+	background: #1f4d64;
+	border-radius: 10px;
+}
+
+.itemb {
+	display: flex;
+	justify-content: space-between;
+	border-top: 1px solid #d8d8d8;
+	font-weight: 500;
+}
+
+.motivoitem {
+	text-align: left;
+	padding-left: 3px;
+	width: 78%;
+}
+
+.sumarioitem {
+	width: 20%;
+}
+
+.pesos{
+	background-color: #F0F3F5;
+	width: 100%;
+	border: 1px dashed #153240a2;
+	font-weight: 600;
+	padding-top: 5px;
+	display: flex;
+	justify-content: space-around;
+}
+.pesos div{
+	width: 20%;
+	font-weight: 700;
+	font-size: 20px;
+	border-right: 1px solid #1f4d6473;
+}
+.pesos div div{
+	border: none;
+	width: 100%;
+	color: #000;
+	font-size: 18px;
+	font-weight: 300;
+	margin-top: -5px;
+}
+
+
+.abrirp{
+	background-color: #b80000;
+	color: #ffffff;
+	border: none;
+	padding: 8px 28px;
+	font-weight: 500;
+	border-radius: 3px;
+	cursor: pointer;
+}.abrirp:hover{
+	background-color: #ff0000;
+}
+.navio{
+	margin-top: 20px;
+	font-size: 25px;
+	font-weight: 700;
+	color: #1F4D64;
+}
+
+
+.form_control {
+	width: 100%;
+	margin-top: 2vh;
+	font-size: 16px;
+	height: 70px;
+}
+
+.form_control select{
+	font-size: 16px;
+	width: 96%;
+	padding: 8px 5px;
+	transition: 0.1s;
+	margin-top: 3px;
+	font-size: 15px;
+	border-radius: 3px;
+	border: 1px solid #ccc;
+}
+
+.form_control select:focus {
+	border: 1px solid #8ad4ee;
+	outline: 3px solid #8ad4ee80;
+}
+
+.finalizar{
+	background-color: #0A883F;
+	color: #ffffff;
+	border: none;
+	padding: 8px 28px;
+	font-weight: 500;
+	border-radius: 3px;
+	cursor: pointer;
+}.finalizar:hover{
+	background-color: #00df5d;
+}
+
+.selecti {
+
+	margin-bottom: 10px;
+	border: 1px dashed #153240a2;
+	margin-right: 5px;
+	margin-top: 15px;
+	background-color: #F0F3F5;
+	padding: 5%;
+}
