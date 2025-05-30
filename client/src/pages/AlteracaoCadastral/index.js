@@ -126,7 +126,7 @@ const confirmaAlteracao = () => {
   FecharConfirm();
 };
 
-// Função para excluir o carregamento
+// Função para excluir o carregamentooo
 const excluirCarregamento = async () => {
   try {
     const res = await Axios.put(`http://opgranel.rodrimar.com.br:8080/carregamento/excluir`, {
