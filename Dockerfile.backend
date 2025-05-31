@@ -1,0 +1,23 @@
+# Usando a imagem oficial do Puppeteer (já vem com Chromium e dependências)
+FROM ghcr.io/puppeteer/puppeteer:latest
+
+# Definindo o diretório de trabalho dentro do container
+WORKDIR /app
+
+# Copiando os arquivos de dependências do backend
+COPY server/package*.json ./
+
+# Alternar para root para garantir permissões na instalação
+USER root
+
+# Instalando todas as dependências listadas no package.json
+RUN npm install
+
+# Copiando o restante do código da aplicação
+COPY server/ .
+
+# Expondo a porta usada pelo backend (garantir que está correta)
+EXPOSE 3009
+
+# Comando padrão ao iniciar o container
+CMD ["node", "index.js"]
