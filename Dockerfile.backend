@@ -5,7 +5,7 @@ FROM ghcr.io/puppeteer/puppeteer:latest
 WORKDIR /app
 
 # Copiando os arquivos de dependências do backend
-COPY server/package*.json ./
+COPY package*.json ./
 
 # Alternar para root para garantir permissões na instalação
 USER root
@@ -14,7 +14,7 @@ USER root
 RUN npm install
 
 # Copiando o restante do código da aplicação
-COPY server/ .
+COPY . .
 
 # Expondo a porta usada pelo backend (garantir que está correta)
 EXPOSE 3009
