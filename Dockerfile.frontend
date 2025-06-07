@@ -5,13 +5,13 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copiar apenas arquivos de dependência para cache eficiente
-COPY client/package*.json ./
+COPY package*.json ./
 
 # Instalar dependências
 RUN npm install --legacy-peer-deps
 
 # Copiar o restante da aplicação
-COPY client/ .
+COPY . .
 
 # Construir o projeto com source map desabilitado
 RUN npm run build -- --source-map=false
