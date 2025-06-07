@@ -56,13 +56,13 @@ const CadastroInfo = () => {
     };
 
     const getCargas = (id) => {
-        Axios.get(`http://opgranel.rodrimar.com.br:8080/carga/busca/${id}`)
+        Axios.get(`https://opgranel.eurobraslogistica.com.br/api/carga/busca/${id}`)
             .then(function (res) {
                 setDocs(res.data);
             });
     };
     const getTransportadoras = () => {
-        Axios.get('http://opgranel.rodrimar.com.br:8080/transportadora/consultar')
+        Axios.get('https://opgranel.eurobraslogistica.com.br/api/transportadora/consultar')
             .then((response) => {
                 setTransportadoras(response.data);
             })
@@ -75,7 +75,7 @@ const CadastroInfo = () => {
   
 
     const getOperacoes = () => {
-        Axios.get('http://opgranel.rodrimar.com.br:8080/operacao')
+        Axios.get('https://opgranel.eurobraslogistica.com.br/api/operacao')
             .then((response) => {
                 setOperacoesList(response.data);
                 getCargas();
@@ -121,7 +121,7 @@ const CadastroInfo = () => {
     const cnpjSemMascara = cnpjValue.replace(/[^\d]/g, '');
 
     if (activeButton === 'Transportadora') {
-        Axios.post('http://opgranel.rodrimar.com.br:8080/transportadora/criar', {
+        Axios.post('https://opgranel.eurobraslogistica.com.br/api/transportadora/criar', {
             nome: inputValue,
             cnpj: cnpjSemMascara,
          
@@ -136,7 +136,7 @@ const CadastroInfo = () => {
             }
         });
     } else if (activeButton === 'Importador') {
-        Axios.post('http://opgranel.rodrimar.com.br:8080/importador/criar', {
+        Axios.post('https://opgranel.eurobraslogistica.com.br/api/importador/criar', {
             nome: inputValue,
             cnpj: cnpjSemMascara,
             nomereduzido: nomereduzido 
@@ -150,7 +150,7 @@ const CadastroInfo = () => {
             }
         });
     } else if (activeButton === 'Destino') {
-        Axios.post('http://opgranel.rodrimar.com.br:8080/destino/criar', {
+        Axios.post('https://opgranel.eurobraslogistica.com.br/api/destino/criar', {
             nome: inputValue
         }).then(() => {
             enqueueSnackbar("Destino adicionado com sucesso!", { variant: 'success' });
@@ -162,7 +162,7 @@ const CadastroInfo = () => {
             }
         });
     } else if (activeButton === 'NCM') {
-        Axios.post('http://opgranel.rodrimar.com.br:8080/ncm/criar', {
+        Axios.post('https://opgranel.eurobraslogistica.com.br/api/ncm/criar', {
             codncm: ncmCode,
             descricao: ncmDescription
         }).then(() => {
@@ -175,7 +175,7 @@ const CadastroInfo = () => {
             }
         });
     } else if (activeButton === 'Produto') {
-        Axios.post('http://opgranel.rodrimar.com.br:8080/produto/criar', {
+        Axios.post('https://opgranel.eurobraslogistica.com.br/api/produto/criar', {
             codncm: inputValue,
             unidade: inputValue,
             ind_carga: inputValue
@@ -189,7 +189,7 @@ const CadastroInfo = () => {
             }
         });
     } else if (activeButton === 'Pedido') {
-        Axios.post('http://opgranel.rodrimar.com.br:8080/pedido/criar', {
+        Axios.post('https://opgranel.eurobraslogistica.com.br/api/pedido/criar', {
             operacao: navio,
             pedido: inputValue, 
             transportadora: transportadora,
@@ -217,22 +217,22 @@ const CadastroInfo = () => {
       let url = '';
       switch (tabela) {
           case 'Transportadora':
-              url = 'http://opgranel.rodrimar.com.br:8080/transportadora/consultar';
+              url = 'https://opgranel.eurobraslogistica.com.br/api/transportadora/consultar';
               break;
           case 'Importador':
-              url = 'http://opgranel.rodrimar.com.br:8080/importador/consultar';
+              url = 'https://opgranel.eurobraslogistica.com.br/api/importador/consultar';
               break;
           case 'Destino':
-              url = 'http://opgranel.rodrimar.com.br:8080/destino/consultar';
+              url = 'https://opgranel.eurobraslogistica.com.br/api/destino/consultar';
               break;
           case 'NCM':
-              url = 'http://opgranel.rodrimar.com.br:8080/ncm/consultar';
+              url = 'https://opgranel.eurobraslogistica.com.br/api/ncm/consultar';
               break;
           case 'Produto':
-              url = 'http://opgranel.rodrimar.com.br:8080/produto/consultar';
+              url = 'https://opgranel.eurobraslogistica.com.br/api/produto/consultar';
               break;
               case 'Pedido':
-                url = 'http://opgranel.rodrimar.com.br:8080/pedido/consultar';
+                url = 'https://opgranel.eurobraslogistica.com.br/api/pedido/consultar';
                 break;    
           default:
               return;

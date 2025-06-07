@@ -49,22 +49,22 @@ const CadastroCarga = () => {
   }, [])
 
   const getClientes = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/clientes').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/clientes').then((response) => {
       setCliente(response.data);
     });
   }
   const getNcms = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/ncm').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/ncm').then((response) => {
       setNcms(response.data);
     });
   }
   const getProdutos = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/produtos').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/produtos').then((response) => {
       setProdutos(response.data);
     });
   }
   const getCargas = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/carga/busca/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/carga/busca/${id}`,)
       .then(function (res) {
         setCargas(res.data);
       });
@@ -82,7 +82,7 @@ const CadastroCarga = () => {
   }
 
   const addCarga = () => {
-    Axios.post('http://opgranel.rodrimar.com.br:8080/carga/criar', {
+    Axios.post('https://opgranel.eurobraslogistica.com.br/api/carga/criar', {
       operacao: id,
       tipo: tipo,
       perigo: perigo,
@@ -110,7 +110,7 @@ const CadastroCarga = () => {
   }
 
   const deleteCarga = (id) => {
-    Axios.delete(`http://opgranel.rodrimar.com.br:8080/carga/delete/${id}`)
+    Axios.delete(`https://opgranel.eurobraslogistica.com.br/api/carga/delete/${id}`)
       .then(function (res) {
         console.log(res);
         res.data.sqlMessage ?
@@ -121,7 +121,7 @@ const CadastroCarga = () => {
   }
 
   const concluirDocs = () => {
-    Axios.put('http://opgranel.rodrimar.com.br:8080/operacao/concluir/docs',
+    Axios.put('https://opgranel.eurobraslogistica.com.br/api/operacao/concluir/docs',
       {
         id: id,
         status: 'AGUARDANDO ATRACAÇÃO'
@@ -166,7 +166,7 @@ const CadastroCarga = () => {
 
 
   const getAgentes = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/agentes').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/agentes').then((response) => {
       setAgentes(response.data);
     });
   }

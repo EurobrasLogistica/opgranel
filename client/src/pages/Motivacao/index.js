@@ -28,7 +28,7 @@ const Motivacao = () => {
     };
   
     useEffect(() => {
-      Axios.get(`http://opgranel.rodrimar.com.br:8080/motivados`)
+      Axios.get(`https://opgranel.eurobraslogistica.com.br/api/motivados`)
         .then(response => {
           setMotivados(response.data);
         })
@@ -113,7 +113,7 @@ const Motivacao = () => {
         setMotivados(updatedMotivados);
     
         // Attempt to update the backend
-        Axios.post(`http://opgranel.rodrimar.com.br:8080/api/motivado/status/update`, { motivadoId, updatedStatus })
+        Axios.post(`https://opgranel.eurobraslogistica.com.br/api/api/motivado/status/update`, { motivadoId, updatedStatus })
           .then(response => {
             showAlert('Status atualizado com sucesso!', 'success');
           })

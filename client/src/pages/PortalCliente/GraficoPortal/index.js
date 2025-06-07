@@ -24,7 +24,7 @@ const navigate = useNavigate();
 
 
 async function getDados() {
-   await Axios.get(`http://opgranel.rodrimar.com.br:8080/grafico/portal/${id}`,)
+   await Axios.get(`https://opgranel.eurobraslogistica.com.br/api/grafico/portal/${id}`,)
         .then(function (res) {
             setList(res.data)
             console.log(res.data)

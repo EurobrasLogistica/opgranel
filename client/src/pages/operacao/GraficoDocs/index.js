@@ -16,7 +16,7 @@ const GraficoDocs = () => {
     }, [])
 
     async function getDados() {
-       await Axios.get(`http://opgranel.rodrimar.com.br:8080/grafico/${id}`,)
+       await Axios.get(`https://opgranel.eurobraslogistica.com.br/api/grafico/${id}`,)
             .then(function (res) {
                 setList(res.data)
                 console.log(res.data)

@@ -93,7 +93,7 @@ const validaDados = () => {
 }
 
 const getTransportadora = () => {
-  Axios.get(`http://opgranel.rodrimar.com.br:8080/transportadora/alterar`,)
+  Axios.get(`https://opgranel.eurobraslogistica.com.br/api/transportadora/alterar`,)
     .then(function (res) {
       setTransportadoras(res.data);
       console.log(res.data);
@@ -102,7 +102,7 @@ const getTransportadora = () => {
 
 
 const getDoc = () => {
-  Axios.get(`http://opgranel.rodrimar.com.br:8080/documento/alterar/${carregamento.COD_OPERACAO}`,)
+  Axios.get(`https://opgranel.eurobraslogistica.com.br/api/documento/alterar/${carregamento.COD_OPERACAO}`,)
     .then(function (res) {
       setDocumentos(res.data);
       console.log(res.data);
@@ -129,7 +129,7 @@ const confirmaAlteracao = () => {
 // Função para excluir o carregamentooo
 const excluirCarregamento = async () => {
   try {
-    const res = await Axios.put(`http://opgranel.rodrimar.com.br:8080/carregamento/excluir`, {
+    const res = await Axios.put(`https://opgranel.eurobraslogistica.com.br/api/carregamento/excluir`, {
       motivo: motivo, 
       usuario: usuario, 
       data_exclusao: data, 
@@ -179,7 +179,7 @@ const validaMoega = () => {
 }
 
   const validaplaca3 = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/carreta3',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/carreta3',
       {
         id: id,
         placa: placa3,
@@ -194,7 +194,7 @@ const validaMoega = () => {
 
   const validaVeiculo = async () => {
     console.log(tipoveiculos, i.ID_CARREGAMENTO);
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/veiculo/atualiza',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/veiculo/atualiza',
       {
         tipoveiculo: tipoveiculo,
         id: id
@@ -211,7 +211,7 @@ const validaMoega = () => {
 
   const validaTransp = async () => {
     console.log(transportadoras, i.ID_CARREGAMENTO);
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/transporadora/atualiza',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/transporadora/atualiza',
       {
         transporadora: transportadora,
         id: id
@@ -227,7 +227,7 @@ const validaMoega = () => {
 
   const validaDoc = async () => {
     console.log(documento, i.ID_CARREGAMENTO);
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/documento/atualiza',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/documento/atualiza',
       {
         documento: documento,
         id: id
@@ -242,7 +242,7 @@ const validaMoega = () => {
   }
 
   const validaplaca2 = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/carreta2',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/carreta2',
       {
         id: id,
         placa: placa2,
@@ -264,7 +264,7 @@ const validaMoega = () => {
   }
   
   const atualizaPlaca1 = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/carreta1',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/carreta1',
       {
         id: id,
         placa: placa1,
@@ -277,7 +277,7 @@ const validaMoega = () => {
   }
 
   const getPedido = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/buscar/pedidos/${carregamento.COD_OPERACAO}`)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/buscar/pedidos/${carregamento.COD_OPERACAO}`)
       .then((res) => {
         setPedidos(res.data);
       })
@@ -293,7 +293,7 @@ const validaMoega = () => {
     }
   
     try {
-      const res = await Axios.put('http://opgranel.rodrimar.com.br:8080/documentos/atualiza', {
+      const res = await Axios.put('https://opgranel.eurobraslogistica.com.br/api/documentos/atualiza', {
         documento: parseInt(pedido),
         cod: carregamento.COD_OPERACAO,
       });
@@ -320,7 +320,7 @@ const validaMoega = () => {
   }
 
   const atualizaCavalo = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/cavalo',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/cavalo',
       {
         id: id,
         placa: placaCavalo,
@@ -333,7 +333,7 @@ const validaMoega = () => {
   }
 
   const atualizaTara = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/tara',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/tara',
       {
         tara: tara,
         data: data,
@@ -347,7 +347,7 @@ const validaMoega = () => {
       });
   }
   const atualizaMoega = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/pesomoega',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/pesomoega',
       {
         moega: moega,
         id: id,
@@ -362,7 +362,7 @@ const validaMoega = () => {
   }
 
   const getCarregamento = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/alteracaocadastral/veiculos/${id}`)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/alteracaocadastral/veiculos/${id}`)
       .then(function (res) {
         console.log(res.data);
         if (res.data.length > 0) {
@@ -382,7 +382,7 @@ const validaMoega = () => {
   };
   
   const getTipoveiculo = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/tipoveiculo`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/tipoveiculo`,)
       .then(function (res) {
         setTipoveiculos(res.data);
         console.log(res.data);

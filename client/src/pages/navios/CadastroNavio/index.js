@@ -31,7 +31,7 @@ const CadastroNavio = () => {
 
   
   const addNavio = () => {
-    Axios.post('http://opgranel.rodrimar.com.br:8080/navio/criar', {
+    Axios.post('https://opgranel.eurobraslogistica.com.br/api/navio/criar', {
       nome: nome,
       imo: imo,
       bandeira: bandeira,

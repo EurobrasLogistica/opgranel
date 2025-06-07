@@ -171,7 +171,7 @@ const Operacao = () => {
   };
 
   const getTipoveiculo = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/tipoveiculo`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/tipoveiculo`,)
       .then(function (res) {
         setTipoveiculos(res.data);
         console.log(res.data);
@@ -179,7 +179,7 @@ const Operacao = () => {
   }
 
   const getTransportadora = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/transportadora/alterar`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/transportadora/alterar`,)
       .then(function (res) {
         setTransportadoras(res.data);
         console.log(res.data);
@@ -187,7 +187,7 @@ const Operacao = () => {
   }
 
   const getDocumentos = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/documento/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/documento/${id}`,)
       .then(function (res) {
         setDocumentos(res.data);
         console.log(res.data);
@@ -195,7 +195,7 @@ const Operacao = () => {
   }
 
   const getCargas = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/carga/busca/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/carga/busca/${id}`,)
       .then(function (res) {
         setDocs(res.data);
       });
@@ -208,14 +208,14 @@ const Operacao = () => {
   }
 
   const VerificaParalisacao = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/verifica/paralisacao/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/verifica/paralisacao/${id}`,)
       .then(function (res) {
         setExisteParalisacao(res.data)
       })
   }
 
   const VerificaCarregamento = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/verifica/carregamento/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/verifica/carregamento/${id}`,)
       .then(function (res) {
         setIntegrado(res.data)
       })
@@ -223,14 +223,14 @@ const Operacao = () => {
 
   const [dis, setDis] = useState([])
   const getDocs = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/carga/busca/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/carga/busca/${id}`,)
       .then(function (res) {
         setDis(res.data)
       });
   }
   
   const getPedido = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/buscar/pedidos/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/buscar/pedidos/${id}`,)
       .then(function (res) {
         setPedidos(res.data);
         console.log(res.data);
@@ -238,7 +238,7 @@ const Operacao = () => {
   }
 
   const getPeriodos = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/periodos/gerais/${id}`).then((response) => {
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/periodos/gerais/${id}`).then((response) => {
         setPeriodos(response.data)
     });
 }
@@ -251,7 +251,7 @@ const Integra = () => {
     usuario,  
     moega
   };
-  Axios.put('http://opgranel.rodrimar.com.br:8080/integrar/' + i.ID_CARREGAMENTO, payload//:idCarregamento',
+  Axios.put('https://opgranel.eurobraslogistica.com.br/api/integrar/' + i.ID_CARREGAMENTO, payload//:idCarregamento',
     /*{
       peso2,
       data,
@@ -277,10 +277,10 @@ const Integra = () => {
   }
 
   const DadosDashboard =  () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/periodo/dashboard/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/periodo/dashboard/${id}`,)
       .then(function (res) {
         setDadosDash(res.data[0])
-        Axios.get(`http://opgranel.rodrimar.com.br:8080/paralisacao/periodo/${res.data[0].SEQ_PERIODO_OP}`,)
+        Axios.get(`https://opgranel.eurobraslogistica.com.br/api/paralisacao/periodo/${res.data[0].SEQ_PERIODO_OP}`,)
           .then(function (res) {
             setParalisacoes(res.data)
             
@@ -288,7 +288,7 @@ const Integra = () => {
       })
   }
   const getVeiculos = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/dashboard/veiculos/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/dashboard/veiculos/${id}`,)
       .then(function (res) {
         setVeiculos(res.data)
       })
@@ -299,14 +299,14 @@ const Integra = () => {
   }
 
   const getQtDescarregado = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/dashboard/descarregado/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/dashboard/descarregado/${id}`,)
       .then(function (res) {
         setDescarregado(res.data[0].DESCARREGADO)
       })
   }
 
   const getTotalSaldo = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/dashboard/saldo/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/dashboard/saldo/${id}`,)
       .then(function (res) {
         setSaldo(res.data[0].SALDO)
       })
@@ -315,7 +315,7 @@ const Integra = () => {
 
   //hora a hora do dashboard 
   const getHoraAutos = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/hora/autos/${id}`, {
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/hora/autos/${id}`, {
     }).then((response) => {
       console.log();
       setHoraAutos(response.data);
@@ -325,20 +325,20 @@ const Integra = () => {
   
 
   const getMotivos = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/motivos`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/motivos`,)
       .then(function (res) {
         setMotivos(res.data)
       })
   }
   const getComplementos = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/complementos`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/complementos`,)
       .then(function (res) {
         setComplementos(res.data)
       })
   }
 
   const addParalisacao = () => {
-    Axios.post('http://opgranel.rodrimar.com.br:8080/paralisacao/criar', {
+    Axios.post('https://opgranel.eurobraslogistica.com.br/api/paralisacao/criar', {
       operacao: id,
       periodo: dadosDash.SEQ_PERIODO_OP,
       motivo: motivo,
@@ -436,7 +436,7 @@ const refreshData = () => {
       return;
     }
 
-    Axios.put('http://opgranel.rodrimar.com.br:8080/encerrar/paralisacao',
+    Axios.put('https://opgranel.eurobraslogistica.com.br/api/encerrar/paralisacao',
       {
         id: paralisacoes[0].SEQ_PARALISACAO,
         data: dataFimPara,
@@ -449,7 +449,7 @@ const refreshData = () => {
   }
 
   const validaplaca3 = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/carreta3',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/carreta3',
       {
         id: i.ID_CARREGAMENTO,
         placa: placa3,
@@ -465,7 +465,7 @@ const refreshData = () => {
 
   const validaVeiculo = async () => {
     console.log(tipoveiculos, i.ID_CARREGAMENTO);
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/veiculo/atualiza',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/veiculo/atualiza',
       {
         tipoveiculo: tipoveiculo,
         id: i.ID_CARREGAMENTO
@@ -483,7 +483,7 @@ const refreshData = () => {
 
   const validaTransp = async () => {
     console.log(transportadoras, i.ID_CARREGAMENTO);
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/transporadora/atualiza',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/transporadora/atualiza',
       {
         transporadora: transportadora,
         id: i.ID_CARREGAMENTO
@@ -498,7 +498,7 @@ const refreshData = () => {
       });
   }
   const validaplaca2 = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/carreta2',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/carreta2',
       {
         id: i.ID_CARREGAMENTO,
         placa: placa2,
@@ -521,7 +521,7 @@ const refreshData = () => {
   }
   
   const atualizaPlaca1 = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/carreta1',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/carreta1',
       {
         id: i.ID_CARREGAMENTO,
         placa: placa1,
@@ -536,7 +536,7 @@ const refreshData = () => {
 
   const validaDoc = async () => {
 
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/documentos/atualiza',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/documentos/atualiza',
       {
         pedido: parseInt(pedido),
         id: i.ID_CARREGAMENTO,
@@ -559,7 +559,7 @@ const refreshData = () => {
   }
 
   const atualizaCavalo = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/cavalo',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/cavalo',
       {
         id: i.ID_CARREGAMENTO,
         placa: placaCavalo,
@@ -585,7 +585,7 @@ const refreshData = () => {
   }
 
   const atualizaTara = async () => {
-    await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/tara',
+    await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/tara',
       {
         tara: tara,
         data: dataTara,
@@ -632,7 +632,7 @@ const refreshData = () => {
 
 
   const encerrarPeriodo = () => {
-    Axios.put('http://opgranel.rodrimar.com.br:8080/periodo/finalizar', {
+    Axios.put('https://opgranel.eurobraslogistica.com.br/api/periodo/finalizar', {
       id: dadosDash.SEQ_PERIODO_OP,
       data: dataFim,
       cod_operacao: dadosDash.COD_OPERACAO,
@@ -652,7 +652,7 @@ const refreshData = () => {
 
 const enviarEmail = async (id, data) => {
   try {
-    const response = await fetch('http://opgranel.rodrimar.com.br:8080/periodo/dadosEmail', {
+    const response = await fetch('https://opgranel.eurobraslogistica.com.br/api/periodo/dadosEmail', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -750,7 +750,7 @@ const validaDados3 = () => {
     const config = {
       method: 'post',
       maxBodyLength: Infinity,
-      url: `http://opgranel.rodrimar.com.br:8080/gerarnotamic/${i.ID_CARREGAMENTO}`,
+      url: `https://opgranel.eurobraslogistica.com.br/api/gerarnotamic/${i.ID_CARREGAMENTO}`,
       headers: { 
         'Content-Type': 'application/json; charset=utf-8',
       },
@@ -765,7 +765,7 @@ const validaDados3 = () => {
     const config = {
       method: 'post',
       maxBodyLength: Infinity,
-      url: `http://opgranel.rodrimar.com.br:8080/entregarnotamic/${i.ID_CARREGAMENTO}`,
+      url: `https://opgranel.eurobraslogistica.com.br/api/entregarnotamic/${i.ID_CARREGAMENTO}`,
       headers: { 
         'Content-Type': 'application/json; charset=utf-8',
       },
@@ -793,7 +793,7 @@ const validaDados3 = () => {
     const config = {
         method: 'post',
         maxBodyLength: Infinity,
-        url: `http://opgranel.rodrimar.com.br:8080/baixarnota`,
+        url: `https://opgranel.eurobraslogistica.com.br/api/baixarnota`,
         headers: { 
           'Content-Type': 'application/json; charset=utf-8',
         },
@@ -824,7 +824,7 @@ const validaDados3 = () => {
   }
 
   const SegundaPesagem = () => {
-    Axios.put('http://opgranel.rodrimar.com.br:8080/segundapesagem',
+    Axios.put('https://opgranel.eurobraslogistica.com.br/api/segundapesagem',
       {
         peso2: peso2,
         data: data,

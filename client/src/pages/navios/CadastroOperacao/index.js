@@ -42,17 +42,17 @@ const CadastroOperacao = () => {
   const usuario = JSON.parse(localStorage.getItem("user_token")).id;
 
   const getEmpresas = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/empresas').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/empresas').then((response) => {
       setEmpresas(response.data);
     });
   }
   const getAgentes = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/agentes').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/agentes').then((response) => {
       setAgentes(response.data);
     });
   }
   const getBercos = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/bercos').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/bercos').then((response) => {
       setBercos(response.data);
     });
   }
@@ -68,7 +68,7 @@ const CadastroOperacao = () => {
   }
 
   const addOperacao = () => {
-    Axios.post('http://opgranel.rodrimar.com.br:8080/operacao/criar', {
+    Axios.post('https://opgranel.eurobraslogistica.com.br/api/operacao/criar', {
       empresa: empresa,
       navio: id,
       rap: rap,

@@ -27,14 +27,14 @@ const PortalCliente = () => {
 
  
   const getOp = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/relatorios/operacoes').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/relatorios/operacoes').then((response) => {
       setNaviosList(response.data)
     });
   }
 
 
  const getPeriodo = (id) => {
-  Axios.get(`http://opgranel.rodrimar.com.br:8080/periodos/gerais/${id}`).then((response) => {
+  Axios.get(`https://opgranel.eurobraslogistica.com.br/api/periodos/gerais/${id}`).then((response) => {
     setPeriodo(response.data)
   });
  }

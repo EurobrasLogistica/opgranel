@@ -52,17 +52,17 @@ const AberturaPeriodo = () => {
   }
 
   const getEquipamentos = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/equipamentos').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/equipamentos').then((response) => {
       setEquipamentos(response.data)
     });
   }
   const getPeriodos = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/periodos/horarios').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/periodos/horarios').then((response) => {
       setPeriodos(response.data)
     });
   }
   const getBercos = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/bercos').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/bercos').then((response) => {
       setBercos(response.data);
     });
   }
@@ -73,14 +73,14 @@ const AberturaPeriodo = () => {
   }
 
   const VerificaPeriodo = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/periodo/busca/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/periodo/busca/${id}`,)
       .then(function (res) {
         setExistePeriodo(res.data[0].EXISTE)
       })
   }
 
   const addPeriodo = async () => {
-    await Axios.post('http://opgranel.rodrimar.com.br:8080/periodo/criar', {
+    await Axios.post('https://opgranel.eurobraslogistica.com.br/api/periodo/criar', {
       operacao: id,
       periodo: periodo,
       inicio: inicio,

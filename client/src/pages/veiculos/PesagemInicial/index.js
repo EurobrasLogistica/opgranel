@@ -112,7 +112,7 @@ const PesagemInicial = () => {
 
   const BuscarPlacas = async (cpf) => {
     try {
-      const response = await Axios.get(`http://opgranel.rodrimar.com.br:8080/pesageminicial/historico/${cpf}`);
+      const response = await Axios.get(`https://opgranel.eurobraslogistica.com.br/api/pesageminicial/historico/${cpf}`);
       if (response.data.length > 0) {
         const { PLACA_CAVALO, PLACA_CARRETA, PLACA_CARRETA2, PLACA_CARRETA3, TIPO_VEICULO } = response.data[0]; // Destructure the response
         setPlacacavalo(PLACA_CAVALO);
@@ -127,7 +127,7 @@ const PesagemInicial = () => {
   };
 
   const addPesagem = () => {
-    Axios.post('http://opgranel.rodrimar.com.br:8080/pesagem/primeirapesagem', {
+    Axios.post('https://opgranel.eurobraslogistica.com.br/api/pesagem/primeirapesagem', {
       COD_CARGA: doc,
       COD_OPERACAO: navio,
       PLACA_CAVALO: placacavalo,
@@ -164,7 +164,7 @@ const PesagemInicial = () => {
   }
 
  const getOperacoes = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/operacao')
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/operacao')
       .then((response) => {
         setOperacoesList(response.data)
         console.log(response.data);
@@ -173,7 +173,7 @@ const PesagemInicial = () => {
   }
 
   const getCargas = (id) => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/carga/busca/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/carga/busca/${id}`,)
       .then(function (res) {
         setDocs(res.data);
         console.log(res.data);
@@ -185,7 +185,7 @@ const PesagemInicial = () => {
   //   try {
 
   //     // Faz a requisição para executar o Puppeteer com os parâmetros corretos
-  //     const response = await Axios.post('http://opgranel.rodrimar.com.br:8080/executarPuppeteer');
+  //     const response = await Axios.post('https://opgranel.eurobraslogistica.com.br/api/executarPuppeteer');
   
   //     // Verifica a resposta
   //     console.log('Resposta da API Puppeteer:', response.data);
@@ -203,7 +203,7 @@ const PesagemInicial = () => {
   
 
 //   const getMotivacao = (id) => {
-//     Axios.post(`http://opgranel.rodrimar.com.br:8080/motivacao/conteudo/${id}`, {
+//     Axios.post(`https://opgranel.eurobraslogistica.com.br/api/motivacao/conteudo/${id}`, {
 //     }).then((response) => {
 //         console.log(response.data);
 //         setCpfMotorista(response.data);
@@ -211,7 +211,7 @@ const PesagemInicial = () => {
 // }
 
   const getTransp = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/transportadora`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/transportadora`,)
       .then(function (res) {
         setTransportadoras(res.data);
         console.log(res.data);
@@ -219,7 +219,7 @@ const PesagemInicial = () => {
   }
 
   const getDestino = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/destino`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/destino`,)
       .then(function (res) {
         setDestinos(res.data);
         console.log(res.data);
@@ -227,7 +227,7 @@ const PesagemInicial = () => {
   }
 
   const getTipoveiculo = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/tipoveiculo`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/tipoveiculo`,)
       .then(function (res) {
         setTipoveiculos(res.data);
         console.log(res.data);
@@ -237,7 +237,7 @@ const PesagemInicial = () => {
 
 
   const getPedido = (id) => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/buscar/pedidos/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/buscar/pedidos/${id}`,)
       .then(function (res) {
         setPedidos(res.data);
         console.log(res.data);

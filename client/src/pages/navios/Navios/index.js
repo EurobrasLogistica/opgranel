@@ -29,7 +29,7 @@ const Navios = (props) => {
   }, [])
 
   const getNavios = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/navio').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/navio').then((response) => {
       setNaviosList(response.data)
     });
   }

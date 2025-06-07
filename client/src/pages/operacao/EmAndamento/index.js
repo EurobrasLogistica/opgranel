@@ -29,7 +29,7 @@ const EmAndamento = () => {
   }
 
   const getOperacoes = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/operacao').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/operacao').then((response) => {
       setOperacoesList(response.data)
     });
   }

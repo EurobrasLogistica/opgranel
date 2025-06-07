@@ -21,7 +21,7 @@ const BuscarMotorista = () => {
 
 
     const getMotorista = () => {
-        Axios.get(`http://opgranel.rodrimar.com.br:8080/motorista/busca/${busca}`,)
+        Axios.get(`https://opgranel.eurobraslogistica.com.br/api/motorista/busca/${busca}`,)
             .then(function (res) {
                 console.log(res.data);
                 res.data.length > 0 ?

@@ -111,23 +111,23 @@ const PesagemFinal = () => {
     return (date.toISOString().slice(0, 19).replace('T', ' '))
   }
   const VerificaParalisacao = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/verifica/paralisacao/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/verifica/paralisacao/${id}`,)
       .then(function (res) {
         setExisteParalisacao(res.data)
       })
   }
   const DadosDashboard = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/periodo/dashboard/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/periodo/dashboard/${id}`,)
       .then(function (res) {
         setDadosDash(res.data[0])
-        Axios.get(`http://opgranel.rodrimar.com.br:8080/paralisacao/periodo/${res.data[0].SEQ_PERIODO_OP}`,)
+        Axios.get(`https://opgranel.eurobraslogistica.com.br/api/paralisacao/periodo/${res.data[0].SEQ_PERIODO_OP}`,)
           .then(function (res) {
             setParalisacoes(res.data)
           })
       })
   }
   const getVeiculos = () => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/ultimapesagem/busca/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/ultimapesagem/busca/${id}`,)
       .then(function (res) {
         setVeiculos(res.data)
       })
@@ -172,7 +172,7 @@ const PesagemFinal = () => {
     const config = {
       method: 'post',
       maxBodyLength: Infinity,
-      url: `http://opgranel.rodrimar.com.br:8080/gerarnotamic/${i.ID_CARREGAMENTO}`,
+      url: `https://opgranel.eurobraslogistica.com.br/api/gerarnotamic/${i.ID_CARREGAMENTO}`,
       headers: { 
         'Content-Type': 'application/json; charset=utf-8',
       },
@@ -187,7 +187,7 @@ const PesagemFinal = () => {
     const config = {
       method: 'post',
       maxBodyLength: Infinity,
-      url: `http://opgranel.rodrimar.com.br:8080/entregarnotamic/${i.ID_CARREGAMENTO}`,
+      url: `https://opgranel.eurobraslogistica.com.br/api/entregarnotamic/${i.ID_CARREGAMENTO}`,
       headers: { 
         'Content-Type': 'application/json; charset=utf-8',
       },
@@ -209,7 +209,7 @@ const PesagemFinal = () => {
     const config = {
         method: 'post',
         maxBodyLength: Infinity,
-        url: `http://opgranel.rodrimar.com.br:8080/baixarnota`,
+        url: `https://opgranel.eurobraslogistica.com.br/api/baixarnota`,
         headers: { 
           'Content-Type': 'application/json; charset=utf-8',
         },
@@ -260,7 +260,7 @@ const PesagemFinal = () => {
 
   const addPesagem = async () => {
     
-    await Axios.put(`http://opgranel.rodrimar.com.br:8080/ultimapesagem`, {
+    await Axios.put(`https://opgranel.eurobraslogistica.com.br/api/ultimapesagem`, {
       peso3: pesoliquido,
       data: databruto,
       usuario: usuario,

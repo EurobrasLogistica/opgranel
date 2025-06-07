@@ -73,7 +73,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 //TRANSPORTADORA
-app.get("/transportadora", (req, res) => {
+app.get("/api/transportadora", (req, res) => {
     db.query("SELECT * FROM TRANSPORTADORA ORDER BY NOME_TRANSP ", (err, result) => {
         if (err) {
             console.log(err)
@@ -84,7 +84,7 @@ app.get("/transportadora", (req, res) => {
 })
 
 //TRANSPORTADORA
-// app.get("/transportadora/alterar", (req, res) => {
+// app.get("/api/transportadora/alterar", (req, res) => {
 //     db.query("SELECT * FROM TRANSPORTADORA WHERE cod_transp IN (8, 36) ORDER BY NOME_TRANSP; ", (err, result) => {
 //         if (err) {
 //             console.log(err)
@@ -95,7 +95,7 @@ app.get("/transportadora", (req, res) => {
 // })
 
 
-app.get("/transportadora/alterar", (req, res) => {
+app.get("/api/transportadora/alterar", (req, res) => {
     db.query("SELECT * FROM TRANSPORTADORA ORDER BY NOME_TRANSP; ", (err, result) => {
         if (err) {
             console.log(err)
@@ -105,7 +105,7 @@ app.get("/transportadora/alterar", (req, res) => {
     })
 })
 
-app.get("/documento/alterar/:id", (req, res) => {
+app.get("/api/documento/alterar/:id", (req, res) => {
     const id = req.params.id;
     db.query("SELECT * FROM CARGA WHERE COD_OPERACAO = ?;"
         ,id,(err, result) => {
@@ -118,7 +118,7 @@ app.get("/documento/alterar/:id", (req, res) => {
 })
 
 //CARGAS PRO GRAFICO
-app.get("/grafico/:id", (req, res) => {
+app.get("/api/grafico/:id", (req, res) => {
     const id = req.params.id;
     db.query(`
     SELECT CA.COD_OPERACAO,
@@ -153,7 +153,7 @@ GROUP BY
 })
 
 //PORÃO PRO GRAFICO
-app.get("/grafico/porao/:id", (req, res) => {
+app.get("/api/grafico/porao/:id", (req, res) => {
     const id = req.params.id;
     db.query(`
    SELECT PL.COD_OPERACAO,
@@ -184,7 +184,7 @@ app.get("/grafico/porao/:id", (req, res) => {
 })
 
 //GRAFICO PORTAL DO CLIENTE
-app.get("/grafico/portal/:id", (req, res) => {
+app.get("/api/grafico/portal/:id", (req, res) => {
     const id = req.params.id;
     const usuario = req.body.usuario
 
@@ -225,7 +225,7 @@ app.get("/grafico/portal/:id", (req, res) => {
 })
 
 
-app.get("/documentos/:id", (req, res) => {
+app.get("/api/documentos/:id", (req, res) => {
 
     const id = req.params.id;
     db.query('SELECT COD_CARGA, NUMERO_DOC AS DOCUMENTO FROM CARGA WHERE COD_OPERACAO = ?',
@@ -239,7 +239,7 @@ app.get("/documentos/:id", (req, res) => {
 })
 
 //NAVIOS
-app.get("/navio", (req, res) => {
+app.get("/api/navio", (req, res) => {
     db.query("SELECT * FROM NAVIO", (err, result) => {
         if (err) {
             console.log(err)
@@ -249,7 +249,7 @@ app.get("/navio", (req, res) => {
     })
 })
 
-app.post('/navio/criar', (req, res) => {
+app.post('/api/navio/criar', (req, res) => {
     const nome = req.body.nome;
     const imo = req.body.imo;
     const bandeira = req.body.bandeira;
@@ -270,7 +270,7 @@ app.post('/navio/criar', (req, res) => {
 });
 
 //CRIAR UMA TRANSPORTADORA
-app.post('/transportadora/criar', (req, res) => {
+app.post('/api/transportadora/criar', (req, res) => {
     const nome = req.body.nome;
     const cnpj = req.body.cnpj;
   
@@ -289,7 +289,7 @@ app.post('/transportadora/criar', (req, res) => {
 });
 
 //CRIAR UMA IMPORTADOR
-app.post('/importador/criar', (req, res) => {
+app.post('/api/importador/criar', (req, res) => {
     const nome = req.body.nome;
     const cnpj = req.body.cnpj;
     const nomereduzido = req.body.nomereduzido
@@ -309,7 +309,7 @@ app.post('/importador/criar', (req, res) => {
 
 
 //CRIAR UMA DESTINO
-app.post('/destino/criar', (req, res) => {
+app.post('/api/destino/criar', (req, res) => {
     const nome = req.body.nome;
   
 
@@ -328,7 +328,7 @@ app.post('/destino/criar', (req, res) => {
 
 
 //CRIAR UMA NCM
-app.post('/ncm/criar', (req, res) => {
+app.post('/api/ncm/criar', (req, res) => {
     const codncm = req.body.codncm;
     const descricao = req.body.descricao;
   
@@ -347,7 +347,7 @@ app.post('/ncm/criar', (req, res) => {
 });
 
 //CRIAR UMA PRODUTO
-app.post('/produto/criar', (req, res) => {
+app.post('/api/produto/criar', (req, res) => {
     const produto = req.body.codncm;
     const unidade = 'KG';
     const ind_carga = 'N';
@@ -368,7 +368,7 @@ app.post('/produto/criar', (req, res) => {
 
 
 //CRIAR UM PEDIDO
-app.post('/pedido/criar', (req, res) => {
+app.post('/api/pedido/criar', (req, res) => {
     const operacao = req.body.operacao;
     const pedido = req.body.pedido;
     const documento = req.body.pedido;
@@ -387,7 +387,7 @@ app.post('/pedido/criar', (req, res) => {
 });
 
 // pedido - Consultar todas as pedidos
-app.get('/pedido/consultar', (req, res) => {
+app.get('/api/pedido/consultar', (req, res) => {
     const query = "SELECT * FROM PEDIDO ORDER BY ID_PEDIDO DESC;";
     db.query(query, (err, result) => {
         if (err) {
@@ -399,7 +399,7 @@ app.get('/pedido/consultar', (req, res) => {
 });
 
 // Transportadora - Consultar todas as transportadoras
-app.get('/transportadora/consultar', (req, res) => {
+app.get('/api/transportadora/consultar', (req, res) => {
     const query = "SELECT * FROM TRANSPORTADORA ORDER BY COD_TRANSP DESC;";
     db.query(query, (err, result) => {
         if (err) {
@@ -411,7 +411,7 @@ app.get('/transportadora/consultar', (req, res) => {
 });
 
 // Importador - Consultar todos os importadores
-app.get('/importador/consultar', (req, res) => {
+app.get('/api/importador/consultar', (req, res) => {
     const query = "SELECT * FROM CLIENTE ORDER BY COD_CLIENTE DESC;";
     db.query(query, (err, result) => {
         if (err) {
@@ -423,7 +423,7 @@ app.get('/importador/consultar', (req, res) => {
 });
 
 // Destino - Consultar todos os destinos
-app.get('/destino/consultar', (req, res) => {
+app.get('/api/destino/consultar', (req, res) => {
     const query = "SELECT * FROM DESTINO ORDER BY COD_DESTINO DESC;";
     db.query(query, (err, result) => {
         if (err) {
@@ -435,7 +435,7 @@ app.get('/destino/consultar', (req, res) => {
 });
 
 // NCM - Consultar todos os NCMs
-app.get('/ncm/consultar', (req, res) => {
+app.get('/api/ncm/consultar', (req, res) => {
     const query = "SELECT * FROM NCM ORDER BY COD_NCM DESC;";
     db.query(query, (err, result) => {
         if (err) {
@@ -447,7 +447,7 @@ app.get('/ncm/consultar', (req, res) => {
 });
 
 // Produto - Consultar todos os produtos
-app.get('/produto/consultar', (req, res) => {
+app.get('/api/produto/consultar', (req, res) => {
     const query = "SELECT COD_PRODUTO, PRODUTO, UN_MEDIDA FROM PRODUTO ORDER BY COD_PRODUTO DESC;";
     db.query(query, (err, result) => {
         if (err) {
@@ -460,7 +460,7 @@ app.get('/produto/consultar', (req, res) => {
 
 
 //EMPRESAS
-app.get("/empresas", (req, res) => {
+app.get("/api/empresas", (req, res) => {
     db.query("SELECT COD_EMPRESA, NOME_EMPRESA FROM EMPRESA;", (err, result) => {
         if (err) {
             console.log(err)
@@ -471,7 +471,7 @@ app.get("/empresas", (req, res) => {
 })
 
 //AGENTES
-app.get("/agentes", (req, res) => {
+app.get("/api/agentes", (req, res) => {
     db.query("SELECT * FROM AGENTE;", (err, result) => {
         if (err) {
             console.log(err)
@@ -482,7 +482,7 @@ app.get("/agentes", (req, res) => {
 })
 
 //BERÇOS
-app.get("/bercos", (req, res) => {
+app.get("/api/bercos", (req, res) => {
     db.query("SELECT * FROM BERCO;", (err, result) => {
         if (err) {
             console.log(err)
@@ -493,7 +493,7 @@ app.get("/bercos", (req, res) => {
 })
 
 //AGENTE
-app.get("/agentes", (req, res) => {
+app.get("/api/agentes", (req, res) => {
     db.query("SELECT * FROM AGENTE;", (err, result) => {
         if (err) {
             console.log(err)
@@ -504,7 +504,7 @@ app.get("/agentes", (req, res) => {
 })
 
 //CLIENTES
-app.get("/clientes", (req, res) => {
+app.get("/api/clientes", (req, res) => {
     db.query("SELECT * FROM CLIENTE;", (err, result) => {
         if (err) {
             console.log(err)
@@ -515,7 +515,7 @@ app.get("/clientes", (req, res) => {
 })
 
 //NCM
-app.get("/ncm", (req, res) => {
+app.get("/api/ncm", (req, res) => {
     db.query("SELECT * FROM NCM;", (err, result) => {
         if (err) {
             console.log(err)
@@ -526,7 +526,7 @@ app.get("/ncm", (req, res) => {
 })
 
 //PRODUTOS
-app.get("/produtos", (req, res) => {
+app.get("/api/produtos", (req, res) => {
     db.query("SELECT * FROM PRODUTO;", (err, result) => {
         if (err) {
             console.log(err)
@@ -537,7 +537,7 @@ app.get("/produtos", (req, res) => {
 })
 
 //OPERAÇÃO
-app.get("/operacao", (req, res) => {
+app.get("/api/operacao", (req, res) => {
     db.query(`
       SELECT op.COD_OPERACAO,
            nv.NOME_NAVIO,
@@ -562,7 +562,7 @@ app.get("/operacao", (req, res) => {
 })
 
 //MOTIVOS DE PARLISACAO
-app.get("/motivos", (req, res) => {
+app.get("/api/motivos", (req, res) => {
     db.query(`SELECT * FROM MOTIVO_PAR;`, (err, result) => {
         if (err) {
             console.log(err)
@@ -573,7 +573,7 @@ app.get("/motivos", (req, res) => {
 })
 
 //MOTIVOS DE PARALISACAO
-app.get("/motivos", (req, res) => {
+app.get("/api/motivos", (req, res) => {
     db.query(`SELECT * FROM MOTIVO_PAR;`, (err, result) => {
         if (err) {
             console.log(err)
@@ -584,7 +584,7 @@ app.get("/motivos", (req, res) => {
 })
 
 //COMPLEMENTO DE PARALISACAO
-app.get("/complementos", (req, res) => {
+app.get("/api/complementos", (req, res) => {
     db.query(`SELECT * FROM COMPLEMENTO_PAR;`, (err, result) => {
         if (err) {
             console.log(err)
@@ -594,7 +594,7 @@ app.get("/complementos", (req, res) => {
     })
 })
 
-app.post('/operacao/criar', (req, res) => {
+app.post('/api/operacao/criar', (req, res) => {
     const empresa = req.body.empresa;
     const navio = req.body.navio;
     const rap = req.body.rap;
@@ -715,7 +715,7 @@ app.put('/operacao/registrar/atracacao', (req, res) => {
 })
 
 //PERIODOS
-app.get("/periodos/horarios", (req, res) => {
+app.get("/api/periodos/horarios", (req, res) => {
     db.query("SELECT * FROM PERIODO;", (err, result) => {
         if (err) {
             console.log(err)
@@ -725,7 +725,7 @@ app.get("/periodos/horarios", (req, res) => {
     })
 });
 
-app.post('/periodo/criar', (req, res) => {
+app.post('/api/periodo/criar', (req, res) => {
     const operacao = req.body.operacao;
     const periodo = req.body.periodo;
     const inicio = req.body.inicio;
@@ -770,7 +770,7 @@ app.post('/periodo/criar', (req, res) => {
     )
 });
 
-app.get('/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
+app.get('/api/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
     const id = req.params.id;
 
     db.query(`SELECT COUNT(1) as EXISTE FROM PERIODO_OPERACAO WHERE DAT_FIM_PERIODO IS NULL AND COD_OPERACAO = ?`,
@@ -784,7 +784,7 @@ app.get('/periodo/busca/:id', (req, res) => { //verifica se existe operação ab
     )
 })
 
-app.get('/portal/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
+app.get('/api/portal/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
     const id = req.params.id;
 
     db.query(`SELECT COUNT(1) as EXISTE FROM PERIODO_OPERACAO WHERE DAT_FIM_PERIODO IS NULL AND COD_OPERACAO = ?`,
@@ -799,7 +799,7 @@ app.get('/portal/periodo/busca/:id', (req, res) => { //verifica se existe opera�
 })
 
 
-app.get('/periodo/dashboard/:id', (req, res) => { //DADOS DO DASH
+app.get('/api/periodo/dashboard/:id', (req, res) => { //DADOS DO DASH
     const id = req.params.id;
 
     db.query(`
@@ -1338,7 +1338,7 @@ UNION
     );
 });
 
-app.post('/periodo/dadosEmail', (req, res) => {
+app.post('/api/periodo/dadosEmail', (req, res) => {
     const { id, data } = req.body;
 
     console.log('Recebido ID para obter dados do email:', id);
@@ -1455,7 +1455,7 @@ app.post('/periodo/dadosEmail', (req, res) => {
 
 
 //VEICULOS QUE JA FIZERAM TARA
-app.get('/dashboard/veiculos/:id', (req, res) => {
+app.get('/api/dashboard/veiculos/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`
@@ -1510,7 +1510,7 @@ app.get('/dashboard/veiculos/:id', (req, res) => {
 })
 
 
-app.get('/alteracaocadastral/veiculos/:id', (req, res) => {
+app.get('/api/alteracaocadastral/veiculos/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`
@@ -1566,7 +1566,7 @@ FROM
 
 
 //TOTAL DESCARREGADO NA OPERAÇÃO
-app.get('/dashboard/descarregado/:id', (req, res) => {
+app.get('/api/dashboard/descarregado/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`
@@ -1589,7 +1589,7 @@ app.get('/dashboard/descarregado/:id', (req, res) => {
 })
 
 //HORA A HORA NA OPERAÇÃO 
-app.get('/hora/autos/:id', (req, res) => {
+app.get('/api/hora/autos/:id', (req, res) => {
     const id = req.params.id;
     db.query(`
     SELECT TB.HORA, SUM(TB.QUANTIDADE_AUTOS) AS QUANTIDADE_AUTOS
@@ -1647,7 +1647,7 @@ app.get('/hora/autos/:id', (req, res) => {
 
 
 //SALDO TOTAL NA OPERAÇÃO 
-app.get('/dashboard/saldo/:id', (req, res) => {
+app.get('/api/dashboard/saldo/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`
@@ -1672,7 +1672,7 @@ app.get('/dashboard/saldo/:id', (req, res) => {
 
 
 // PARALISAÇÃO
-app.post('/paralisacao/criar', (req, res) => {
+app.post('/api/paralisacao/criar', (req, res) => {
     const operacao = req.body.operacao;
     const periodo = req.body.periodo;
     const motivo = req.body.motivo;
@@ -1699,7 +1699,7 @@ app.post('/paralisacao/criar', (req, res) => {
     )
 });
 
-app.get('/paralisacao/periodo/:id', (req, res) => {
+app.get('/api/paralisacao/periodo/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`
@@ -1725,7 +1725,7 @@ app.get('/paralisacao/periodo/:id', (req, res) => {
     })
 })
 
-app.get('/verifica/paralisacao/:id', (req, res) => {
+app.get('/api/verifica/paralisacao/:id', (req, res) => {
     const id = req.params.id;
     db.query(`
         SELECT 
@@ -1744,7 +1744,7 @@ app.get('/verifica/paralisacao/:id', (req, res) => {
     })
 })
 
-app.get('/verifica/carregamento/:id', (req, res) => {
+app.get('/api/verifica/carregamento/:id', (req, res) => {
     const id = req.params.id;
     db.query(`
       SELECT * FROM CARREGAMENTO
@@ -1779,7 +1779,7 @@ app.put('/encerrar/paralisacao', (req, res) => {
 })
 
 //EQUIPAMENTOS
-app.get("/equipamentos", (req, res) => {
+app.get("/api/equipamentos", (req, res) => {
     db.query("SELECT * FROM EQUIPAMENTO;", (err, result) => {
         if (err) {
             console.log(err)
@@ -1790,7 +1790,7 @@ app.get("/equipamentos", (req, res) => {
 })
 
 //CARGA
-app.post('/carga/criar', (req, res) => {
+app.post('/api/carga/criar', (req, res) => {
     const operacao = req.body.operacao;
     const tipo = req.body.tipo;
     const numero = req.body.numero;
@@ -1838,7 +1838,7 @@ app.post('/carga/criar', (req, res) => {
     )
 });
 
-app.get('/destinos', (req, res) => {
+app.get('/api/destinos', (req, res) => {
 
     db.query(`SELECT * FROM DESTINO;`,
         (err, result) => {
@@ -1851,7 +1851,7 @@ app.get('/destinos', (req, res) => {
     )
 })
 
-app.get('/carga/busca/:id', (req, res) => {
+app.get('/api/carga/busca/:id', (req, res) => {
     const id = req.params.id;
     db.query(`
             SELECT 
@@ -1905,7 +1905,7 @@ app.delete('/carga/delete/:id', (req, res) => {
 })
 
 //VEICULOS
-app.post('/motorista/criar', (req, res) => {
+app.post('/api/motorista/criar', (req, res) => {
     const nome = req.body.nome
     const cnh = null
     const cpf = req.body.cpf
@@ -1925,7 +1925,7 @@ app.post('/motorista/criar', (req, res) => {
 })
 
 //GET TIPOS DE VEÍCULOS 
-app.get("/tipoveiculo", (req, res) => {
+app.get("/api/tipoveiculo", (req, res) => {
     db.query("SELECT * FROM TIPO_VEICULO;", (err, result) => {
         if (err) {
             console.log(err)
@@ -1935,7 +1935,7 @@ app.get("/tipoveiculo", (req, res) => {
     })
 })
 
-app.get('/motorista/busca/:cpf', (req, res) => {
+app.get('/api/motorista/busca/:cpf', (req, res) => {
     const cpf = req.params.cpf;
 
     db.query('SELECT * FROM MOTORISTA WHERE CPF_MOTORISTA = ?',
@@ -1955,7 +1955,7 @@ app.get('/motorista/busca/:cpf', (req, res) => {
 
 //consulta se ID CARREGAMENTO esta apto 
 
-app.get('/valida/ticket/:idCarregamento', (req, res) => {
+app.get('/api/valida/ticket/:idCarregamento', (req, res) => {
     const idCarregamento = req.params.idCarregamento;
 
     db.query('SELECT ID_CARREGAMENTO, PESO_CARREGADO, PLACA_CAVALO FROM CARREGAMENTO WHERE ID_CARREGAMENTO = ?',
@@ -2015,7 +2015,7 @@ app.put('/integrar/:idCarregamento', (req, res) => {
 
 // envia informações para ticket 
 
-app.get('/impressao/busca/:idCarregamento', (req, res) => {
+app.get('/api/impressao/busca/:idCarregamento', (req, res) => {
     const idCarregamento = req.params.idCarregamento;
 
     db.query('SELECT * FROM VW_TICKET_CARREGAMENTO WHERE ID_CARREG = ?',
@@ -2031,7 +2031,7 @@ app.get('/impressao/busca/:idCarregamento', (req, res) => {
     )
 })
 
-app.get('/ultimapesagem/busca/:id', (req, res) => {
+app.get('/api/ultimapesagem/busca/:id', (req, res) => {
     const { id } = req.params
 
     db.query(`
@@ -2175,7 +2175,7 @@ app.put('/ultimapesagem', (req, res) => {
     )
 })
 
-app.get('/carga/busca/:id', (req, res) => {
+app.get('/api/carga/busca/:id', (req, res) => {
     const id = req.params.id;
     db.query(`
             SELECT 
@@ -2216,7 +2216,7 @@ app.get('/carga/busca/:id', (req, res) => {
     )
 })
 
-app.post('/periodo/carregamentos/:id', (req, res) => {
+app.post('/api/periodo/carregamentos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2265,7 +2265,7 @@ DATA_CARREGAMENTO
     });
 });
 
-app.post('/portal/relatorios/:id', (req, res) => {
+app.post('/api/portal/relatorios/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;
     const usuario = req.body.usuario
@@ -2321,7 +2321,7 @@ DATA_CARREGAMENTO
 
 
 
-app.post('/periodo/documentos/:id', (req, res) => {
+app.post('/api/periodo/documentos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2355,7 +2355,7 @@ app.post('/periodo/documentos/:id', (req, res) => {
     });
 });
 
-app.post('/periodo/autos/:id', (req, res) => {
+app.post('/api/periodo/autos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2604,7 +2604,7 @@ app.put('/carregamento/excluir', (req, res) => {
 
 
 //CARGAS PRO GRAFICO
-app.get("/relatorios", (req, res) => {
+app.get("/api/relatorios", (req, res) => {
     db.query(`
         SELECT CA.COD_OPERACAO,
             NA.NOME_NAVIO,
@@ -2634,7 +2634,7 @@ app.get("/relatorios", (req, res) => {
 })
 
 //primeira pesagem 
-app.post('/pesagem/primeirapesagem', (req, res) => {
+app.post('/api/pesagem/primeirapesagem', (req, res) => {
     const COD_CARGA = req.body.COD_CARGA
     const COD_OPERACAO = req.body.COD_OPERACAO
     const PLACA_CAVALO = req.body.PLACA_CAVALO
@@ -2728,7 +2728,7 @@ app.post('/pesagem/primeirapesagem', (req, res) => {
 })
 
 //Listar navios pra relatorio
-app.get("/relatorios/operacoes", (req, res) => {
+app.get("/api/relatorios/operacoes", (req, res) => {
     db.query(`
     SELECT *  FROM  OPERACAO O 
     JOIN NAVIO N 
@@ -2748,7 +2748,7 @@ app.get("/relatorios/operacoes", (req, res) => {
 
 
 //Periodos pra relatorio 
-app.get('/periodos/gerais/:id', (req, res) => {
+app.get('/api/periodos/gerais/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`   
@@ -2775,7 +2775,7 @@ app.get('/periodos/gerais/:id', (req, res) => {
 })
 
 
-app.get('/portal/periodos/gerais/:id', (req, res) => {
+app.get('/api/portal/periodos/gerais/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`   
@@ -2803,7 +2803,7 @@ app.get('/portal/periodos/gerais/:id', (req, res) => {
 
 
 
-app.post('/operacao/paralisacao/:id', (req, res) => {
+app.post('/api/operacao/paralisacao/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2832,7 +2832,7 @@ ORDER BY COD_OPERACAO, MOTIVO;
     });
 });
 
-app.post('/login/user', (req, res) => {
+app.post('/api/login/user', (req, res) => {
     const usuario = req.body.usuario;
     const senha = req.body.senha;
 
@@ -2856,7 +2856,7 @@ app.post('/login/user', (req, res) => {
 });
 
 //puxa ultima placa do motorista
-app.get('/pesageminicial/historico/:cpf', (req, res) => {
+app.get('/api/pesageminicial/historico/:cpf', (req, res) => {
     const cpf = req.params.cpf;
 
     db.query(`
@@ -2893,7 +2893,7 @@ LIMIT 1;`,
 });
 
 
-app.post('/operacao/complemento/:id', (req, res) => {
+app.post('/api/operacao/complemento/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2926,7 +2926,7 @@ ORDER BY COD_OPERACAO, COMPLEMENTO;
 });
 
 //Relatorio Por Operação 
-app.get('/operacao/gerais/:id', (req, res) => {
+app.get('/api/operacao/gerais/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`   
@@ -2947,7 +2947,7 @@ app.get('/operacao/gerais/:id', (req, res) => {
     )
 })
 
-app.post('/operacao/autos/:id', (req, res) => {
+app.post('/api/operacao/autos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2980,7 +2980,7 @@ app.post('/operacao/autos/:id', (req, res) => {
 });
 
 // Rota para obter o conteúdo do arquivo de motivação baseado no ID
-app.get('/motivacao/conteudo/:id', async (req, res) => {
+app.get('/api/motivacao/conteudo/:id', async (req, res) => {
     const { id } = req.params; // Aqui, id já é '51.txt'
 
     const fileName = id.endsWith('.txt') ? id : `${id}.txt`;
@@ -2996,7 +2996,7 @@ app.get('/motivacao/conteudo/:id', async (req, res) => {
     }
 });
 
-app.post('/executarPuppeteer', async (req, res) => {
+app.post('/api/executarPuppeteer', async (req, res) => {
 
     const { COD_OPERACAO, COD_MOTORISTA, ID_CARREGAMENTO, CPF_MOTORISTA } = req.body;
     const queryResult = await new Promise((resolve, reject) => {
@@ -3112,7 +3112,7 @@ app.post('/executarPuppeteer', async (req, res) => {
     }
 });
 
-// app.post('/motivacao/registrar', async (req, res) => {
+// app.post('/api/motivacao/registrar', async (req, res) => {
 //     try {
 //         const { codBercoSpa, cpfMotivados, dataInicial, dataFinal, usuarioCadastro, registroMotivacao } = req.body;
 
@@ -3168,7 +3168,7 @@ app.post('/executarPuppeteer', async (req, res) => {
 // });
 
 
-app.post('/operacao/documentos/:id', (req, res) => {
+app.post('/api/operacao/documentos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;
 
@@ -3199,7 +3199,7 @@ app.post('/operacao/documentos/:id', (req, res) => {
 });
 
 
-app.get("/destino", (req, res) => {
+app.get("/api/destino", (req, res) => {
     db.query(`SELECT * FROM DESTINO;`, (err, result) => {
         if (err) {
             console.log(err)
@@ -3209,7 +3209,7 @@ app.get("/destino", (req, res) => {
     })
 })
 
-app.get('/buscar/pedidos/:id', (req, res) => {
+app.get('/api/buscar/pedidos/:id', (req, res) => {
     const id = req.params.id;
     db.query(`SELECT * FROM PEDIDO WHERE COD_OPERACAO = ?`,
         id, (err, result) => {
@@ -3515,7 +3515,7 @@ const saveLog = (idCarregamento, filename, data) => {
 }
 
 // MIC SISTEMAS - CONSULTAR NOTA
-// app.post('/consultarnotamic/:id', async (req, res) => {
+// app.post('/api/consultarnotamic/:id', async (req, res) => {
 // EXECUTA A CADA MINUTO
 cron.schedule("*/1 * * * *", async () => {
     const db_result = await new Promise((resolve, reject) =>
@@ -3739,7 +3739,7 @@ cron.schedule("*/1 * * * *", async () => {
   });
 
 // MIC SISTEMAS - ENTREGAR NOTA
-app.post('/entregarnotamic/:id', async (req, res) => {
+app.post('/api/entregarnotamic/:id', async (req, res) => {
     console.log(req.params)
     const idCarregamento = req.params.id;
 
@@ -3756,7 +3756,7 @@ app.post('/entregarnotamic/:id', async (req, res) => {
     res.status(200).send();
 })
 
-app.post('/baixarnota', async (req, res) => {
+app.post('/api/baixarnota', async (req, res) => {
     console.log(req.body)
 
     const idCarregamento = req.body.idCarregamento

@@ -16,7 +16,7 @@ const PercentualPorao = () => {
     }, [])
 
     async function getDados() {
-       await Axios.get(`http://opgranel.rodrimar.com.br:8080/grafico/porao/${id}`,)
+       await Axios.get(`https://opgranel.eurobraslogistica.com.br/api/grafico/porao/${id}`,)
             .then(function (res) {
                 setLista(res.data)
                 console.log(res.data)

@@ -32,7 +32,7 @@ const Cargas = () => {
   }, [])
 
   const getOperacoes = () => {
-    Axios.get('http://opgranel.rodrimar.com.br:8080/operacao').then((response) => {
+    Axios.get('https://opgranel.eurobraslogistica.com.br/api/operacao').then((response) => {
       setOperacoesList(response.data)
     });
   }
@@ -40,7 +40,7 @@ const Cargas = () => {
 
 
   const getCargas = (id) => {
-    Axios.get(`http://opgranel.rodrimar.com.br:8080/carga/busca/${id}`,)
+    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/carga/busca/${id}`,)
       .then(function (res) {
         console.log(res.data);
         setCargas(res.data);
@@ -49,7 +49,7 @@ const Cargas = () => {
   }
 
 const validaEta = async () => {
-  await Axios.put('http://opgranel.rodrimar.com.br:8080/alterar/eta',
+  await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/eta',
   {
     id: ideta,  
     eta: dataeta
@@ -93,7 +93,7 @@ const validaEta = async () => {
       showAlert("Preencha a data e horário!", 'error');
       return
     }
-    Axios.put('http://opgranel.rodrimar.com.br:8080/operacao/registrar/atracacao',
+    Axios.put('https://opgranel.eurobraslogistica.com.br/api/operacao/registrar/atracacao',
       {
         id: i.COD_OPERACAO,
         date: date
