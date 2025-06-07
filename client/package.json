@@ -36,7 +36,8 @@
     "typewriter-effect": "^2.19.0",
     "url": "^0.11.0",
     "util": "^0.12.5",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -45,7 +46,6 @@
     "eject": "react-scripts eject",
     "jest": "jest"
   },
-  
   "eslintConfig": {
     "extends": [
       "react-app",
