@@ -24,7 +24,6 @@ services:
     container_name: opgranel_backend
     working_dir: /app
     volumes:
-      - ./server:/app
       - ./server/Files/Notas_Fiscais:/app/server/Files/Notas_Fiscais
     command: node index.js
     ports:
