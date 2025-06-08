@@ -3803,4 +3803,4 @@ app.post('/api/baixarnota', async (req, res) => {
 })
 
 //RODAR API
-app.listen(8080, () => { console.log("servidor rodando na porta 8080...") });
+app.listen(3009, () => { console.log("Servidor rodando na porta 3009...") });
