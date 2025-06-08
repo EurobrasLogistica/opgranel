@@ -6,7 +6,7 @@ services:
       context: ./client
       dockerfile: ../Dockerfile.frontend
     image: frontend_custom
-    container_name: frontend_app
+    container_name: opgranel_frontend
     ports:
       - "3008:3008"
     environment:
@@ -21,7 +21,7 @@ services:
       context: ./server
       dockerfile: ../Dockerfile.backend
     image: backend_custom
-    container_name: backend_app
+    container_name: opgranel_backend
     working_dir: /app
     volumes:
       - ./server:/app
@@ -42,7 +42,7 @@ services:
 
   mysql:
     image: mysql:8.0
-    container_name: mysql_eurobras
+    container_name: opgranel_mysql
     environment:
       MYSQL_ROOT_PASSWORD: R0dr!m@rR##T
       MYSQL_DATABASE: operacaogranel
