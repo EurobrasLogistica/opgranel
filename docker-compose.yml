@@ -30,7 +30,7 @@ services:
       - "3009:3009"
     environment:
       DB_HOST: 31.97.20.141
-      DB_PORT: 3308
+      DB_PORT: 3306
       DB_USER: ogdev
       DB_PASS: R0dr!m@rR##T
       DB_NAME: operacaogranel
