@@ -7,12 +7,18 @@ services:
       dockerfile: ../Dockerfile.frontend
     image: frontend_custom
     container_name: opgranel_frontend
-    ports:
-      - "3008:3008"
     environment:
-      REACT_APP_SERVER: http://31.97.20.141:3009
+      REACT_APP_SERVER: https://opgranel.eurobraslogistica.com.br
       PORT: 3008
       TZ: America/Sao_Paulo
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opgranel.rule=Host(`opgranel.eurobraslogistica.com.br`)"
+      - "traefik.http.routers.opgranel.entrypoints=websecure"
+      - "traefik.http.routers.opgranel.tls.certresolver=letsencrypt"
+      - "traefik.http.services.opgranel.loadbalancer.server.port=3008"
+    networks:
+      - app-network
     depends_on:
       - backend
 
@@ -29,13 +35,15 @@ services:
     ports:
       - "3009:3009"
     environment:
-      DB_HOST: 31.97.20.141
+      DB_HOST: opgranel_mysql
       DB_PORT: 3306
       DB_USER: ogdev
       DB_PASS: R0dr!m@rR##T
       DB_NAME: operacaogranel
       PORT: 3009
       TZ: America/Sao_Paulo
+    networks:
+      - app-network
     depends_on:
       - mysql
 
@@ -55,8 +63,10 @@ services:
       - ./database/init:/docker-entrypoint-initdb.d/
     ports:
       - "3308:3306"
+    networks:
+      - app-network
     restart: always
 
 networks:
-  default:
+  app-network:
     name: app-network
