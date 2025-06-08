@@ -38,30 +38,21 @@ module.exports = transporter;
 
 // CONEXÃO COM BANCO
 const db = mysql.createConnection({
-    user: 'ogdev',
-    host: '10.10.10.34',
-    port: '3306',
-    password: 'r0dr!m@r',
-    database: 'operacaogranel'
-})
-
-// const transporter = nodemailer.createTransport({
-//     host: 'smtp.office365.com', // servidor SMTP do Outlook
-//     port: 587,
-//     secure: false, // true para 465, false para outras portas
-//     auth: {
-//         user: 'jmichelotto@eurobraslogistica.com.br',
-//         pass: '34685231Ju!'
-//     }
-// });
+  user: "ogdev",
+  host: "mysql",
+  password: "R0dr!m@rR##T",
+  database: "operacaogranel",
+  timezone: "-03:00", // Configurar o fuso horário da conexão
+});
 
 //TESTE DE CONEXÃO
 db.connect(function (err) {
-    if (err) { throw err }
-    else {
-        console.log("Conectado a base de dados!")
-    }
-})
+  if (err) {
+    throw err;
+  } else {
+    console.log("Conectado a base de dados!");
+  }
+});
 
 app.use(session({
     secret: 'jmichelotto',
