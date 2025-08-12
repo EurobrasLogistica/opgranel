@@ -13,6 +13,7 @@ import Axios from "axios";
 import { SnackbarProvider, useSnackbar } from 'notistack';
 import MaskedInput from "../../../components/InputMask";
 import moment from "moment";
+import GraficoPercent from "./GraficoPercent";
 
 const PesagemInicial = () => {
   const navigate = useNavigate();
