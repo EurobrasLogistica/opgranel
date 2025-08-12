@@ -82,10 +82,27 @@ const PesagemInicial = () => {
       setTipoveiculo(null)
       showAlert('Preencha todos os campos', 'error');
       return
-    }
+    } 
    // getMotivacaoConteudo();
+    validaSaldo();
     addPesagem();
   }
+ const validaSaldo = () => {
+    // 1️⃣ Verifica saldo
+    const documentosComSaldoBaixo = docs.filter(doc => doc.SALDO <= 150000);
+
+    if (documentosComSaldoBaixo.length > 0) {
+      const mensagens = documentosComSaldoBaixo.map(doc =>
+        `⚠ Documento ${doc.NUMERO_DOC} está com apenas ${(doc.SALDO / 1000).toFixed(2)} tons de saldo.`
+      ).join("\n");
+      
+      alert(mensagens);
+      return; // 🔹 Se quiser impedir o cadastro, mantenha o return
+    }
+       // 2️⃣ Continua com a lógica de cadastro original
+    console.log("Cadastrando...");
+    // ... seu código de envio de dados
+  };
 
   const validaTecla = (e) => {
     if (e.key === 'Enter') {

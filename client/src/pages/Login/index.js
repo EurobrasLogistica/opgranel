@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import { Typewriter } from 'react-simple-typewriter'
 
+
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -12,19 +13,19 @@ const Login = () => {
   const [error, setError] = useState("");
 
   const handleLogin = () => {
-    if (!id | !senha) {//mensagem de erro caso nao preencha todos campos
+    if (!id | !senha) {
       setError("*Preencha todos os campos*");
       return;
     }
 
     const res = login(id.toLowerCase(), senha);
 
-    if (res) {//caso retorne algum erro, sera exibido
+    if (res) {
       setError(res);
       return;
     }
 
-    navigate("/dashboard");//se tudo estiver ok, redireciona para Home
+    navigate("/dashboard");
   };
 
 
