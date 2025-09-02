@@ -40,7 +40,7 @@ const Login = () => {
               Qualquer hora, qualquer lugar <br />
               Controle <b>
                 <Typewriter
-                  words={['sua carga!', 'seu navio!', 'suas operações!']}
+                  words={['sua carg!', 'seu navio!', 'suas operações!']}
                   loop={0}
                   cursor
                   cursorStyle='|'
