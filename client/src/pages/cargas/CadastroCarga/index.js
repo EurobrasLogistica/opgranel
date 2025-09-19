@@ -341,24 +341,17 @@ const CadastroCarga = () => {
           </div>
         </div>
       </Container>
-      <Confirm open={openA} onClose={FecharConfirm} fullWidth>
-        <div className={modal.modal}>
-          <div className={modal.nav}>
-            <div onClick={FecharConfirm}>Voltar</div>
-          </div>
-          <div className={modal.center}>
-            Deseja concluir toda documentação desta Operação?
-            <br />
-            <div>ao confirmar não será mais possível editar os documentos! </div>
-          </div>
+    Sou Analista de Sistemas, atuando desde o levantamento de requisitos e necessidades com usuários até a entrega de soluções. Tenho experiência com as seguintes tecnologias:
+• C#: Windows Forms, ASP.NET, Programação Orientada a Objetos
+• JavaScript​: Node.js, React.js
+• HTML, CSS
+• MySQL 
+• SQL Server
+• PL/SQL
+• Conhecimentos em Containers, API, Azure DevOps e Cloud;
+• Familiaridade com ferramentas como Git e metodologias ágeis
 
-          <div className={modal.flex}>
-            <button className={modal.cancelar} onClick={FecharConfirm}>CANCELAR</button>
-            <div className={modal.navio}><i className="fa fa-ship icon"></i>&nbsp;&nbsp;&nbsp;{nome}</div>
-            <button className={modal.confirmar} onClick={concluirDocs}>CONFIRMAR</button>
-          </div>
-        </div>
-      </Confirm>
+Sou formada em Análise e Desenvolvimento de Sistemas e atualmente curso pós-graduação em Desenvolvimento Full Stack pela PUC. Busco constantemente aprimorar minhas habilidades e contribuir em projetos que estou envolvida.
     </>
   );
 };

@@ -85,11 +85,11 @@ const PesagemInicial = () => {
       return
     } 
    // getMotivacaoConteudo();
-    validaSaldo();
+     if (!validaSaldo()) return;
     addPesagem();
   }
  const validaSaldo = () => {
-    // 1️⃣ Verifica saldo
+  
     const documentosComSaldoBaixo = docs.filter(doc => doc.SALDO <= 150000);
 
     if (documentosComSaldoBaixo.length > 0) {
@@ -98,11 +98,11 @@ const PesagemInicial = () => {
       ).join("\n");
       
       alert(mensagens);
-      return; // 🔹 Se quiser impedir o cadastro, mantenha o return
+      return; 
     }
-       // 2️⃣ Continua com a lógica de cadastro original
+    
     console.log("Cadastrando...");
-    // ... seu código de envio de dados
+    
   };
 
   const validaTecla = (e) => {

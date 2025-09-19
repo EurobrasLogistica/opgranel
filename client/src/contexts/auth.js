@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
         { "id": "rpsouza", "password": "rps@160", "nivel": "mestre","nmcompleto": "Roberto Pereira ", "depto": "COS/STS", "status": "ativo"  },
         { "id": "nalves", "password": "nia@741", "nivel": "mestre","nmcompleto": "Nicolas Alves", "depto": "DIN/STS", "status": "ativo"  },
         { "id": "jmichelotto", "password": "685Julia", "nivel": "mestre","nmcompleto": "Julia Michelotto", "depto": "TI/STS", "status": "ativo"  },
-        { "id": "arodrigues", "password": "Guitar481*", "nivel": "mestre","nmcompleto": "Anderson Rodrigues", "depto": "TI/STS", "status": "inativo"  },
+        { "id": "arodrigues", "password": "teste", "nivel": "mestre","nmcompleto": "Anderson Rodrigues", "depto": "TI/STS", "status": "ativo"  },
         { "id": "toliveira", "password": "tma@123", "nivel": "mestre","nmcompleto": "Tania Maria Alves", "depto": "ARM/STS", "status": "ativo"  },
         { "id": "enascimento", "password": "erme@234", "nivel": "mestre","nmcompleto": "Ermelania Do Nascimento", "depto": "ARM/STS", "status": "ativo"  },
         { "id": "grifo", "password": "48%$$%&$", "nivel": "mestre","nmcompleto": "Teste", "depto": "TI/STS", "status": "ativo" },

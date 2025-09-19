@@ -9,17 +9,12 @@ import { height } from '@mui/system';
 import style from './GraficoPercent.module.css'
 
 
-const GraficoPercent = ({ docs, onAlertaSaldoBaixo }) => {
+const GraficoPercent = ({ docs }) => {
   return (
     <div className={style.gfbox}>
       <div className={style.gfcoluns}>
         {docs.map((val) => {
           let saldo = val.PERC.toFixed(2);
-
-          // Emitir alerta se SALDO for menor ou igual a 150.000 kg (ou seja, 150 toneladas)
-          if (val.SALDO <= 150000 && typeof onAlertaSaldoBaixo === 'function') {
-            onAlertaSaldoBaixo(val);
-          }
 
           return (
             <div className={style.gfcolum} key={val.NUMERO_DOC}>
