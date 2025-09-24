@@ -75,7 +75,7 @@ const PesagemInicial = () => {
   const FecharDetalhesOp = () => {
     setOpenA(false);
   };
-  const 
+
 
     const [openB, setOpenB] = useState(false);
   const AbrirConfirm = () => {
