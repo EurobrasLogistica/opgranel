@@ -564,7 +564,7 @@ const PesagemInicial = () => {
 
         </div>
       </Container>
-       <Confirm open={openB} onClose={FecharConfirm} fullWidth>
+      
         <div className={confirm.modal}>
           <div className={confirm.nav}>
             <div onClick={FecharConfirm}>Voltar</div>
@@ -580,7 +580,7 @@ const PesagemInicial = () => {
             <button className={confirm.confirmar} onClick={validaDados}>CONFIRMAR</button>
           </div>
         </div>
-      </Confirm>
+     
     </>
   );
 };
