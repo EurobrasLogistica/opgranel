@@ -66,7 +66,23 @@ const PesagemInicial = () => {
   const [mostrarCpf, setMostrarCpf] = useState(false);
 
 
-  
+
+
+  const [openA, setOpenA] = useState(false);
+  const DetalhesOp = () => {
+    setOpenA(true);
+  };
+  const FecharDetalhesOp = () => {
+    setOpenA(false);
+  };
+  const 
+
+    const [openB, setOpenB] = useState(false);
+  const AbrirConfirm = () => {
+    FecharDetalhesOp()
+    setOpenB(true);
+
+  };
 
   const validaDados = () => {
     if (!doc | !destino | !placacavalo | !data | !placa1 | !transportadora | !tipopesagem ) {
@@ -85,7 +101,7 @@ const PesagemInicial = () => {
       return
     } 
    // getMotivacaoConteudo();
-     if (!validaSaldo()) return;
+    // if (!validaSaldo()) return;
     addPesagem();
   }
  const validaSaldo = () => {
@@ -537,13 +553,30 @@ const PesagemInicial = () => {
           </div>
           <div className={style.button}>
             <SubmitButton text={"Cadastrar"}
-              onClick={validaDados}
+              onClick={AbrirConfirm}
               onkeypress={(e) => validaTecla(e)}
             />
           </div>
 
         </div>
       </Container>
+       <Confirm open={openB} onClose={FecharConfirm} fullWidth>
+        <div className={confirm.modal}>
+          <div className={confirm.nav}>
+            <div onClick={FecharConfirm}>Voltar</div>
+          </div>
+          <div className={confirm.center}>
+            ⚠ Documento ${doc.NUMERO_DOC} está com apenas ${(doc.SALDO / 1000).toFixed(2)} tons de saldo.
+            <br />
+            <div>Deseja continuar mesmo assim?</div>
+          </div>
+       
+          <div className={confirm.flex}>
+            <button className={confirm.cancelar} onClick={FecharConfirm}>CANCELAR</button>
+            <button className={confirm.confirmar} onClick={validaDados}>CONFIRMAR</button>
+          </div>
+        </div>
+      </Confirm>
     </>
   );
 };

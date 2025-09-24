@@ -3726,7 +3726,7 @@ cron.schedule("*/1 * * * *", async () => {
       }
     }
   
-    console.log("Consulta MIC finalizada");
+    //console.log("Consulta MIC finalizada");
   });
 
 // MIC SISTEMAS - ENTREGAR NOTA

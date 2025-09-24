@@ -341,17 +341,6 @@ const CadastroCarga = () => {
           </div>
         </div>
       </Container>
-    Sou Analista de Sistemas, atuando desde o levantamento de requisitos e necessidades com usuários até a entrega de soluções. Tenho experiência com as seguintes tecnologias:
-• C#: Windows Forms, ASP.NET, Programação Orientada a Objetos
-• JavaScript​: Node.js, React.js
-• HTML, CSS
-• MySQL 
-• SQL Server
-• PL/SQL
-• Conhecimentos em Containers, API, Azure DevOps e Cloud;
-• Familiaridade com ferramentas como Git e metodologias ágeis
-
-Sou formada em Análise e Desenvolvimento de Sistemas e atualmente curso pós-graduação em Desenvolvimento Full Stack pela PUC. Busco constantemente aprimorar minhas habilidades e contribuir em projetos que estou envolvida.
     </>
   );
 };
