@@ -14,6 +14,7 @@ import { SnackbarProvider, useSnackbar } from 'notistack';
 import MaskedInput from "../../../components/InputMask";
 import moment from "moment";
 import GraficoPercent from "../../../components/GraficoPercent";
+import confirm from "./Confirm.module.css"
 
 const PesagemInicial = () => {
   const navigate = useNavigate();
@@ -74,6 +75,9 @@ const PesagemInicial = () => {
   };
   const FecharDetalhesOp = () => {
     setOpenA(false);
+  };
+ const FecharConfirm = () => {
+    setOpenB(false);
   };
 
 
