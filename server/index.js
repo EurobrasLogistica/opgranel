@@ -1,267 +1,501 @@
-﻿const express = require('express');
+﻿require('dotenv').config();
+
+const express = require('express');
 const session = require('express-session');
-const bodyParser = require('body-parser');
+const cors = require('cors');
 const app = express();
-const mysql = require('mysql')
-const cors = require('cors')
-const http = require("http");
+
 const xml2js = require('xml2js');
-const js_base64 = require('js-base64')
+const { Base64 } = require('js-base64');
 const fs = require('fs');
-const jsdom = require("jsdom");
+const jsdom = require('jsdom');
 const axios = require('axios');
-const { Console, log } = require('console');
-const cron = require("node-cron");
+const cron = require('node-cron');
 const puppeteer = require('puppeteer');
 const nodemailer = require('nodemailer');
-const pdf = require('html-pdf'); // Importando o módulo para gerar PDFs
+const pdf = require('html-pdf');
 
+// ====== DB: mysql2/promise + pool ======
+const mysql = require('mysql2/promise');
 
-app.use(cors())
-app.use(express.json())
-//const micUrl = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
+const db = mysql.createPool({
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
 
+// Teste inicial de conexão (async)
+(async () => {
+  try {
+    const [rows] = await db.query('SELECT 1 AS ok');
+    console.log('Conexão DB ok?', rows[0]?.ok === 1);
+  } catch (err) {
+    console.error('Falha ao conectar no DB:', err.message);
+    process.exit(1);
+  }
+})();
+
+// ====== Mail (env) ======
 const transporter = nodemailer.createTransport({
-    host: 'smtp.office365.com',
-    port: 587,
-    secure: false, // Utiliza STARTTLS (não SSL/TLS completo)
-    auth: {
-        user: 'e-service.crm@rodrimar.com.br',
-        pass: 'r0dr!m@r' // Substitua pela senha correta
-    },
-    tls: {
-        rejectUnauthorized: false // Pode ser necessário se houver problemas de certificados
-    }
+  host: process.env.MAIL_HOST || 'smtp.office365.com',
+  port: Number(process.env.MAIL_PORT || 587),
+  secure: false, // STARTTLS
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS
+  },
+  tls: { rejectUnauthorized: false }
 });
 
-module.exports = transporter;
+// ====== Middlewares (CORS robusto) ======
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://opgranel.eurobraslogistica.com.br',
+];
 
-// CONEXÃO COM BANCO
-const db = mysql.createConnection({
-  user: "ogdev",
-  host: "mysql",
-  password: "R0dr!m@rR##T",
-  database: "operacaogranel",
-  timezone: "-03:00", // Configurar o fuso horário da conexão
+const corsOptions = {
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // Postman/curl/SSR sem Origin
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    if (/^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true);
+    if (/^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) return cb(null, true);
+    return cb(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Cache-Control',
+    'Pragma'
+  ],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // responde preflight de tudo
+
+// ajuda proxies/cache a variar por origem
+app.use((req, res, next) => {
+  res.setHeader('Vary', 'Origin');
+  next();
 });
 
-//TESTE DE CONEXÃO
-db.connect(function (err) {
-  if (err) {
-    throw err;
-  } else {
-    console.log("Conectado a base de dados!");
+app.use(express.json()); // JSON body
+app.use(express.urlencoded({ extended: true })); // form-encoded se precisar
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'mude-este-valor',
+  resave: true,
+  saveUninitialized: true
+}));
+
+// log simples
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Origin: ${req.headers.origin || 'n/a'}`);
+  next();
+});
+
+// =================== ROTAS ===================
+
+// TRANSPORTADORA
+app.get('/transportadora', async (_req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM TRANSPORTADORA ORDER BY NOME_TRANSP');
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, message: err.message });
   }
 });
 
-app.use(session({
-    secret: 'jmichelotto',
-    resave: true,
-    saveUninitialized: true
-}));
-
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-
-//TRANSPORTADORA
-app.get("/api/transportadora", (req, res) => {
-    db.query("SELECT * FROM TRANSPORTADORA ORDER BY NOME_TRANSP ", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-//TRANSPORTADORA
-// app.get("/api/transportadora/alterar", (req, res) => {
-//     db.query("SELECT * FROM TRANSPORTADORA WHERE cod_transp IN (8, 36) ORDER BY NOME_TRANSP; ", (err, result) => {
-//         if (err) {
-//             console.log(err)
-//         } else {
-//             res.send(result)
-//         }
-//     })
-// })
-
-
-app.get("/api/transportadora/alterar", (req, res) => {
-    db.query("SELECT * FROM TRANSPORTADORA ORDER BY NOME_TRANSP; ", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-app.get("/api/documento/alterar/:id", (req, res) => {
-    const id = req.params.id;
-    db.query("SELECT * FROM CARGA WHERE COD_OPERACAO = ?;"
-        ,id,(err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-//CARGAS PRO GRAFICO
-app.get("/api/grafico/:id", (req, res) => {
-    const id = req.params.id;
-    db.query(`
-    SELECT CA.COD_OPERACAO,
-    CA.TIPO_DOC,    
-    CA.NUMERO_DOC,
-    CL.NOME_REDUZIDO,
-    SUM(DISTINCT CA.QTDE_MANIFESTADA) AS MANIFESTADO,
-    SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS PESO_CARREGADO,
-    SUM(CR.PESO_CARREGADO) AS PESO_MOEGA,
-    SUM(DISTINCT CA.QTDE_MANIFESTADA) - SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS SALDO,
-    ROUND(((SUM(CR.PESO_BRUTO - CR.PESO_TARA) / SUM(DISTINCT CA.QTDE_MANIFESTADA)) * 100),2) AS PERC
-FROM 
-    CARGA CA
-    JOIN CARREGAMENTO CR
-    ON CR.COD_OPERACAO = CA.COD_OPERACAO
-    AND CR.COD_CARGA = CA.COD_CARGA
-JOIN CLIENTE CL 
-    ON CL.COD_CLIENTE = CA.COD_CLIENTE
-WHERE 
-    CA.COD_OPERACAO = ?
-    AND CR.PESO_CARREGADO > 0
-    AND CR.STATUS_CARREG = 3
-GROUP BY 
-    CA.COD_OPERACAO, CA.TIPO_DOC, CA.NUMERO_DOC, CA.COD_CARGA, CL.NOME_REDUZIDO
-        `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-//PORÃO PRO GRAFICO
-app.get("/api/grafico/porao/:id", (req, res) => {
-    const id = req.params.id;
-    db.query(`
-   SELECT PL.COD_OPERACAO,
-		PL.PORAO,
-        PR.PRODUTO,
-        FORMAT(SUM(DISTINCT PL.QTDE_MANIFESTADA/1000), 3, 'de_DE') AS MANIFESTADO,
-		FORMAT(SUM(CR.PESO_BRUTO - CR.PESO_TARA)/1000, 3, 'de_DE') AS PESO_CARREGADO,
-		FORMAT(SUM(CR.PESO_CARREGADO)/1000, 3, 'de_DE') AS PESO_MOEGA,
-		FORMAT((SUM(DISTINCT PL.QTDE_MANIFESTADA) - SUM(CR.PESO_BRUTO - CR.PESO_TARA))/1000, 3, 'de_DE') AS SALDO,
-		ROUND(((SUM(CR.PESO_BRUTO - CR.PESO_TARA) / SUM(DISTINCT PL.QTDE_MANIFESTADA)) * 100),2) AS PERC
-   FROM PLANO_CARGA PL
-   JOIN CARREGAMENTO CR
-     ON CR.COD_OPERACAO = PL.COD_OPERACAO
-    AND CR.PORAO = PL.PORAO
-   JOIN PRODUTO PR
-     ON PR.COD_PRODUTO = PL.COD_PRODUTO
- WHERE PL.COD_OPERACAO = ?
-   AND CR.PESO_CARREGADO > 0
-   AND CR.STATUS_CARREG = 3
- GROUP BY PL.COD_OPERACAO, PL.PORAO, PR.PRODUTO
-        `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-//GRAFICO PORTAL DO CLIENTE
-app.get("/api/grafico/portal/:id", (req, res) => {
-    const id = req.params.id;
-    const usuario = req.body.usuario
-
-    db.query(`
-    SELECT CA.COD_OPERACAO,
-    CA.TIPO_DOC,    
-    CA.NUMERO_DOC,
-    CL.NOME_REDUZIDO,
-    SUM(DISTINCT CA.QTDE_MANIFESTADA) AS MANIFESTADO,
-    SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS PESO_CARREGADO,
-    SUM(CR.PESO_CARREGADO) AS PESO_MOEGA,
-    SUM(DISTINCT CA.QTDE_MANIFESTADA) - SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS SALDO,
-    ROUND(((SUM(CR.PESO_BRUTO - CR.PESO_TARA) / SUM(DISTINCT CA.QTDE_MANIFESTADA)) * 100),2) AS PERC
-    FROM 
-    CARGA CA
-    JOIN CARREGAMENTO CR
-    ON CR.COD_OPERACAO = CA.COD_OPERACAO
-    AND CR.COD_CARGA = CA.COD_CARGA
-    JOIN CLIENTE CL 
-    ON CL.COD_CLIENTE = CA.COD_CLIENTE
-    JOIN EMPRESA_USUARIO EU
-        ON EU.COD_EMPRESA = CA.COD_CLIENTE
-       AND EU.TIPO_EMPRESA = 'C'
-       AND EU.USUARIO = 'fertiparmg'
-        WHERE 
-        CA.COD_OPERACAO = ?
-        AND CR.PESO_CARREGADO > 0
-        AND CR.STATUS_CARREG = 3
-        GROUP BY 
-        CA.COD_OPERACAO, CA.TIPO_DOC, CA.NUMERO_DOC, CA.COD_CARGA, CL.NOME_REDUZIDO;
-        `, [id, usuario], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-
-app.get("/api/documentos/:id", (req, res) => {
-
-    const id = req.params.id;
-    db.query('SELECT COD_CARGA, NUMERO_DOC AS DOCUMENTO FROM CARGA WHERE COD_OPERACAO = ?',
-        id, (err, result) => {
-            if (err) {
-                console.log(err)
-            } else {
-                res.send(result)
-            }
-        })
-})
-
-//NAVIOS
-app.get("/api/navio", (req, res) => {
-    db.query("SELECT * FROM NAVIO", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-app.post('/api/navio/criar', (req, res) => {
-    const nome = req.body.nome;
-    const imo = req.body.imo;
-    const bandeira = req.body.bandeira;
-    const status = req.body.status;
-    const usuario = req.body.usuario;
-
-    db.query('INSERT INTO NAVIO (NOME_NAVIO, IMO_NAVIO, BANDEIRA, STATUS, USUARIO) VALUES (?,?,?,?,?)',
-        [nome, imo, bandeira, status, usuario], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('navio adicionado!');
-            }
-        }
-    )
+// GET TIPOS DE VEÍCULOS
+app.get('/tipoveiculo', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT COD_TIPO, DESC_TIPO_VEICULO FROM TIPO_VEICULO ORDER BY DESC_TIPO_VEICULO;'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[GET /tipoveiculo][ERR]', err);
+    res.status(500).json({ ok: false, message: 'Erro ao buscar tipos de veículo.' });
+  }
 });
 
+app.get('/transportadora/alterar', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT COD_TRANSP, NOME_TRANSP FROM TRANSPORTADORA ORDER BY NOME_TRANSP;'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[GET /transportadora/alterar][ERR]', err);
+    res.status(500).json({ ok: false, message: 'Erro ao buscar transportadoras.' });
+  }
+});
+
+// DOCUMENTO (para alterar)
+app.get('/documento/alterar/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const [rows] = await db.query(
+      'SELECT * FROM CARGA WHERE COD_OPERACAO = ?;',
+      [id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[GET /documento/alterar/:id][ERR]', err);
+    res.status(500).json({ ok: false, message: 'Erro ao buscar documentos da operação.' });
+  }
+});
+
+
+// ====== CARGA: CRIAR (para resolver CORS do POST) ======
+app.post('/carga/criar', async (req, res) => {
+  try {
+    const {
+      operacao,
+      tipo,
+      perigo,           // 'S' | 'N'
+      numero,           // ex: "23/2335128-0" (com máscara) OU algo sem "/"
+      emissao,          // 'YYYY-MM-DD'
+      cliente,          // COD_CLIENTE
+      referencia,       // pode vir vazio -> calculamos
+      produto,          // COD_PRODUTO
+      ncm,              // COD_NCM
+      cemercante,
+      manifestado,      // número
+      emitirNF,         // 'S' | 'N'
+      usuario,
+      // datacadastro/status: mantemos NOW() e 1 na SQL
+    } = req.body;
+
+    // validações mínimas
+    if (!operacao || !tipo || !numero || !emissao || !cliente || !produto || !ncm || !manifestado || !usuario) {
+      return res.status(400).json({ ok: false, message: 'Campos obrigatórios ausentes.' });
+    }
+
+    // --- Derivador robusto de referência ---
+    const deriveReferencia = (num) => {
+      if (!num) return null;
+      const s = String(num).toUpperCase().trim();
+      // Se tiver "/", pega a parte após a barra
+      const afterSlash = s.includes('/') ? s.split('/')[1] : s;
+
+      // Caso ideal: termina com "####-X"
+      const mEnd = afterSlash.match(/(\d{4}-[A-Z0-9])$/);
+      if (mEnd) return mEnd[1];
+
+      // Procura qualquer ocorrência "####-X"
+      const mAny = afterSlash.match(/\d{4}-[A-Z0-9]/);
+      if (mAny) return mAny[0];
+
+      // Fallback: pega os últimos 5 dígitos e formata "####-X"
+      const digits = afterSlash.replace(/\D/g, '');
+      if (digits.length >= 5) {
+        const last5 = digits.slice(-5);            // ex: "51280"
+        return last5.slice(0, 4) + '-' + last5.slice(4); // "5128-0"
+      }
+      return null;
+    };
+
+    const numeroDoc = String(numero).toUpperCase().trim();   // grava exatamente o que veio (com máscara)
+    const referenciaFinal = (referencia && String(referencia).trim())
+      ? String(referencia).toUpperCase().trim()
+      : deriveReferencia(numeroDoc);
+
+    if (!referenciaFinal) {
+      return res.status(400).json({
+        ok: false,
+        message: 'REFERENCIA não pôde ser derivada do número do documento. Informe no formato "##/#######-#" (ex.: 23/2335128-0).'
+      });
+    }
+
+    const sql = `
+      INSERT INTO CARGA (
+        COD_OPERACAO, TIPO_DOC, NUMERO_DOC, DATA_EMISSAO, COD_CLIENTE,
+        REFERENCIA, COD_PRODUTO, NCM, CE_MERCANTE, IND_CARGAIMO,
+        QTDE_MANIFESTADA, EMITIR_NF, USUARIO, DATA_CADASTRO, STATUS_CARGA
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)
+    `;
+
+    const params = [
+      operacao,                 // COD_OPERACAO
+      tipo,                     // TIPO_DOC
+      numeroDoc,                // NUMERO_DOC (com máscara)
+      emissao,                  // DATA_EMISSAO
+      cliente,                  // COD_CLIENTE
+      referenciaFinal,          // REFERENCIA (nunca null)
+      produto,                  // COD_PRODUTO
+      ncm,                      // NCM
+      cemercante || null,       // CE_MERCANTE
+      perigo || 'N',            // IND_CARGAIMO
+      Number(manifestado) || 0, // QTDE_MANIFESTADA
+      emitirNF || 'N',          // EMITIR_NF
+      usuario                   // USUARIO
+      // DATA_CADASTRO -> NOW()
+      // STATUS_CARGA  -> 1
+    ];
+
+    const [result] = await db.query(sql, params);
+
+    res.set('Cache-Control', 'no-store');
+    return res.status(201).json({
+      ok: true,
+      message: 'Carga criada com sucesso.',
+      id: result?.insertId
+    });
+  } catch (err) {
+    console.error('[CARGA_CRIAR][ERR]', err);
+    return res.status(400).json({ ok: false, message: err?.sqlMessage || err?.message || 'Erro ao criar carga.' });
+  }
+});
+
+
+// ====== CARGA: DELETE (para resolver CORS do DELETE) ======
+app.delete('/carga/delete/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ ok: false, message: 'ID inválido.' });
+    }
+
+    const [result] = await db.query('DELETE FROM CARGA WHERE COD_CARGA = ?', [id]);
+
+    if ((result?.affectedRows || 0) === 0) {
+      return res.status(404).json({ ok: false, message: 'Carga não encontrada.' });
+    }
+
+    console.log('[CARGA_DELETE] id:', id, 'affectedRows:', result.affectedRows);
+    res.set('Cache-Control', 'no-store');
+    return res.json({ ok: true, message: 'Carga deletada com sucesso.', affectedRows: result.affectedRows });
+  } catch (err) {
+    if (err?.code === 'ER_ROW_IS_REFERENCED_2' || err?.errno === 1451) {
+      return res.status(409).json({
+        ok: false,
+        message: 'Não é possível excluir: há registros relacionados a esta carga.',
+        code: err.code
+      });
+    }
+    console.error('[CARGA_DELETE][ERR]', err);
+    return res.status(500).json({ ok: false, message: err?.message || 'Erro ao deletar carga.' });
+  }
+});
+
+// CARGAS PRO GRÁFICO
+app.get('/grafico/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const [rows] = await db.query(
+      `
+      SELECT CA.COD_OPERACAO,
+             CA.TIPO_DOC,    
+             CA.NUMERO_DOC,
+             CL.NOME_REDUZIDO,
+             SUM(DISTINCT CA.QTDE_MANIFESTADA) AS MANIFESTADO,
+             SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS PESO_CARREGADO,
+             SUM(CR.PESO_CARREGADO) AS PESO_MOEGA,
+             SUM(DISTINCT CA.QTDE_MANIFESTADA) - SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS SALDO,
+             ROUND(((SUM(CR.PESO_BRUTO - CR.PESO_TARA) / SUM(DISTINCT CA.QTDE_MANIFESTADA)) * 100),2) AS PERC
+        FROM CARGA CA
+        JOIN CARREGAMENTO CR
+          ON CR.COD_OPERACAO = CA.COD_OPERACAO
+         AND CR.COD_CARGA = CA.COD_CARGA
+        JOIN CLIENTE CL 
+          ON CL.COD_CLIENTE = CA.COD_CLIENTE
+       WHERE CA.COD_OPERACAO = ?
+         AND CR.PESO_CARREGADO > 0
+         AND CR.STATUS_CARREG = 3
+       GROUP BY CA.COD_OPERACAO, CA.TIPO_DOC, CA.NUMERO_DOC, CA.COD_CARGA, CL.NOME_REDUZIDO
+      `,
+      [id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// PORÃO PRO GRÁFICO
+app.get('/grafico/porao/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const [rows] = await db.query(
+      `
+      SELECT PL.COD_OPERACAO,
+             PL.PORAO,
+             PR.PRODUTO,
+             FORMAT(SUM(DISTINCT PL.QTDE_MANIFESTADA/1000), 3, 'de_DE') AS MANIFESTADO,
+             FORMAT(SUM(CR.PESO_BRUTO - CR.PESO_TARA)/1000, 3, 'de_DE') AS PESO_CARREGADO,
+             FORMAT(SUM(CR.PESO_CARREGADO)/1000, 3, 'de_DE') AS PESO_MOEGA,
+             FORMAT((SUM(DISTINCT PL.QTDE_MANIFESTADA) - SUM(CR.PESO_BRUTO - CR.PESO_TARA))/1000, 3, 'de_DE') AS SALDO,
+             ROUND(((SUM(CR.PESO_BRUTO - CR.PESO_TARA) / SUM(DISTINCT PL.QTDE_MANIFESTADA)) * 100),2) AS PERC
+        FROM PLANO_CARGA PL
+        JOIN CARREGAMENTO CR
+          ON CR.COD_OPERACAO = PL.COD_OPERACAO
+         AND CR.PORAO = PL.PORAO
+        JOIN PRODUTO PR
+          ON PR.COD_PRODUTO = PL.COD_PRODUTO
+       WHERE PL.COD_OPERACAO = ?
+         AND CR.PESO_CARREGADO > 0
+         AND CR.STATUS_CARREG = 3
+       GROUP BY PL.COD_OPERACAO, PL.PORAO, PR.PRODUTO
+      `,
+      [id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// GRÁFICO PORTAL DO CLIENTE (usa ?usuario= na query string)
+app.get('/grafico/portal/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const usuario = req.query.usuario; // <- vem na URL: /grafico/portal/123?usuario=fertiparmg
+
+    if (!usuario) {
+      return res.status(400).json({ ok: false, message: 'Parâmetro "usuario" é obrigatório.' });
+    }
+
+    const [rows] = await db.query(
+      `
+      SELECT CA.COD_OPERACAO,
+             CA.TIPO_DOC,    
+             CA.NUMERO_DOC,
+             CL.NOME_REDUZIDO,
+             SUM(DISTINCT CA.QTDE_MANIFESTADA) AS MANIFESTADO,
+             SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS PESO_CARREGADO,
+             SUM(CR.PESO_CARREGADO) AS PESO_MOEGA,
+             SUM(DISTINCT CA.QTDE_MANIFESTADA) - SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS SALDO,
+             ROUND(((SUM(CR.PESO_BRUTO - CR.PESO_TARA) / SUM(DISTINCT CA.QTDE_MANIFESTADA)) * 100),2) AS PERC
+        FROM CARGA CA
+        JOIN CARREGAMENTO CR
+          ON CR.COD_OPERACAO = CA.COD_OPERACAO
+         AND CR.COD_CARGA = CA.COD_CARGA
+        JOIN CLIENTE CL 
+          ON CL.COD_CLIENTE = CA.COD_CLIENTE
+        JOIN EMPRESA_USUARIO EU
+          ON EU.COD_EMPRESA = CA.COD_CLIENTE
+         AND EU.TIPO_EMPRESA = 'C'
+         AND EU.USUARIO = ?
+       WHERE CA.COD_OPERACAO = ?
+         AND CR.PESO_CARREGADO > 0
+         AND CR.STATUS_CARREG = 3
+       GROUP BY CA.COD_OPERACAO, CA.TIPO_DOC, CA.NUMERO_DOC, CA.COD_CARGA, CL.NOME_REDUZIDO
+      `,
+      [usuario, id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// DOCUMENTOS por operação
+app.get('/documentos/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const [rows] = await db.query(
+      'SELECT COD_CARGA, NUMERO_DOC AS DOCUMENTO FROM CARGA WHERE COD_OPERACAO = ?',
+      [id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// NAVIOS
+app.get('/navio', async (_req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM NAVIO');
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// CRIAR NAVIO (com console.log detalhado)
+app.post('/navio/criar', async (req, res) => {
+  const t0 = Date.now();
+  const { nome, imo, bandeira, status, usuario } = req.body;
+
+  // metadados úteis pra auditoria rápida
+  const clientIp = (req.headers['x-forwarded-for']?.split(',')[0] || '').trim() || req.ip;
+  const userAgent = req.headers['user-agent'] || '';
+  const ts = new Date().toISOString();
+
+  // Log de entrada da requisição
+  console.log('[NAVIO_CREATE:REQ]', {
+    ts, clientIp, userAgent, payload: { nome, imo, bandeira, status, usuario }
+  });
+
+  try {
+    if (!nome || !imo || !bandeira || !status || !usuario) {
+      console.warn('[NAVIO_CREATE:WARN] Campos obrigatórios ausentes');
+      return res.status(400).json({ ok: false, message: 'Campos obrigatórios ausentes.' });
+    }
+
+    const sql = `
+      INSERT INTO NAVIO (NOME_NAVIO, IMO_NAVIO, BANDEIRA, STATUS, USUARIO)
+      VALUES (?,?,?,?,?)
+    `;
+    const params = [nome, imo, bandeira, status, usuario];
+
+    const [result] = await db.query(sql, params);
+
+    // Logs sobre o resultado do INSERT
+    console.log('[NAVIO_CREATE:DB]', {
+      affectedRows: result?.affectedRows,
+      insertId: result?.insertId
+    });
+
+    const ms = Date.now() - t0;
+    console.log('[NAVIO_CREATE:OK]', {
+      id: result?.insertId, duration_ms: ms
+    });
+
+    return res.status(201).json({
+      ok: true,
+      message: 'Navio cadastrado com sucesso',
+      id: result?.insertId
+    });
+  } catch (err) {
+    const ms = Date.now() - t0;
+    console.error('[NAVIO_CREATE:ERR]', {
+      duration_ms: ms,
+      code: err?.code,
+      message: err?.message,
+      sqlMessage: err?.sqlMessage
+    });
+    return res.status(400).json({
+      ok: false,
+      message: err?.sqlMessage || err?.message || 'Erro ao cadastrar navio',
+      code: err?.code
+    });
+  }
+});
+
+
+
 //CRIAR UMA TRANSPORTADORA
-app.post('/api/transportadora/criar', (req, res) => {
+app.post('/transportadora/criar', (req, res) => {
     const nome = req.body.nome;
     const cnpj = req.body.cnpj;
   
@@ -280,7 +514,7 @@ app.post('/api/transportadora/criar', (req, res) => {
 });
 
 //CRIAR UMA IMPORTADOR
-app.post('/api/importador/criar', (req, res) => {
+app.post('/importador/criar', (req, res) => {
     const nome = req.body.nome;
     const cnpj = req.body.cnpj;
     const nomereduzido = req.body.nomereduzido
@@ -300,7 +534,7 @@ app.post('/api/importador/criar', (req, res) => {
 
 
 //CRIAR UMA DESTINO
-app.post('/api/destino/criar', (req, res) => {
+app.post('/destino/criar', (req, res) => {
     const nome = req.body.nome;
   
 
@@ -319,7 +553,7 @@ app.post('/api/destino/criar', (req, res) => {
 
 
 //CRIAR UMA NCM
-app.post('/api/ncm/criar', (req, res) => {
+app.post('/ncm/criar', (req, res) => {
     const codncm = req.body.codncm;
     const descricao = req.body.descricao;
   
@@ -338,7 +572,7 @@ app.post('/api/ncm/criar', (req, res) => {
 });
 
 //CRIAR UMA PRODUTO
-app.post('/api/produto/criar', (req, res) => {
+app.post('/produto/criar', (req, res) => {
     const produto = req.body.codncm;
     const unidade = 'KG';
     const ind_carga = 'N';
@@ -359,7 +593,7 @@ app.post('/api/produto/criar', (req, res) => {
 
 
 //CRIAR UM PEDIDO
-app.post('/api/pedido/criar', (req, res) => {
+app.post('/pedido/criar', (req, res) => {
     const operacao = req.body.operacao;
     const pedido = req.body.pedido;
     const documento = req.body.pedido;
@@ -378,7 +612,7 @@ app.post('/api/pedido/criar', (req, res) => {
 });
 
 // pedido - Consultar todas as pedidos
-app.get('/api/pedido/consultar', (req, res) => {
+app.get('/pedido/consultar', (req, res) => {
     const query = "SELECT * FROM PEDIDO ORDER BY ID_PEDIDO DESC;";
     db.query(query, (err, result) => {
         if (err) {
@@ -390,101 +624,124 @@ app.get('/api/pedido/consultar', (req, res) => {
 });
 
 // Transportadora - Consultar todas as transportadoras
-app.get('/api/transportadora/consultar', (req, res) => {
-    const query = "SELECT * FROM TRANSPORTADORA ORDER BY COD_TRANSP DESC;";
-    db.query(query, (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.json(result);
-        }
-    });
+app.get('/transportadora/consultar', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM TRANSPORTADORA ORDER BY NOME_TRANSP'
+    );
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /transportadora/consultar][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message });
+  }
 });
+
 
 // Importador - Consultar todos os importadores
-app.get('/api/importador/consultar', (req, res) => {
-    const query = "SELECT * FROM CLIENTE ORDER BY COD_CLIENTE DESC;";
-    db.query(query, (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.json(result);
-        }
-    });
+app.get('/importador/consultar', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM CLIENTE ORDER BY NOME_CLIENTE'
+    );
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /importador/consultar][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message });
+  }
 });
 
+
 // Destino - Consultar todos os destinos
-app.get('/api/destino/consultar', (req, res) => {
-    const query = "SELECT * FROM DESTINO ORDER BY COD_DESTINO DESC;";
-    db.query(query, (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.json(result);
-        }
-    });
+app.get('/destino/consultar', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM DESTINO ORDER BY NOME_DESTINO'
+    );
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /destino/consultar][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message });
+  }
 });
 
 // NCM - Consultar todos os NCMs
-app.get('/api/ncm/consultar', (req, res) => {
-    const query = "SELECT * FROM NCM ORDER BY COD_NCM DESC;";
-    db.query(query, (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.json(result);
-        }
-    });
+app.get('/ncm/consultar', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT COD_NCM, DESCRICAO_NCM FROM NCM ORDER BY DESCRICAO_NCM'
+    );
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /ncm/consultar][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message });
+  }
 });
 
 // Produto - Consultar todos os produtos
-app.get('/api/produto/consultar', (req, res) => {
-    const query = "SELECT COD_PRODUTO, PRODUTO, UN_MEDIDA FROM PRODUTO ORDER BY COD_PRODUTO DESC;";
-    db.query(query, (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.json(result);
-        }
-    });
+app.get('/produto/consultar', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT COD_PRODUTO, PRODUTO, UN_MEDIDA FROM PRODUTO ORDER BY PRODUTO'
+    );
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /produto/consultar][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message });
+  }
 });
 
 
-//EMPRESAS
-app.get("/api/empresas", (req, res) => {
-    db.query("SELECT COD_EMPRESA, NOME_EMPRESA FROM EMPRESA;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
 
-//AGENTES
-app.get("/api/agentes", (req, res) => {
-    db.query("SELECT * FROM AGENTE;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+// EMPRESAS (mysql2/promise)
+app.get('/empresas', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT COD_EMPRESA, NOME_EMPRESA FROM EMPRESA ORDER BY NOME_EMPRESA'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[EMPRESAS][ERR]', err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
 
-//BERÇOS
-app.get("/api/bercos", (req, res) => {
-    db.query("SELECT * FROM BERCO;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+
+// AGENTES (mysql2/promise)
+app.get('/agentes', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT COD_AGENTE, NOME_AGENTE FROM AGENTE ORDER BY NOME_AGENTE'
+    );
+    res.set('Cache-Control', 'no-store'); // opcional: evita 304
+    res.json(rows);
+  } catch (err) {
+    console.error('[AGENTES][ERR]', err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// BERÇOS (mysql2/promise)
+app.get('/bercos', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT COD_BERCO, NOME_BERCO FROM BERCO ORDER BY NOME_BERCO'
+    );
+    res.set('Cache-Control', 'no-store'); // opcional: evita 304
+    res.json(rows);
+  } catch (err) {
+    console.error('[BERCOS][ERR]', err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
 
 //AGENTE
-app.get("/api/agentes", (req, res) => {
+app.get("/agentes", (req, res) => {
     db.query("SELECT * FROM AGENTE;", (err, result) => {
         if (err) {
             console.log(err)
@@ -494,143 +751,323 @@ app.get("/api/agentes", (req, res) => {
     })
 })
 
-//CLIENTES
-app.get("/api/clientes", (req, res) => {
-    db.query("SELECT * FROM CLIENTE;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+// === CLIENTES (lista com busca/ordem/paginação) ===
+app.get('/clientes', async (req, res) => {
+  try {
+    const {
+      q = '',                 // busca por nome
+      orderBy = 'NOME_CLIENTE',
+      order = 'ASC',
+      page = 1,
+      pageSize = 200,
+    } = req.query;
 
-//NCM
-app.get("/api/ncm", (req, res) => {
-    db.query("SELECT * FROM NCM;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+    const off = (Number(page) - 1) * Number(pageSize);
+    const ordCol = ['NOME_CLIENTE','COD_CLIENTE','CNPJ_CLIENTE'].includes(orderBy) ? orderBy : 'NOME_CLIENTE';
+    const ordDir = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
-//PRODUTOS
-app.get("/api/produtos", (req, res) => {
-    db.query("SELECT * FROM PRODUTO;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+    const like = `%${q}%`;
 
-//OPERAÇÃO
-app.get("/api/operacao", (req, res) => {
-    db.query(`
-      SELECT op.COD_OPERACAO,
-           nv.NOME_NAVIO,
-           be.NOME_BERCO,
-           op.RAP,
-           op.STATUS_OPERACAO
-         FROM operacaogranel.OPERACAO op
-         JOIN operacaogranel.NAVIO nv
-        ON nv.COD_NAVIO = op.COD_NAVIO
-        JOIN operacaogranel.BERCO be
-        ON be.COD_BERCO = op.COD_BERCO
-        ORDER BY 
-        op.ATRACACAO
-        DESC;
-    `, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+    const [rows] = await db.query(
+      `
+      SELECT COD_CLIENTE, NOME_CLIENTE, CNPJ_CLIENTE
+        FROM CLIENTE
+       WHERE (? = '' OR NOME_CLIENTE LIKE ?)
+       ORDER BY ${ordCol} ${ordDir}
+       LIMIT ? OFFSET ?
+      `,
+      [q, like, Number(pageSize), off]
+    );
 
-//MOTIVOS DE PARLISACAO
-app.get("/api/motivos", (req, res) => {
-    db.query(`SELECT * FROM MOTIVO_PAR;`, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-//MOTIVOS DE PARALISACAO
-app.get("/api/motivos", (req, res) => {
-    db.query(`SELECT * FROM MOTIVO_PAR;`, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-//COMPLEMENTO DE PARALISACAO
-app.get("/api/complementos", (req, res) => {
-    db.query(`SELECT * FROM COMPLEMENTO_PAR;`, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-app.post('/api/operacao/criar', (req, res) => {
-    const empresa = req.body.empresa;
-    const navio = req.body.navio;
-    const rap = req.body.rap;
-    const agente = req.body.agente;
-    const berco = req.body.berco;
-    const eta = req.body.eta;
-    const previsao = req.body.previsao;
-    const status = req.body.status;
-    const usuario = req.body.usuario;
-    const tipo = req.body.tipo;
-    const data = req.body.data;
-
-    db.query(`
-        INSERT INTO OPERACAO (COD_EMPRESA, COD_NAVIO, RAP, COD_AGENTE, COD_BERCO, ETA, ATRACACAO_PREV, STATUS_OPERACAO, USUARIO, TIPO, DAT_CADASTRO)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?);
-     `,
-        [empresa, navio, rap, agente, berco, eta, previsao, status, usuario, tipo, data],
-        (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('operação adicionada!');
-            }
-        }
-    )
+    res.set('Cache-Control', 'no-store');
+    return res.json(rows);
+  } catch (err) {
+    console.error('[CLIENTES][ERR]', err);
+    return res.status(500).json({ ok:false, message: err.message });
+  }
 });
 
-app.put('/operacao/concluir/docs', (req, res) => {
-    const id = req.body.id;
-    const status = req.body.nome;
 
-    db.query("UPDATE OPERACAO SET STATUS_OPERACAO = 'AGUARDANDO ATRACAÇÃO' WHERE COD_OPERACAO = ?",
-        [id, status],
-        (err, result) => {
-            if (err) {
-                console.log(err)
-                res.send(result)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
+// === NCM (lista com busca/ordem/paginação) ===
+app.get('/ncm', async (req, res) => {
+  try {
+    const {
+      q = '',                 // busca por código/descrição
+      orderBy = 'COD_NCM',
+      order = 'ASC',
+      page = 1,
+      pageSize = 200,
+    } = req.query;
+
+    const off = (Number(page) - 1) * Number(pageSize);
+    const ordCol = ['COD_NCM','DESCRICAO_NCM'].includes(orderBy) ? orderBy : 'COD_NCM';
+    const ordDir = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+    const like = `%${q}%`;
+
+    const [rows] = await db.query(
+      `
+      SELECT COD_NCM, DESCRICAO_NCM
+        FROM NCM
+       WHERE (? = '' OR COD_NCM LIKE ? OR DESCRICAO_NCM LIKE ?)
+       ORDER BY ${ordCol} ${ordDir}
+       LIMIT ? OFFSET ?
+      `,
+      [q, like, like, Number(pageSize), off]
+    );
+
+    res.set('Cache-Control', 'no-store');
+    return res.json(rows);
+  } catch (err) {
+    console.error('[NCM][ERR]', err);
+    return res.status(500).json({ ok:false, message: err.message });
+  }
+});
+
+
+// === PRODUTOS (lista com busca/ordem/paginação) ===
+app.get('/produtos', async (req, res) => {
+  try {
+    const {
+      q = '',                 // busca por nome/código
+      orderBy = 'PRODUTO',
+      order = 'ASC',
+      page = 1,
+      pageSize = 200,
+    } = req.query;
+
+    const off = (Number(page) - 1) * Number(pageSize);
+    const ordCol = ['PRODUTO','COD_PRODUTO','UN_MEDIDA'].includes(orderBy) ? orderBy : 'PRODUTO';
+    const ordDir = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+    const like = `%${q}%`;
+
+    const [rows] = await db.query(
+      `
+      SELECT COD_PRODUTO, PRODUTO, UN_MEDIDA
+        FROM PRODUTO
+       WHERE (? = '' OR PRODUTO LIKE ? OR COD_PRODUTO LIKE ?)
+       ORDER BY ${ordCol} ${ordDir}
+       LIMIT ? OFFSET ?
+      `,
+      [q, like, like, Number(pageSize), off]
+    );
+
+    res.set('Cache-Control', 'no-store');
+    return res.json(rows);
+  } catch (err) {
+    console.error('[PRODUTOS][ERR]', err);
+    return res.status(500).json({ ok:false, message: err.message });
+  }
+});
+
+
+// LISTAR OPERAÇÕES (simples)
+app.get('/operacao', async (_req, res) => {
+  try {
+    const sql = `
+      SELECT
+        op.COD_OPERACAO,
+        nv.NOME_NAVIO,
+        be.NOME_BERCO,
+        op.RAP,
+        op.STATUS_OPERACAO,
+        op.ETA,
+        op.ATRACACAO_PREV,
+        op.ATRACACAO,
+        COALESCE(op.ATRACACAO, op.ATRACACAO_PREV, op.ETA) AS dataOrdenacao
+      FROM OPERACAO op
+      JOIN NAVIO nv        ON nv.COD_NAVIO = op.COD_NAVIO
+      LEFT JOIN BERCO be   ON be.COD_BERCO = op.COD_BERCO
+      ORDER BY COALESCE(op.ATRACACAO, op.ATRACACAO_PREV, op.ETA) DESC
+    `;
+
+    const [rows] = await db.query(sql);
+
+    // (Opcional) normalizar datas para 'YYYY-MM-DD HH:mm:ss'
+    const toIso = d => (d ? new Date(d).toISOString().slice(0, 19).replace('T', ' ') : null);
+    const data = rows.map(r => ({
+      ...r,
+      ETA: toIso(r.ETA),
+      ATRACACAO_PREV: toIso(r.ATRACACAO_PREV),
+      ATRACACAO: toIso(r.ATRACACAO),
+      dataOrdenacao: toIso(r.dataOrdenacao),
+    }));
+
+    res.set('Cache-Control', 'no-store');
+    return res.json(data);
+  } catch (err) {
+    console.error('[OPERACAO_LIST_SIMPLE][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+
+
+// MOTIVOS DE PARALISAÇÃO
+app.get('/motivos', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM MOTIVO_PAR;');
+    res.send(rows);
+  } catch (err) {
+    console.error('[GET /motivos][ERR]', err);
+    res.status(500).json({ ok: false, message: 'Erro ao buscar motivos.' });
+  }
+});
+
+// COMPLEMENTOS DE PARALISAÇÃO
+app.get('/complementos', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM COMPLEMENTO_PAR;');
+    res.send(rows);
+  } catch (err) {
+    console.error('[GET /complementos][ERR]', err);
+    res.status(500).json({ ok: false, message: 'Erro ao buscar complementos.' });
+  }
+});
+
+
+
+// CRIAR OPERAÇÃO (mysql2/promise)
+app.post('/operacao/criar', async (req, res) => {
+  const t0 = Date.now();
+
+  // Extrai o payload
+  const {
+    empresa,
+    navio,
+    rap,
+    agente,
+    berco,
+    eta,        // esperado: 'YYYY-MM-DD HH:mm'
+    previsao,   // esperado: 'YYYY-MM-DD HH:mm'
+    status,
+    usuario,
+    tipo,
+    data        // esperado: 'YYYY-MM-DD HH:mm' (ou já com segundos)
+  } = req.body;
+
+  // Normaliza datas para 'YYYY-MM-DD HH:mm:ss'
+  const toSec = (s) =>
+    s && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(s) ? `${s}:00` : s;
+
+  const etaSec      = toSec(eta);
+  const prevSec     = toSec(previsao);
+  const cadastroSec = toSec(data);
+
+  // Log de entrada (útil p/ auditoria)
+  console.log('[OPERACAO_CREATE:REQ]', {
+    ts: new Date().toISOString(),
+    payload: {
+      empresa, navio, rap, agente, berco,
+      eta: etaSec, previsao: prevSec,
+      status, usuario, tipo, data: cadastroSec
+    }
+  });
+
+  try {
+    // Validação básica
+    if (!empresa || !navio || !agente || !berco || !etaSec || !prevSec || !status || !usuario || !tipo || !cadastroSec) {
+      console.warn('[OPERACAO_CREATE:WARN] Campos obrigatórios ausentes');
+      return res.status(400).json({
+        ok: false,
+        message: 'Campos obrigatórios ausentes.'
+      });
+    }
+
+    // Monta o INSERT
+    const sql = `
+      INSERT INTO OPERACAO
+        (COD_EMPRESA, COD_NAVIO, RAP, COD_AGENTE, COD_BERCO,
+         ETA, ATRACACAO_PREV, STATUS_OPERACAO, USUARIO, TIPO, DAT_CADASTRO)
+      VALUES (?,?,?,?,?,
+              ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+      empresa,
+      navio,
+      rap || null,
+      agente,
+      berco,
+      etaSec,
+      prevSec,
+      status,
+      usuario,
+      tipo,
+      cadastroSec
+    ];
+
+    const [result] = await db.query(sql, params);
+
+    // Logs de saída
+    const ms = Date.now() - t0;
+    console.log('[OPERACAO_CREATE:DB]', {
+      affectedRows: result?.affectedRows,
+      insertId: result?.insertId
+    });
+    console.log('[OPERACAO_CREATE:OK]', { duration_ms: ms });
+
+    return res.status(201).json({
+      ok: true,
+      message: 'Operação cadastrada com sucesso',
+      id: result?.insertId
+    });
+  } catch (err) {
+    const ms = Date.now() - t0;
+    console.error('[OPERACAO_CREATE:ERR]', {
+      duration_ms: ms,
+      code: err?.code,
+      message: err?.message,
+      sqlMessage: err?.sqlMessage
+    });
+    return res.status(400).json({
+      ok: false,
+      message: err?.sqlMessage || err?.message || 'Erro ao cadastrar operação',
+      code: err?.code
+    });
+  }
+});
+
+
+// Concluir documentação da operação -> atualiza STATUS_OPERACAO
+app.put('/operacao/concluir/docs', async (req, res) => {
+  try {
+    const { id, status } = req.body;
+
+    const opId = Number(id);
+    if (!Number.isInteger(opId) || opId <= 0) {
+      return res.status(400).json({ ok: false, message: 'ID inválido.' });
+    }
+
+    // Se quiser permitir passar outro status via body:
+    const newStatus = (typeof status === 'string' && status.trim())
+      ? status.trim().toUpperCase()
+      : 'AGUARDANDO ATRACAÇÃO';
+
+    const [result] = await db.query(
+      'UPDATE OPERACAO SET STATUS_OPERACAO = ? WHERE COD_OPERACAO = ?',
+      [newStatus, opId]
+    );
+
+    if ((result?.affectedRows || 0) === 0) {
+      return res.status(404).json({ ok: false, message: 'Operação não encontrada.' });
+    }
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      message: 'Status atualizado com sucesso.',
+      affectedRows: result.affectedRows,
+      status: newStatus,
+      id: opId
+    });
+  } catch (err) {
+    console.error('[OPERACAO_CONCLUIR_DOCS][ERR]', err);
+    return res.status(500).json({ ok: false, message: err?.message || 'Erro ao atualizar status da operação.' });
+  }
+});
+
 
 
 
@@ -688,149 +1125,272 @@ app.put('/operacao/status/paralisado', (req, res) => {
     )
 })
 
+// Normaliza "2025-09-29T14:30" -> "2025-09-29 14:30:00"
+function toMySQLDateTime(s) {
+  if (!s) return null;
+  let x = String(s).trim().replace('T', ' ');
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(x)) x += ':00';
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(x)) return null;
+  return x;
+}
+
 app.put('/operacao/registrar/atracacao', (req, res) => {
-    const date = req.body.date;
-    const id = req.body.id;
+  const { date, id } = req.body;
 
-    db.query("UPDATE OPERACAO SET ATRACACAO = ?, STATUS_OPERACAO = 'OPERANDO' WHERE COD_OPERACAO = ?",
-        [date, id],
-        (err, result) => {
-            if (err) {
-                console.log(err)
-                res.send(result)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
+  const opId = Number(id);
+  if (!Number.isInteger(opId) || opId <= 0) {
+    return res.status(400).json({ ok: false, message: 'ID inválido.' });
+  }
 
-//PERIODOS
-app.get("/api/periodos/horarios", (req, res) => {
-    db.query("SELECT * FROM PERIODO;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-});
+  const atracacao = toMySQLDateTime(date);
+  if (!atracacao) {
+    return res.status(400).json({
+      ok: false,
+      message: 'Data/hora inválida. Envie no formato "YYYY-MM-DDTHH:MM" (datetime-local).'
+    });
+  }
 
-app.post('/api/periodo/criar', (req, res) => {
-    const operacao = req.body.operacao;
-    const periodo = req.body.periodo;
-    const inicio = req.body.inicio;
-    const berco = req.body.berco;
-    const qtbordo = req.body.qtbordo;
-    const qtterra = req.body.qtterra;
-    const porao = req.body.porao;
-    const moega = req.body.moega;
-    const conexo = req.body.conexo;
-    const requisicao = req.body.requisicao;
-    const gerador = req.body.gerador;
-    const grab = req.body.grab;
-    const usuario = req.body.usuario;
-    const dtcadastro = req.body.dtcadastro;
-    db.query(`
-        INSERT INTO PERIODO_OPERACAO (
-            COD_OPERACAO,
-            COD_PERIODO,
-            DAT_INI_PERIODO,
-            COD_BERCO,
-            QTDE_BORDO,
-            QTDE_TERRA,
-            PORAO,
-            COD_MOEGA,
-            CONEXO,
-            REQUISICAO,
-            GERADOR,
-            GRAB,
-            USUARIO,
-            DAT_CADASTRO
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);
-        `, [operacao, periodo, inicio, berco, qtbordo, qtterra, porao, moega, conexo, requisicao, gerador, grab, usuario, dtcadastro],
-        (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('periodo iniciado!');
-            }
-        }
-    )
-});
+  db.query(
+    "UPDATE OPERACAO SET ATRACACAO = ?, STATUS_OPERACAO = 'OPERANDO' WHERE COD_OPERACAO = ?",
+    [atracacao, opId],
+    (err, result) => {
+      if (err) {
+        console.error('[OPERACAO/REGISTRAR_ATRACACAO][ERR]', err);
+        return res.status(500).json({ ok: false, message: err.message || 'Erro ao atualizar operação.' });
+      }
 
-app.get('/api/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
-    const id = req.params.id;
+      if (!result || result.affectedRows === 0) {
+        return res.status(404).json({ ok: false, message: 'Operação não encontrada.' });
+      }
 
-    db.query(`SELECT COUNT(1) as EXISTE FROM PERIODO_OPERACAO WHERE DAT_FIM_PERIODO IS NULL AND COD_OPERACAO = ?`,
-        id, (err, result) => {
-            if (err) {
-                console.log(err)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
-
-app.get('/api/portal/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
-    const id = req.params.id;
-
-    db.query(`SELECT COUNT(1) as EXISTE FROM PERIODO_OPERACAO WHERE DAT_FIM_PERIODO IS NULL AND COD_OPERACAO = ?`,
-        id, (err, result) => {
-            if (err) {
-                console.log(err)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
-
-
-app.get('/api/periodo/dashboard/:id', (req, res) => { //DADOS DO DASH
-    const id = req.params.id;
-
-    db.query(`
-    SELECT
-    OP.SEQ_PERIODO_OP,
-    OP.COD_OPERACAO,
-    N.NOME_NAVIO,
-    P.STATUS_OPERACAO,
-    PE.DEN_PERIODO,
-    SUM(CA.QTDE_MANIFESTADA) as MANIFESTADO,
-    OP.DAT_INI_PERIODO AS INI_PERIODO,
-    BE.NOME_BERCO,
-    MO.DESC_EQUIPAMENTO AS MOEGA,
-    FC_PERIODO_CARREGAMENTO(OP.DAT_INI_PERIODO) AS PERIODO
-FROM
-    PERIODO_OPERACAO OP
-    JOIN PERIODO PE
-        ON PE.COD_PERIODO = OP.COD_PERIODO
-    JOIN OPERACAO P
-        ON P.COD_OPERACAO = OP.COD_OPERACAO
-    JOIN CARGA CA
-        ON CA.COD_OPERACAO = OP.COD_OPERACAO
-    JOIN NAVIO N
-        ON N.COD_NAVIO = P.COD_NAVIO
-    JOIN BERCO BE
-        ON BE.COD_BERCO = OP.COD_BERCO
-    JOIN EQUIPAMENTO MO
-        ON MO.COD_EQUIPAMENTO = OP.COD_MOEGA
-WHERE
-    OP.DAT_FIM_PERIODO IS NULL
-    AND OP.COD_OPERACAO = ?
-    `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
+      res.set('Cache-Control', 'no-store');
+      return res.json({
+        ok: true,
+        message: 'Atracação registrada com sucesso.',
+        id: opId,
+        atracacao,
+        status: 'OPERANDO',
+        affectedRows: result.affectedRows
+      });
     }
+  );
+});
+
+
+// PERIODOS (mysql2/promise)
+app.get("/periodos/horarios", async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT COD_PERIODO, DEN_PERIODO
+         FROM PERIODO
+         ORDER BY DEN_PERIODO`
+    );
+    res.set("Cache-Control", "no-store");
+    return res.json(rows);
+  } catch (err) {
+    console.error("[PERIODOS][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      message: err?.message || "Erro ao listar períodos."
+    });
+  }
+});
+
+
+// PERIODO - CRIAR (mysql2/promise)
+app.post('/periodo/criar', async (req, res) => {
+  try {
+    const {
+      operacao,
+      periodo,
+      inicio,       // vindo de <input type="datetime-local"> (ex: "2025-09-29T07:30")
+      berco,
+      qtbordo,
+      qtterra,
+      porao,
+      moega,
+      conexo,
+      requisicao,
+      gerador,
+      grab,
+      usuario,
+      dtcadastro    // "YYYY-MM-DD HH:mm:ss" (front já envia)
+    } = req.body;
+
+    // ---- validações mínimas
+    if (
+      !operacao || !periodo || !inicio || !berco || !qtbordo || !qtterra ||
+      !porao || !moega || !requisicao || !gerador || !grab || !usuario
+    ) {
+      return res.status(400).json({ ok: false, message: 'Campos obrigatórios ausentes.' });
+    }
+
+    // ---- normalizações
+    const opId      = Number(operacao);
+    const perId     = Number(periodo);
+    const bercoId   = Number(berco);
+    const bordoNum  = Number(qtbordo);
+    const terraNum  = Number(qtterra);
+    const poraoNum  = Number(porao);
+    const moegaId   = Number(moega);
+
+    if (
+      !Number.isFinite(opId)   || !Number.isFinite(perId)   || !Number.isFinite(bercoId) ||
+      !Number.isFinite(bordoNum) || !Number.isFinite(terraNum) || !Number.isFinite(poraoNum) ||
+      !Number.isFinite(moegaId)
+    ) {
+      return res.status(400).json({ ok: false, message: 'IDs/quantidades inválidos.' });
+    }
+
+    // DAT_INI_PERIODO: converter "YYYY-MM-DDTHH:mm" -> "YYYY-MM-DD HH:mm:ss"
+    let inicioSql = String(inicio).trim();
+    if (inicioSql.includes('T')) inicioSql = inicioSql.replace('T', ' ');
+    // acrescenta segundos se vier sem
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(inicioSql)) {
+      inicioSql = `${inicioSql}:00`;
+    }
+
+    const sql = `
+      INSERT INTO PERIODO_OPERACAO (
+        COD_OPERACAO,
+        COD_PERIODO,
+        DAT_INI_PERIODO,
+        COD_BERCO,
+        QTDE_BORDO,
+        QTDE_TERRA,
+        PORAO,
+        COD_MOEGA,
+        CONEXO,
+        REQUISICAO,
+        GERADOR,
+        GRAB,
+        USUARIO,
+        DAT_CADASTRO
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+      opId,
+      perId,
+      inicioSql,
+      bercoId,
+      bordoNum,
+      terraNum,
+      poraoNum,
+      moegaId,
+      conexo || null,
+      requisicao || null,
+      gerador || null,
+      grab || null,
+      String(usuario),
+      dtcadastro || null, // se quiser usar NOW() no banco, troque por NOW() no SQL
+    ];
+
+    const [result] = await db.query(sql, params);
+
+    res.set('Cache-Control', 'no-store');
+    return res.status(201).json({
+      ok: true,
+      message: 'Período criado com sucesso.',
+      id: result?.insertId
+    });
+  } catch (err) {
+    console.error('[PERIODO_CRIAR][ERR]', err);
+    // erros de chave estrangeira / integridade
+    if (err?.code === 'ER_NO_REFERENCED_ROW_2' || err?.errno === 1452) {
+      return res.status(409).json({
+        ok: false,
+        message: 'Referência inválida (operacao/periodo/berco/moega). Verifique os IDs.',
+        code: err.code
+      });
+    }
+    return res.status(500).json({
+      ok: false,
+      message: err?.sqlMessage || err?.message || 'Erro ao criar período.'
+    });
+  }
+});
+
+
+app.get('/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
+    const id = req.params.id;
+
+    db.query(`SELECT COUNT(1) as EXISTE FROM PERIODO_OPERACAO WHERE DAT_FIM_PERIODO IS NULL AND COD_OPERACAO = ?`,
+        id, (err, result) => {
+            if (err) {
+                console.log(err)
+            } else {
+                res.send(result)
+            }
+        }
     )
 })
+
+app.get('/portal/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
+    const id = req.params.id;
+
+    db.query(`SELECT COUNT(1) as EXISTE FROM PERIODO_OPERACAO WHERE DAT_FIM_PERIODO IS NULL AND COD_OPERACAO = ?`,
+        id, (err, result) => {
+            if (err) {
+                console.log(err)
+            } else {
+                res.send(result)
+            }
+        }
+    )
+})
+
+
+app.get('/periodo/dashboard/:id', async (req, res) => {
+  const id = Number(req.params.id);
+
+  const sql = `
+    SELECT
+      OP.SEQ_PERIODO_OP,
+      OP.COD_OPERACAO,
+      N.NOME_NAVIO,
+      P.STATUS_OPERACAO,
+      PE.DEN_PERIODO,
+      SUM(CA.QTDE_MANIFESTADA) AS MANIFESTADO,
+      OP.DAT_INI_PERIODO AS INI_PERIODO,
+      BE.NOME_BERCO,
+      MO.DESC_EQUIPAMENTO AS MOEGA,
+      FC_PERIODO_CARREGAMENTO(OP.DAT_INI_PERIODO) AS PERIODO
+    FROM PERIODO_OPERACAO OP
+      JOIN PERIODO PE        ON PE.COD_PERIODO     = OP.COD_PERIODO
+      JOIN OPERACAO P        ON P.COD_OPERACAO     = OP.COD_OPERACAO
+      JOIN CARGA CA          ON CA.COD_OPERACAO    = OP.COD_OPERACAO
+      JOIN NAVIO N           ON N.COD_NAVIO        = P.COD_NAVIO
+      JOIN BERCO BE          ON BE.COD_BERCO       = OP.COD_BERCO
+      JOIN EQUIPAMENTO MO    ON MO.COD_EQUIPAMENTO = OP.COD_MOEGA
+    WHERE
+      OP.DAT_FIM_PERIODO IS NULL
+      AND OP.COD_OPERACAO = ?
+    GROUP BY
+      OP.SEQ_PERIODO_OP,
+      OP.COD_OPERACAO,
+      N.NOME_NAVIO,
+      P.STATUS_OPERACAO,
+      PE.DEN_PERIODO,
+      OP.DAT_INI_PERIODO,
+      BE.NOME_BERCO,
+      MO.DESC_EQUIPAMENTO,
+      FC_PERIODO_CARREGAMENTO(OP.DAT_INI_PERIODO)
+  `;
+
+  try {
+    const [rows] = await db.query(sql, [id]);
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /periodo/dashboard/:id][ERR]', err);
+    return res
+      .status(500)
+      .json({ ok: false, message: err.sqlMessage || 'Erro ao buscar dashboard.' });
+  }
+});
+
+
 
 
 app.put('/periodo/finalizar', (req, res) => {
@@ -1329,7 +1889,7 @@ UNION
     );
 });
 
-app.post('/api/periodo/dadosEmail', (req, res) => {
+app.post('/periodo/dadosEmail', (req, res) => {
     const { id, data } = req.body;
 
     console.log('Recebido ID para obter dados do email:', id);
@@ -1445,13 +2005,77 @@ app.post('/api/periodo/dadosEmail', (req, res) => {
 
 
 
-//VEICULOS QUE JA FIZERAM TARA
-app.get('/api/dashboard/veiculos/:id', (req, res) => {
-    const id = req.params.id;
+// VEÍCULOS QUE JÁ FIZERAM TARA
+app.get('/dashboard/veiculos/:id', async (req, res) => {
+  const { id } = req.params;
 
-    db.query(`
-      SELECT 
+  const sql = `
+    SELECT 
+      CA.ID_CARREGAMENTO,
+      MT.NOME_MOTORISTA,
+      CA.PLACA_CAVALO,
+      CA.PESO_TARA,
+      CA.PLACA_CARRETA,
+      CA.PLACA_CARRETA2,
+      CA.PLACA_CARRETA3,
+      CA.DATA_TARA,
+      CA.TIPO_VEICULO,
+      TV.DESC_TIPO_VEICULO,
+      CA.PEDIDO_MIC,
+      CG.TIPO_DOC,
+      CG.NUMERO_DOC,
+      CA.COD_TRANSP,
+      TP.NOME_TRANSP,
+      COALESCE(CA.STATUS_NOTA_MIC, 1) AS STATUS_NOTA_MIC,
+      CA.OBS_NOTA,
+      CA.STATUS_CARREG,
+      CA.PESO_CARREGADO,
+      CA.TICKET,
+      CA.DATA_CARREGAMENTO
+    FROM CARREGAMENTO CA
+      LEFT JOIN MOTORISTA      MT ON MT.COD_MOTORISTA  = CA.COD_MOTORISTA
+      LEFT JOIN TIPO_VEICULO   TV ON TV.COD_TIPO       = CA.TIPO_VEICULO
+      LEFT JOIN TRANSPORTADORA TP ON TP.COD_TRANSP     = CA.COD_TRANSP
+      LEFT JOIN CARGA          CG ON CG.COD_OPERACAO   = CA.COD_OPERACAO
+                                  AND CG.COD_CARGA     = CA.COD_CARGA
+    WHERE
+      CA.COD_OPERACAO = ?
+      AND (
+        CA.STATUS_CARREG = 1
+        OR (
+          CA.STATUS_CARREG = 3
+          AND CA.PESO_TARA = 1000
+          AND COALESCE(CA.STATUS_NOTA_MIC, 1) <> 6
+        )
+      )
+    ORDER BY COALESCE(CA.DATA_TARA, CA.DATA_CARREGAMENTO) DESC
+  `;
+
+  try {
+    const [rows] = await db.query(sql, [id]);
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /dashboard/veiculos/:id][ERR]', err);
+    return res.status(500).json({
+      ok: false,
+      message: err.sqlMessage || 'Erro ao buscar veículos.'
+    });
+  }
+});
+
+// Buscar dados do carregamento para Alteração Cadastral
+app.get('/alteracaocadastral/veiculos/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ ok: false, message: 'ID inválido.' });
+    }
+
+    const sql = `
+      SELECT
         CA.ID_CARREGAMENTO,
+        CA.COD_OPERACAO,
         MT.NOME_MOTORISTA,
         CA.PLACA_CAVALO,
         CA.PESO_TARA,
@@ -1466,370 +2090,370 @@ app.get('/api/dashboard/veiculos/:id', (req, res) => {
         CG.NUMERO_DOC,
         CA.COD_TRANSP,
         TP.NOME_TRANSP,
-        COALESCE(CA.STATUS_NOTA_MIC, 1) AS STATUS_NOTA_MIC,
         CA.OBS_NOTA,
         CA.STATUS_CARREG,
         CA.PESO_CARREGADO,
         CA.TICKET,
         CA.DATA_CARREGAMENTO
-        FROM 
-              CARREGAMENTO CA
-                JOIN 
-              MOTORISTA MT 
-             ON MT.COD_MOTORISTA = CA.COD_MOTORISTA
-                JOIN 
-                   TIPO_VEICULO TV 
-                          ON TV.COD_TIPO = CA.TIPO_VEICULO
-                JOIN 
-                    TRANSPORTADORA TP
-                       ON TP.COD_TRANSP = CA.COD_TRANSP
-                JOIN 
-                    CARGA CG 
-                      ON CG.COD_OPERACAO = CA.COD_OPERACAO
-            AND CG.COD_CARGA = CA.COD_CARGA
-        
-            WHERE 
-             CA.COD_OPERACAO = ? AND ((CA.STATUS_CARREG = 1) OR (CA.STATUS_CARREG = 3 AND CA.PESO_TARA = 1000 AND COALESCE(CA.STATUS_NOTA_MIC, 1) != 6))
-    `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
+      FROM CARREGAMENTO CA
+        LEFT JOIN MOTORISTA      MT ON MT.COD_MOTORISTA  = CA.COD_MOTORISTA
+        LEFT JOIN TIPO_VEICULO   TV ON TV.COD_TIPO       = CA.TIPO_VEICULO
+        LEFT JOIN TRANSPORTADORA TP ON TP.COD_TRANSP     = CA.COD_TRANSP
+        LEFT JOIN CARGA          CG ON CG.COD_OPERACAO   = CA.COD_OPERACAO
+                                   AND CG.COD_CARGA      = CA.COD_CARGA
+      WHERE CA.ID_CARREGAMENTO = ?
+    `;
+
+    const [rows] = await db.query(sql, [id]);
+    res.set('Cache-Control', 'no-store');
+
+    // Mantém array para compatibilidade com o front,
+    // mas retorna 404 se não achar nada:
+    if (!rows || rows.length === 0) {
+      return res.status(404).json([]);
     }
-    )
-})
 
-
-app.get('/api/alteracaocadastral/veiculos/:id', (req, res) => {
-    const id = req.params.id;
-
-    db.query(`
-    SELECT 
-CA.ID_CARREGAMENTO,
-CA.COD_OPERACAO,
-MT.NOME_MOTORISTA,
-CA.PLACA_CAVALO,
-CA.PESO_TARA,
-CA.PLACA_CARRETA,
-CA.PLACA_CARRETA2,
-CA.PLACA_CARRETA3,
-CA.DATA_TARA,
-CA.TIPO_VEICULO,
-TV.DESC_TIPO_VEICULO,
-CA.PEDIDO_MIC,
-CG.TIPO_DOC,
-CG.NUMERO_DOC,
-CA.COD_TRANSP,
-TP.NOME_TRANSP,
-CA.OBS_NOTA,
-CA.STATUS_CARREG,
-CA.PESO_CARREGADO,
-CA.TICKET,
-CA.DATA_CARREGAMENTO
-FROM 
-      CARREGAMENTO CA
-        JOIN 
-      MOTORISTA MT 
-     ON MT.COD_MOTORISTA = CA.COD_MOTORISTA
-        JOIN 
-           TIPO_VEICULO TV 
-                  ON TV.COD_TIPO = CA.TIPO_VEICULO
-        JOIN 
-            TRANSPORTADORA TP
-               ON TP.COD_TRANSP = CA.COD_TRANSP
-        JOIN 
-            CARGA CG 
-              ON CG.COD_OPERACAO = CA.COD_OPERACAO
-    AND CG.COD_CARGA = CA.COD_CARGA
-
-    WHERE 
-   ID_CARREGAMENTO =  ?
-    `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    }
-    )
-})
-
-
-//TOTAL DESCARREGADO NA OPERAÇÃO
-app.get('/api/dashboard/descarregado/:id', (req, res) => {
-    const id = req.params.id;
-
-    db.query(`
-      SELECT 
-            SUM(PESO_BRUTO - PESO_TARA) AS DESCARREGADO
-        FROM 
-            CARREGAMENTO
-        WHERE 
-            COD_OPERACAO = ?
-            AND PESO_CARREGADO > 0
-            AND STATUS_CARREG = 3;
-    `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    }
-    )
-})
-
-//HORA A HORA NA OPERAÇÃO 
-app.get('/api/hora/autos/:id', (req, res) => {
-    const id = req.params.id;
-    db.query(`
-    SELECT TB.HORA, SUM(TB.QUANTIDADE_AUTOS) AS QUANTIDADE_AUTOS
-    FROM (SELECT (CASE
-                    WHEN HOUR(DATA_CARREGAMENTO) = 23 THEN '23:00 à  00:00'
-                    WHEN HOUR(DATA_CARREGAMENTO) = 0 THEN '00:00 à  01:00'
-                    ELSE CONCAT(LPAD(HOUR(DATA_CARREGAMENTO), 2, '0'), ':00 às ', LPAD(HOUR(DATA_CARREGAMENTO) +1, 2, '0'), ':00')
-                  END) AS HORA,
-                 COUNT(1) AS QUANTIDADE_AUTOS,
-                 HOR.ORDEM AS ORDEM
-            FROM CARREGAMENTO CAR
-           INNER JOIN VW_HORARIOS_2 HOR
-              ON HOR.HORA = HOUR(DATA_CARREGAMENTO)
-           WHERE CAR.STATUS_CARREG = 3
-             AND CAR.PESO_BRUTO > 0
-             AND CAR.COD_OPERACAO = ?
-             AND CAR.DATA_CARREGAMENTO >= (SELECT MAX(PE.DAT_INI_PERIODO)
-                                             FROM PERIODO_OPERACAO PE
-                                            WHERE PE.COD_OPERACAO = CAR.COD_OPERACAO
-                                               AND PE.DAT_FIM_PERIODO IS NULL )
-             AND CAR.DATA_CARREGAMENTO <= (SELECT (CASE
-                                                    WHEN TIME_FORMAT(PO.DAT_INI_PERIODO, "%H:%i:%s") BETWEEN '19:00:00' AND '23:59:59' THEN 
-                                                      CONCAT(DATE_FORMAT(MAX(DATE_ADD(PO.DAT_INI_PERIODO, INTERVAL 1 DAY)), "%Y-%m-%d"), ' ', FIM_PERIODO, ":00")
-                                                    ELSE 
-                                                      CONCAT(DATE_FORMAT(MAX(PO.DAT_INI_PERIODO), "%Y-%m-%d"), ' ', FIM_PERIODO, ":00")
-                                                   END)
-                                             FROM PERIODO_OPERACAO PO
-                                             INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
-                                             WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
-                                               AND PO.DAT_FIM_PERIODO IS NULL)
-          GROUP BY HOUR(DATA_CARREGAMENTO)
-          UNION
-          (SELECT H.HORARIO, H.QUANTIDADE_AUTOS, H.ORDEM
-             FROM VW_HORARIOS_2 H
-            WHERE H.INI_PERIODO = (SELECT HOUR(INI_PERIODO)
-                                     FROM PERIODO_OPERACAO PO
-                                      JOIN PERIODO PE 
-                                        ON PE.COD_PERIODO = PO.COD_PERIODO
-                                    WHERE PO.COD_OPERACAO = ?
-                                      AND PO.DAT_FIM_PERIODO IS NULL)
-           ORDER BY H.ORDEM)
-              ) TB
-          GROUP BY TB.HORA, TB.ORDEM
-          ORDER BY TB.ORDEM;
-    `, [id, id, id], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    }
-    )
-})
-
-
-
-//SALDO TOTAL NA OPERAÇÃO 
-app.get('/api/dashboard/saldo/:id', (req, res) => {
-    const id = req.params.id;
-
-    db.query(`
-    SELECT (SUM(CG.QTDE_MANIFESTADA) - 
-    (SELECT SUM(CA.PESO_BRUTO - CA.PESO_TARA)
-       FROM CARREGAMENTO CA
-      WHERE CA.COD_OPERACAO = CG.COD_OPERACAO
-        AND CA.PESO_BRUTO > 0
-        AND CA.STATUS_CARREG = 3
-     )) / 1000 AS SALDO
-    FROM CARGA CG      
-    WHERE CG.COD_OPERACAO = ?;
-    `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    }
-    )
-})
-
-
-// PARALISAÇÃO
-app.post('/api/paralisacao/criar', (req, res) => {
-    const operacao = req.body.operacao;
-    const periodo = req.body.periodo;
-    const motivo = req.body.motivo;
-    const complemento = '1';
-    const obs = req.body.obs;
-    const dtinicio = req.body.dtinicio;
-    const usuario = req.body.usuario;
-    const dtcadastro = req.body.dtcadastro;
-
-    db.query(`
-        INSERT INTO PARALISACAO (COD_OPERACAO, SEQ_PERIODO_OP, COD_MOTIVO, COD_COMPL, OBSERVACAO, DATA_INICIO, USUARIO, DAT_CADASTRO)
-        VALUES (?,?,?,?,?,?,?,?);
-            `,
-        [operacao, periodo, motivo, complemento, obs, dtinicio, usuario, dtcadastro],
-        (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('periodo iniciado!');
-            }
-        }
-    )
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /alteracaocadastral/veiculos/:id][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message || 'Erro ao buscar carregamento.' });
+  }
 });
 
-app.get('/api/paralisacao/periodo/:id', (req, res) => {
-    const id = req.params.id;
 
-    db.query(`
-        SELECT 
-            PA.SEQ_PARALISACAO,
-            PA.COD_OPERACAO,
-            MT.DESC_MOTIVO,
-            TIMESTAMPDIFF(MINUTE, PA.DATA_INICIO, PA.DATA_TERMINO) AS DURACAO 
-        FROM 
-            PARALISACAO PA 
-            JOIN MOTIVO_PAR MT 
-                ON MT.COD_MOTIVO = PA.COD_MOTIVO 
-        WHERE 
-            PA.SEQ_PERIODO_OP = ?
-        ORDER BY 
-            PA.DAT_CADASTRO DESC
-    `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
 
-app.get('/api/verifica/paralisacao/:id', (req, res) => {
-    const id = req.params.id;
-    db.query(`
-        SELECT 
-            SEQ_PARALISACAO 
-        FROM 
-            PARALISACAO
-        WHERE 
-            COD_OPERACAO=? 
-            AND DATA_TERMINO IS NULL
-    `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+// TOTAL DESCARREGADO NA OPERAÇÃO
+app.get('/dashboard/descarregado/:id', async (req, res) => {
+  const { id } = req.params;
 
-app.get('/api/verifica/carregamento/:id', (req, res) => {
-    const id = req.params.id;
-    db.query(`
-      SELECT * FROM CARREGAMENTO
-        WHERE 
-             COD_OPERACAO = ? 
-            AND PESO_CARREGADO > 0;
-    `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+  const sql = `
+    SELECT
+      COALESCE(SUM(PESO_BRUTO - PESO_TARA), 0) AS DESCARREGADO
+    FROM CARREGAMENTO
+    WHERE COD_OPERACAO = ?
+      AND PESO_CARREGADO > 0
+      AND STATUS_CARREG = 3
+  `;
 
+  try {
+    const [rows] = await db.query(sql, [id]);
+    // Mantém compatível com o front (acessa res.data[0].DESCARREGADO)
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /dashboard/descarregado/:id][ERR]', err);
+    return res.status(500).json({
+      ok: false,
+      message: err.sqlMessage || 'Erro ao obter total descarregado.'
+    });
+  }
+});
+
+
+// // HORA A HORA NA OPERAÇÃO
+// app.get('/hora/autos/:id', (req, res) => {
+//   const { id } = req.params;
+
+//   const sql = `
+//     SELECT
+//       T.HORA,
+//       SUM(T.QUANTIDADE_AUTOS) AS QUANTIDADE_AUTOS
+//     FROM (
+//       /* Autos efetivamente carregados por hora dentro do período aberto */
+//       SELECT
+//         CASE
+//           WHEN HOUR(CAR.DATA_CARREGAMENTO) = 23 THEN '23:00 à 00:00'
+//           WHEN HOUR(CAR.DATA_CARREGAMENTO) = 0  THEN '00:00 à 01:00'
+//           ELSE CONCAT(
+//             LPAD(HOUR(CAR.DATA_CARREGAMENTO), 2, '0'), ':00 às ',
+//             LPAD(HOUR(CAR.DATA_CARREGAMENTO) + 1, 2, '0'), ':00'
+//           )
+//         END AS HORA,
+//         COUNT(1) AS QUANTIDADE_AUTOS,
+//         HOR.ORDEM AS ORDEM
+//       FROM CARREGAMENTO CAR
+//       INNER JOIN VW_HORARIOS_2 HOR
+//         ON HOR.HORA = HOUR(CAR.DATA_CARREGAMENTO)
+//       WHERE CAR.STATUS_CARREG = 3
+//         AND CAR.PESO_BRUTO > 0
+//         AND CAR.COD_OPERACAO = ?
+//         AND CAR.DATA_CARREGAMENTO >= (
+//           SELECT MAX(PO.DAT_INI_PERIODO)
+//           FROM PERIODO_OPERACAO PO
+//           WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
+//             AND PO.DAT_FIM_PERIODO IS NULL
+//         )
+//         AND CAR.DATA_CARREGAMENTO <= (
+//           SELECT CASE
+//                    WHEN TIME_FORMAT(PO.DAT_INI_PERIODO, '%H:%i:%s')
+//                         BETWEEN '19:00:00' AND '23:59:59'
+//                    THEN CONCAT(
+//                           DATE_FORMAT(MAX(DATE_ADD(PO.DAT_INI_PERIODO, INTERVAL 1 DAY)), '%Y-%m-%d'),
+//                           ' ', PE.FIM_PERIODO, ':00'
+//                         )
+//                    ELSE CONCAT(
+//                           DATE_FORMAT(MAX(PO.DAT_INI_PERIODO), '%Y-%m-%d'),
+//                           ' ', PE.FIM_PERIODO, ':00'
+//                         )
+//                  END
+//           FROM PERIODO_OPERACAO PO
+//           INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
+//           WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
+//             AND PO.DAT_FIM_PERIODO IS NULL
+//         )
+//       GROUP BY HOUR(CAR.DATA_CARREGAMENTO)
+
+//       UNION
+
+//       /* Linha base com todos os horários possíveis do período aberto */
+//       SELECT
+//         H.HORARIO AS HORA,
+//         H.QUANTIDADE_AUTOS,
+//         H.ORDEM
+//       FROM VW_HORARIOS_2 H
+//       WHERE H.INI_PERIODO = (
+//         SELECT HOUR(PO.DAT_INI_PERIODO)
+//         FROM PERIODO_OPERACAO PO
+//         INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
+//         WHERE PO.COD_OPERACAO = ?
+//           AND PO.DAT_FIM_PERIODO IS NULL
+//       )
+//     ) T
+//     GROUP BY T.HORA, T.ORDEM
+//     ORDER BY T.ORDEM;
+//   `;
+
+//   db.query(sql, [id, id], (err, rows) => {
+//     if (err) {
+//       console.error('[hora/autos][ERR]', err);
+//       return res.status(500).json({ ok: false, message: 'Erro ao calcular autos por hora.' });
+//     }
+//     res.send(rows);
+//   });
+// });
+
+
+
+
+// SALDO TOTAL NA OPERAÇÃO
+app.get('/dashboard/saldo/:id', async (req, res) => {
+  const { id } = req.params;
+
+  // Soma manifestada - soma efetivamente carregada (em toneladas, 3 casas)
+  const sql = `
+    SELECT ROUND((
+      COALESCE((
+        SELECT SUM(QTDE_MANIFESTADA)
+        FROM CARGA
+        WHERE COD_OPERACAO = ?
+      ), 0)
+      -
+      COALESCE((
+        SELECT SUM(PESO_BRUTO - PESO_TARA)
+        FROM CARREGAMENTO
+        WHERE COD_OPERACAO = ?
+          AND PESO_BRUTO > 0
+          AND STATUS_CARREG = 3
+      ), 0)
+    ) / 1000, 3) AS SALDO
+  `;
+
+  try {
+    const [rows] = await db.query(sql, [id, id]);
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows); // front espera array com [0].SALDO
+  } catch (err) {
+    console.error('[GET /dashboard/saldo/:id][ERR]', err);
+    return res.status(500).json({
+      ok: false,
+      message: err.sqlMessage || 'Erro ao calcular saldo.'
+    });
+  }
+});
+
+
+
+// PARALISAÇÃO — criar (promise/async)
+app.post('/paralisacao/criar', async (req, res) => {
+  const {
+    operacao,
+    periodo,
+    motivo,
+    obs,
+    dtinicio,
+    usuario,
+    dtcadastro
+  } = req.body;
+
+  // Complemento ainda fixo como no código original
+  const complemento = '1';
+
+  const sql = `
+    INSERT INTO PARALISACAO
+      (COD_OPERACAO, SEQ_PERIODO_OP, COD_MOTIVO, COD_COMPL, OBSERVACAO, DATA_INICIO, USUARIO, DAT_CADASTRO)
+    VALUES
+      (?,?,?,?,?,?,?,?)
+  `;
+
+  try {
+    const [result] = await db.query(sql, [
+      Number(operacao),
+      Number(periodo),
+      Number(motivo),
+      Number(complemento),
+      obs ?? null,
+      dtinicio,
+      usuario,
+      dtcadastro
+    ]);
+
+    res.status(201).json({
+      ok: true,
+      message: 'Paralisação criada com sucesso.',
+      id: result.insertId,
+      affectedRows: result.affectedRows
+    });
+  } catch (err) {
+    console.error('[POST /paralisacao/criar][ERR]', err);
+    res
+      .status(500)
+      .json({ ok: false, message: err.sqlMessage || 'Erro ao criar paralisação.' });
+  }
+});
+
+
+// Lista paralisações do período (usando promise/async)
+app.get('/paralisacao/periodo/:id', async (req, res) => {
+  const id = Number(req.params.id);
+
+  const sql = `
+    SELECT
+      PA.SEQ_PARALISACAO,
+      PA.COD_OPERACAO,
+      MT.DESC_MOTIVO,
+      TIMESTAMPDIFF(MINUTE, PA.DATA_INICIO, IFNULL(PA.DATA_TERMINO, NOW())) AS DURACAO
+    FROM PARALISACAO PA
+    JOIN MOTIVO_PAR MT
+      ON MT.COD_MOTIVO = PA.COD_MOTIVO
+    WHERE PA.SEQ_PERIODO_OP = ?
+    ORDER BY PA.DAT_CADASTRO DESC
+  `;
+
+  try {
+    const [rows] = await db.query(sql, [id]);
+    res.set('Cache-Control', 'no-store');
+    // Mantém compatibilidade: retorna array puro
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /paralisacao/periodo/:id][ERR]', err);
+    return res
+      .status(500)
+      .json({ ok: false, message: err.sqlMessage || 'Erro ao listar paralisações.' });
+  }
+});
+
+
+
+// Verifica se há paralisação em aberto para a operação
+app.get('/verifica/paralisacao/:id', async (req, res) => {
+  const id = Number(req.params.id);
+
+  const sql = `
+    SELECT COUNT(*) AS count
+    FROM PARALISACAO
+    WHERE COD_OPERACAO = ?
+      AND DATA_TERMINO IS NULL
+  `;
+
+  try {
+    const [rows] = await db.query(sql, [id]);
+    const raw = rows?.[0]?.count ?? rows?.[0]?.COUNT ?? 0;
+    const count = Number(raw) || 0;
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({ ok: true, count, exists: count > 0 });
+  } catch (err) {
+    console.error('[GET /verifica/paralisacao/:id][ERR]', err);
+    return res
+      .status(500)
+      .json({ ok: false, message: err.sqlMessage || 'Erro ao verificar paralisação.' });
+  }
+});
+
+
+
+// Verifica se existe carregamento (peso > 0) para a operação
+app.get('/verifica/carregamento/:id', async (req, res) => {
+  const id = Number(req.params.id);
+
+  const sql = `
+    SELECT COUNT(*) AS count
+    FROM CARREGAMENTO
+    WHERE COD_OPERACAO = ?
+      AND PESO_CARREGADO > 0
+  `;
+
+  try {
+    const [rows] = await db.query(sql, [id]);
+    const raw = rows?.[0]?.count ?? rows?.[0]?.COUNT ?? 0;
+    const count = Number(raw) || 0;
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({ ok: true, count, exists: count > 0 });
+  } catch (err) {
+    console.error('[GET /verifica/carregamento/:id][ERR]', err);
+    return res
+      .status(500)
+      .json({ ok: false, message: err.sqlMessage || 'Erro ao verificar carregamento.' });
+  }
+});
+
+
+
+// Encerrar paralisação
 app.put('/encerrar/paralisacao', (req, res) => {
+  const { id, data } = req.body;
 
-    const id = req.body.id
-    const data = req.body.data
+  if (!id || !data) {
+    return res.status(400).json({ ok: false, message: 'Parâmetros obrigatórios: id e data.' });
+  }
 
-    db.query("UPDATE PARALISACAO SET `DATA_TERMINO` = ? WHERE (`SEQ_PARALISACAO` = ?);",
-        [data, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('paralisacao encerrada !');
-            }
-        }
-    )
-})
+  const sql = `
+    UPDATE PARALISACAO
+       SET DATA_TERMINO = ?
+     WHERE SEQ_PARALISACAO = ?
+  `;
 
-//EQUIPAMENTOS
-app.get("/api/equipamentos", (req, res) => {
-    db.query("SELECT * FROM EQUIPAMENTO;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
-
-//CARGA
-app.post('/api/carga/criar', (req, res) => {
-    const operacao = req.body.operacao;
-    const tipo = req.body.tipo;
-    const numero = req.body.numero;
-    const emissao = req.body.emissao;
-    const cliente = req.body.cliente;
-    const referencia = req.body.referencia;
-    const produto = req.body.produto;
-    const ncm = req.body.ncm;
-    const cemercante = req.body.cemercante;
-    const perigo = req.body.perigo;
-    const manifestado = req.body.manifestado;
-    const status = req.body.status;
-    const emitirNF = req.body.emitirNF;
-    const usuario = req.body.usuario;
-    const datacadastro = req.body.datacadastro;
-
-    db.query(`
-            INSERT INTO CARGA (
-                COD_OPERACAO,
-                TIPO_DOC,
-                NUMERO_DOC,
-                DATA_EMISSAO,
-                COD_CLIENTE,
-                REFERENCIA,
-                COD_PRODUTO,
-                NCM,
-                CE_MERCANTE,
-                IND_CARGAIMO,
-                QTDE_MANIFESTADA,
-                STATUS_CARGA,
-                EMITIR_NF,
-                USUARIO, 
-                DATA_CADASTRO
-            )VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`,
-        [operacao, tipo, numero, emissao, cliente, referencia, produto, ncm, cemercante, perigo, manifestado, status, emitirNF, usuario, datacadastro],
-        (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('carga adicionada!');
-            }
-        }
-    )
+  db.query(sql, [data, id], (err, result) => {
+    if (err) {
+      console.error('[encerrar/paralisacao][ERR]', err);
+      return res.status(500).json({ ok: false, message: 'Erro ao encerrar paralisação.' });
+    }
+    res.json({ ok: true, affectedRows: result?.affectedRows ?? 0 });
+  });
 });
 
-app.get('/api/destinos', (req, res) => {
+
+// EQUIPAMENTOS (mysql2/promise)
+app.get("/equipamentos", async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT COD_EQUIPAMENTO, DESC_EQUIPAMENTO
+         FROM EQUIPAMENTO
+         ORDER BY DESC_EQUIPAMENTO`
+    );
+    res.set("Cache-Control", "no-store");
+    return res.json(rows);
+  } catch (err) {
+    console.error("[EQUIPAMENTOS][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      message: err?.message || "Erro ao listar equipamentos."
+    });
+  }
+});
+
+app.get('/destinos', (req, res) => {
 
     db.query(`SELECT * FROM DESTINO;`,
         (err, result) => {
@@ -1842,61 +2466,8 @@ app.get('/api/destinos', (req, res) => {
     )
 })
 
-app.get('/api/carga/busca/:id', (req, res) => {
-    const id = req.params.id;
-    db.query(`
-            SELECT 
-            CA.COD_CARGA,
-            CA.COD_OPERACAO,
-            NV.NOME_NAVIO,
-            NV.IMO_NAVIO,
-            NV.BANDEIRA,
-            NV.STATUS,
-            CA.TIPO_DOC AS TIPO,
-            CA.NUMERO_DOC AS NUMERO,
-            CA.REFERENCIA,
-            CL.NOME_CLIENTE AS IMPORTADOR,
-            CA.DATA_EMISSAO,
-            PR.PRODUTO,
-            CA.NCM,
-            CA.CE_MERCANTE,
-            CA.IND_CARGAIMO AS PERIGOSO,
-            CA.QTDE_MANIFESTADA
-        FROM operacaogranel.CARGA CA
-            JOIN operacaogranel.OPERACAO OP
-                ON OP.COD_OPERACAO = CA.COD_OPERACAO
-            JOIN operacaogranel.NAVIO NV
-                ON NV.COD_NAVIO =  OP.COD_NAVIO
-            JOIN operacaogranel.CLIENTE CL
-                ON CL.COD_CLIENTE = CA.COD_CLIENTE
-            JOIN operacaogranel.PRODUTO PR
-                ON PR.COD_PRODUTO = CA.COD_PRODUTO
-        WHERE CA.COD_OPERACAO = ?
-    `,
-        id, (err, result) => {
-            if (err) {
-                console.log(err)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
-
-app.delete('/carga/delete/:id', (req, res) => {
-    const id = req.params.id;
-    db.query("DELETE FROM CARGA WHERE COD_CARGA = ?", id, (err, result) => {
-        if (err) {
-            console.log(err);
-        } else {
-            res.send(result);
-            console.log('carga DELETADA!');
-        }
-    })
-})
-
 //VEICULOS
-app.post('/api/motorista/criar', (req, res) => {
+app.post('/motorista/criar', (req, res) => {
     const nome = req.body.nome
     const cnh = null
     const cpf = req.body.cpf
@@ -1915,38 +2486,29 @@ app.post('/api/motorista/criar', (req, res) => {
     )
 })
 
-//GET TIPOS DE VEÍCULOS 
-app.get("/api/tipoveiculo", (req, res) => {
-    db.query("SELECT * FROM TIPO_VEICULO;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+// Buscar motorista por CPF (usando cliente de promessa do mysql2)
+app.get('/motorista/busca/:cpf', async (req, res) => {
+  // normaliza CPF para apenas dígitos
+  const cpf = String(req.params.cpf || '').replace(/\D/g, '');
 
-app.get('/api/motorista/busca/:cpf', (req, res) => {
-    const cpf = req.params.cpf;
+  const sql = 'SELECT * FROM MOTORISTA WHERE CPF_MOTORISTA = ?';
 
-    db.query('SELECT * FROM MOTORISTA WHERE CPF_MOTORISTA = ?',
-        cpf, (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send(result)
-                console.log(result);
-            }
-        }
-    )
-})
-
-
+  try {
+    const [rows] = await db.query(sql, [cpf]);
+    res.set('Cache-Control', 'no-store');
+    // Mantém compatibilidade com o front: retorna array (vazio ou com registros)
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /motorista/busca/:cpf][ERR]', err);
+    return res
+      .status(500)
+      .json({ ok: false, message: err.sqlMessage || 'Erro ao buscar motorista.' });
+  }
+});
 
 //consulta se ID CARREGAMENTO esta apto 
 
-app.get('/api/valida/ticket/:idCarregamento', (req, res) => {
+app.get('/valida/ticket/:idCarregamento', (req, res) => {
     const idCarregamento = req.params.idCarregamento;
 
     db.query('SELECT ID_CARREGAMENTO, PESO_CARREGADO, PLACA_CAVALO FROM CARREGAMENTO WHERE ID_CARREGAMENTO = ?',
@@ -2006,7 +2568,7 @@ app.put('/integrar/:idCarregamento', (req, res) => {
 
 // envia informações para ticket 
 
-app.get('/api/impressao/busca/:idCarregamento', (req, res) => {
+app.get('/impressao/busca/:idCarregamento', (req, res) => {
     const idCarregamento = req.params.idCarregamento;
 
     db.query('SELECT * FROM VW_TICKET_CARREGAMENTO WHERE ID_CARREG = ?',
@@ -2022,7 +2584,7 @@ app.get('/api/impressao/busca/:idCarregamento', (req, res) => {
     )
 })
 
-app.get('/api/ultimapesagem/busca/:id', (req, res) => {
+app.get('/ultimapesagem/busca/:id', (req, res) => {
     const { id } = req.params
 
     db.query(`
@@ -2165,49 +2727,55 @@ app.put('/ultimapesagem', (req, res) => {
         }
     )
 })
+// BUSCAR CARGAS POR OPERAÇÃO (mysql2/promise)
+app.get('/carga/busca/:id', async (req, res) => {
+  try {
+    // validação do parâmetro
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ ok: false, message: 'Parâmetro "id" inválido.' });
+    }
 
-app.get('/api/carga/busca/:id', (req, res) => {
-    const id = req.params.id;
-    db.query(`
-            SELECT 
-            CA.COD_CARGA,
-            CA.COD_OPERACAO,
-            NV.NOME_NAVIO,
-            NV.IMO_NAVIO,
-            NV.BANDEIRA,
-            NV.STATUS,
-            CA.TIPO_DOC AS TIPO,
-            CA.NUMERO_DOC AS NUMERO,
-            CA.REFERENCIA,
-            CL.NOME_CLIENTE AS IMPORTADOR,
-            CA.DATA_EMISSAO,
-            PR.PRODUTO,
-            CA.NCM,
-            CA.CE_MERCANTE,
-            CA.IND_CARGAIMO AS PERIGOSO,
-            CA.QTDE_MANIFESTADA
-        FROM operacaogranel.CARGA CA
-        INNER JOIN operacaogranel.OPERACAO OP
-        ON OP.COD_OPERACAO = CA.COD_OPERACAO
-        INNER JOIN operacaogranel.NAVIO NV
-        ON NV.COD_NAVIO =  OP.COD_NAVIO
-        INNER JOIN operacaogranel.CLIENTE CL
-        ON CL.COD_CLIENTE = CA.COD_CLIENTE
-        INNER JOIN operacaogranel.PRODUTO PR
-        ON PR.COD_PRODUTO = CA.COD_PRODUTO
-        WHERE CA.COD_OPERACAO = ?
-    `,
-        id, (err, result) => {
-            if (err) {
-                console.log(err)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
+    const sql = `
+      SELECT 
+          CA.COD_CARGA,
+          CA.COD_OPERACAO,
+          NV.NOME_NAVIO,
+          NV.IMO_NAVIO,
+          NV.BANDEIRA,
+          NV.STATUS,
+          CA.TIPO_DOC       AS TIPO,
+          CA.NUMERO_DOC     AS NUMERO,
+          CA.REFERENCIA,
+          CL.NOME_CLIENTE   AS IMPORTADOR,
+          CA.DATA_EMISSAO,
+          PR.PRODUTO,
+          CA.NCM,
+          CA.CE_MERCANTE,
+          CA.IND_CARGAIMO   AS PERIGOSO,
+          CA.QTDE_MANIFESTADA
+      FROM operacaogranel.CARGA CA
+      JOIN operacaogranel.OPERACAO OP ON OP.COD_OPERACAO = CA.COD_OPERACAO
+      JOIN operacaogranel.NAVIO    NV ON NV.COD_NAVIO    = OP.COD_NAVIO
+      JOIN operacaogranel.CLIENTE  CL ON CL.COD_CLIENTE  = CA.COD_CLIENTE
+      JOIN operacaogranel.PRODUTO  PR ON PR.COD_PRODUTO  = CA.COD_PRODUTO
+      WHERE CA.COD_OPERACAO = ?
+      ORDER BY CA.COD_CARGA DESC
+    `;
 
-app.post('/api/periodo/carregamentos/:id', (req, res) => {
+    const [rows] = await db.query(sql, [id]);
+
+    // evita cache agressivo do browser
+    res.set('Cache-Control', 'no-store');
+    return res.json(rows);
+  } catch (err) {
+    console.error('[CARGA_BUSCA][ERR]', { id: req.params.id, code: err?.code, message: err?.message });
+    return res.status(500).json({ ok: false, message: err?.message || 'Erro ao buscar cargas.' });
+  }
+});
+
+
+app.post('/periodo/carregamentos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2256,7 +2824,7 @@ DATA_CARREGAMENTO
     });
 });
 
-app.post('/api/portal/relatorios/:id', (req, res) => {
+app.post('/portal/relatorios/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;
     const usuario = req.body.usuario
@@ -2312,7 +2880,7 @@ DATA_CARREGAMENTO
 
 
 
-app.post('/api/periodo/documentos/:id', (req, res) => {
+app.post('/periodo/documentos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2346,7 +2914,7 @@ app.post('/api/periodo/documentos/:id', (req, res) => {
     });
 });
 
-app.post('/api/periodo/autos/:id', (req, res) => {
+app.post('/periodo/autos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2595,7 +3163,7 @@ app.put('/carregamento/excluir', (req, res) => {
 
 
 //CARGAS PRO GRAFICO
-app.get("/api/relatorios", (req, res) => {
+app.get("/relatorios", (req, res) => {
     db.query(`
         SELECT CA.COD_OPERACAO,
             NA.NOME_NAVIO,
@@ -2625,7 +3193,7 @@ app.get("/api/relatorios", (req, res) => {
 })
 
 //primeira pesagem 
-app.post('/api/pesagem/primeirapesagem', (req, res) => {
+app.post('/pesagem/primeirapesagem', (req, res) => {
     const COD_CARGA = req.body.COD_CARGA
     const COD_OPERACAO = req.body.COD_OPERACAO
     const PLACA_CAVALO = req.body.PLACA_CAVALO
@@ -2719,7 +3287,7 @@ app.post('/api/pesagem/primeirapesagem', (req, res) => {
 })
 
 //Listar navios pra relatorio
-app.get("/api/relatorios/operacoes", (req, res) => {
+app.get("/relatorios/operacoes", (req, res) => {
     db.query(`
     SELECT *  FROM  OPERACAO O 
     JOIN NAVIO N 
@@ -2737,36 +3305,42 @@ app.get("/api/relatorios/operacoes", (req, res) => {
 })
 
 
+// Períodos para relatório
+app.get('/periodos/gerais/:id', async (req, res) => {
+  const { id } = req.params;
 
-//Periodos pra relatorio 
-app.get('/api/periodos/gerais/:id', (req, res) => {
-    const id = req.params.id;
+  const sql = `
+    SELECT
+      O.COD_OPERACAO,
+      O.COD_NAVIO,
+      CONCAT(N.NOME_NAVIO, ' (', O.RAP, ')') AS NAVIO,
+      PO.SEQ_PERIODO_OP,
+      FC_PERIODO_CARREGAMENTO(PO.DAT_INI_PERIODO) AS PERIODO
+    FROM OPERACAO O
+    INNER JOIN NAVIO N
+      ON N.COD_NAVIO = O.COD_NAVIO
+    INNER JOIN PERIODO_OPERACAO PO
+      ON PO.COD_OPERACAO = O.COD_OPERACAO
+    WHERE O.COD_OPERACAO = ?
+    ORDER BY PO.SEQ_PERIODO_OP DESC
+  `;
 
-    db.query(`   
-        SELECT O.COD_OPERACAO,
-        O.COD_NAVIO,
-        CONCAT(N.NOME_NAVIO, " (", O.RAP, ")") AS NAVIO,
-        PO.SEQ_PERIODO_OP,
-        FC_PERIODO_CARREGAMENTO(PO.DAT_INI_PERIODO) AS PERIODO
-        FROM operacaogranel.OPERACAO O
-        INNER JOIN operacaogranel.NAVIO N
-        ON N.COD_NAVIO = O.COD_NAVIO
-        INNER JOIN operacaogranel.PERIODO_OPERACAO PO
-        ON PO.COD_OPERACAO = O.COD_OPERACAO
-        WHERE O.COD_OPERACAO = ?
-        ORDER BY SEQ_PERIODO_OP DESC;         
-    `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    }
-    )
-})
+  try {
+    const [rows] = await db.query(sql, [id]);
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /periodos/gerais/:id][ERR]', err);
+    return res.status(500).json({
+      ok: false,
+      message: err.sqlMessage || 'Erro ao listar períodos.'
+    });
+  }
+});
 
 
-app.get('/api/portal/periodos/gerais/:id', (req, res) => {
+
+app.get('/portal/periodos/gerais/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`   
@@ -2794,7 +3368,7 @@ app.get('/api/portal/periodos/gerais/:id', (req, res) => {
 
 
 
-app.post('/api/operacao/paralisacao/:id', (req, res) => {
+app.post('/operacao/paralisacao/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2823,7 +3397,7 @@ ORDER BY COD_OPERACAO, MOTIVO;
     });
 });
 
-app.post('/api/login/user', (req, res) => {
+app.post('/login/user', (req, res) => {
     const usuario = req.body.usuario;
     const senha = req.body.senha;
 
@@ -2846,45 +3420,49 @@ app.post('/api/login/user', (req, res) => {
     });
 });
 
-//puxa ultima placa do motorista
-app.get('/api/pesageminicial/historico/:cpf', (req, res) => {
-    const cpf = req.params.cpf;
+// Puxa a última placa usada pelo motorista (histórico mais recente)
+app.get('/pesageminicial/historico/:cpf', async (req, res) => {
+  try {
+    const { cpf } = req.params;
 
-    db.query(`
-    SELECT 
-    M.COD_MOTORISTA,
-    M.NOME_MOTORISTA,
-    M.CPF_MOTORISTA,
-    O.COD_OPERACAO,
-    N.NOME_NAVIO,
-    O.RAP AS VIAGEM,
-    C.TIPO_VEICULO,
-    C.DATA_TARA,
-    C.PLACA_CAVALO,
-    C.PLACA_CARRETA,
-    C.PLACA_CARRETA2,
-    C.PLACA_CARRETA3
-FROM MOTORISTA M
-JOIN CARREGAMENTO C ON M.COD_MOTORISTA = C.COD_MOTORISTA
-JOIN OPERACAO O ON C.COD_OPERACAO = O.COD_OPERACAO
-JOIN NAVIO N ON O.COD_NAVIO = N.COD_NAVIO
-WHERE M.CPF_MOTORISTA = ?
-ORDER BY C.DATA_TARA DESC, C.ID_CARREGAMENTO DESC
-LIMIT 1;`,
-        [cpf], (err, result) => {
-            if (err) {
-                res.send(err);
-                console.log(err);
-            } else {
-                res.send(result);
-                console.log(result);
-            }
-        }
-    );
+    // Normaliza CPF removendo ., - e espaços (tanto no banco quanto no parâmetro)
+    const sql = `
+      SELECT
+        M.COD_MOTORISTA,
+        M.NOME_MOTORISTA,
+        M.CPF_MOTORISTA,
+        O.COD_OPERACAO,
+        N.NOME_NAVIO,
+        O.RAP AS VIAGEM,
+        C.TIPO_VEICULO,
+        C.DATA_TARA,
+        C.PLACA_CAVALO,
+        C.PLACA_CARRETA,
+        C.PLACA_CARRETA2,
+        C.PLACA_CARRETA3
+      FROM MOTORISTA M
+      JOIN CARREGAMENTO C ON M.COD_MOTORISTA = C.COD_MOTORISTA
+      JOIN OPERACAO O     ON C.COD_OPERACAO = O.COD_OPERACAO
+      JOIN NAVIO N        ON O.COD_NAVIO    = N.COD_NAVIO
+      WHERE REPLACE(REPLACE(REPLACE(M.CPF_MOTORISTA, '.', ''), '-', ''), ' ', '') =
+            REPLACE(REPLACE(REPLACE(?,                '.', ''), '-', ''), ' ', '')
+      ORDER BY C.DATA_TARA DESC, C.ID_CARREGAMENTO DESC
+      LIMIT 1;
+    `;
+
+    const [rows] = await db.query(sql, [cpf]);
+    res.set('Cache-Control', 'no-store');
+    // Mantém compatível com o front (espera array e lê rows[0])
+    return res.json(rows);
+  } catch (err) {
+    console.error('[GET /pesageminicial/historico/:cpf][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message || 'Erro ao buscar histórico do motorista.' });
+  }
 });
 
 
-app.post('/api/operacao/complemento/:id', (req, res) => {
+
+app.post('/operacao/complemento/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2917,7 +3495,7 @@ ORDER BY COD_OPERACAO, COMPLEMENTO;
 });
 
 //Relatorio Por Operação 
-app.get('/api/operacao/gerais/:id', (req, res) => {
+app.get('/operacao/gerais/:id', (req, res) => {
     const id = req.params.id;
 
     db.query(`   
@@ -2938,7 +3516,7 @@ app.get('/api/operacao/gerais/:id', (req, res) => {
     )
 })
 
-app.post('/api/operacao/autos/:id', (req, res) => {
+app.post('/operacao/autos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2971,7 +3549,7 @@ app.post('/api/operacao/autos/:id', (req, res) => {
 });
 
 // Rota para obter o conteúdo do arquivo de motivação baseado no ID
-app.get('/api/motivacao/conteudo/:id', async (req, res) => {
+app.get('/motivacao/conteudo/:id', async (req, res) => {
     const { id } = req.params; // Aqui, id já é '51.txt'
 
     const fileName = id.endsWith('.txt') ? id : `${id}.txt`;
@@ -2987,7 +3565,7 @@ app.get('/api/motivacao/conteudo/:id', async (req, res) => {
     }
 });
 
-app.post('/api/executarPuppeteer', async (req, res) => {
+app.post('/executarPuppeteer', async (req, res) => {
 
     const { COD_OPERACAO, COD_MOTORISTA, ID_CARREGAMENTO, CPF_MOTORISTA } = req.body;
     const queryResult = await new Promise((resolve, reject) => {
@@ -3103,7 +3681,7 @@ app.post('/api/executarPuppeteer', async (req, res) => {
     }
 });
 
-// app.post('/api/motivacao/registrar', async (req, res) => {
+// app.post('/motivacao/registrar', async (req, res) => {
 //     try {
 //         const { codBercoSpa, cpfMotivados, dataInicial, dataFinal, usuarioCadastro, registroMotivacao } = req.body;
 
@@ -3159,7 +3737,7 @@ app.post('/api/executarPuppeteer', async (req, res) => {
 // });
 
 
-app.post('/api/operacao/documentos/:id', (req, res) => {
+app.post('/operacao/documentos/:id', (req, res) => {
     const id = req.params.id;
     const { data } = req.body;
 
@@ -3190,28 +3768,39 @@ app.post('/api/operacao/documentos/:id', (req, res) => {
 });
 
 
-app.get("/api/destino", (req, res) => {
-    db.query(`SELECT * FROM DESTINO;`, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+// DESTINOS
+app.get('/destino', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT COD_DESTINO, NOME_DESTINO FROM DESTINO ORDER BY NOME_DESTINO;'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[GET /destino][ERR]', err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
 
-app.get('/api/buscar/pedidos/:id', (req, res) => {
-    const id = req.params.id;
-    db.query(`SELECT * FROM PEDIDO WHERE COD_OPERACAO = ?`,
-        id, (err, result) => {
-            if (err) {
-                console.log(err)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
+
+// BUSCAR PEDIDOS POR OPERAÇÃO
+app.get('/buscar/pedidos/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const [rows] = await db.query(
+      `SELECT ID_PEDIDO, NR_PEDIDO, COD_OPERACAO
+         FROM PEDIDO
+        WHERE COD_OPERACAO = ?
+        ORDER BY NR_PEDIDO`,
+      [id]
+    );
+    res.set('Cache-Control', 'no-store');
+    res.json(rows);
+  } catch (err) {
+    console.error('[GET /buscar/pedidos/:id][ERR]', err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
 
 //MIC SISTEMAS - API NF-e
 app.post("/gerarnfe", (req, res) => {
@@ -3506,7 +4095,7 @@ const saveLog = (idCarregamento, filename, data) => {
 }
 
 // MIC SISTEMAS - CONSULTAR NOTA
-// app.post('/api/consultarnotamic/:id', async (req, res) => {
+// app.post('/consultarnotamic/:id', async (req, res) => {
 // EXECUTA A CADA MINUTO
 cron.schedule("*/1 * * * *", async () => {
     const db_result = await new Promise((resolve, reject) =>
@@ -3730,7 +4319,7 @@ cron.schedule("*/1 * * * *", async () => {
   });
 
 // MIC SISTEMAS - ENTREGAR NOTA
-app.post('/api/entregarnotamic/:id', async (req, res) => {
+app.post('/entregarnotamic/:id', async (req, res) => {
     console.log(req.params)
     const idCarregamento = req.params.id;
 
@@ -3747,7 +4336,7 @@ app.post('/api/entregarnotamic/:id', async (req, res) => {
     res.status(200).send();
 })
 
-app.post('/api/baixarnota', async (req, res) => {
+app.post('/baixarnota', async (req, res) => {
     console.log(req.body)
 
     const idCarregamento = req.body.idCarregamento

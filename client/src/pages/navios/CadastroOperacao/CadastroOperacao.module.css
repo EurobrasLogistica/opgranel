@@ -41,255 +41,204 @@
 	padding: 0 5px;
 }
 
-.periodo {
-	text-align: center;
-	color: #1f4d64;
-	font-size: 27px;
-	font-weight: 700;
+/* ====== GRID do formulário ====== */
+.formGrid {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
 }
 
-.data {
-	font-weight: 600;
-	font-size: 22px;
-	letter-spacing: -1px;
-	margin-top: -8px;
-	border-top: 2px solid #d9d9d9;
+@media (min-width: 768px) {
+  /* (2 colunas na primeira linha; 4 na segunda) — use a mesma classe para ambas */
+  .formGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1100px) {
+  .formGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
-
-.status div {
-	position: relative;
-	top: 50%;
-	font-size: 22px;
-	font-weight: 600;
-	transform: translateY(-50%);
-	background-color: #F6BFBF;
-	color: #C00000;
-	padding: 4px 7px;
-	border-radius: 3px;
+/* linha com um bloco só (radios) */
+.formGridOne {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
 }
 
-.tara {
-	background-color: #F0F3F5;
-	width: 40%;
-	border: 1px dashed #153240a2;
-	font-weight: 600;
-	padding-top: 5px;
+/* ====== Campo ====== */
+.field {
+  display: grid;
+  gap: 6px;
 }
 
-.sumario {
-	display: flex;
-	justify-content: space-around;
-	margin: 5px 0;
+/* rótulo acima do input/select */
+.labelTop {
+  font-weight: 600;
+  color: #374151;
+  font-size: .95rem;
 }
 
-.sumario div {
-	border-right: 1px solid #1f4d6473;
-	width: 34%;
+/* wrapper do controle para garantir 100% */
+.control { width: 100%; }
+
+/* ====== Inputs e Selects uniformes ====== */
+.input,
+.select,
+.form_control select,
+input[type="datetime-local"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #D1D5DB;     /* cinza */
+  border-radius: 6px;
+  background: #FFFFFF;
+  color: #111827;
+  font-size: 15px;
+  line-height: 1.35;
+  transition: border-color .12s ease, box-shadow .12s ease;
 }
 
-.lista {
-	background-color: #fff;
-	height: 220px;
-	width: 95%;
-	margin: auto;
-	margin-bottom: 8px;
-	overflow-y: auto;
+/* foco consistente */
+.input:focus,
+.select:focus,
+.form_control select:focus,
+input[type="datetime-local"]:focus {
+  border-color: #8ad4ee;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(138, 212, 238, 0.5);
 }
 
-.lista::-webkit-scrollbar {
-	width: 10px;
+/* placeholder sutil */
+.input::placeholder,
+input[type="datetime-local"]::placeholder {
+  color: #9CA3AF;
 }
 
-.lista::-webkit-scrollbar-track {
-	box-shadow: inset 0 0 3px grey;
+/* texto em maiúsculas quando fizer sentido */
+.input,
+.form_control select,
+.select {
+  text-transform: uppercase;
 }
 
-.lista::-webkit-scrollbar-thumb {
-	background: #1f4d64;
-	border-radius: 10px;
+/* corrigir visual do input mascarado dentro do wrapper */
+:global(.react-input-mask__input) {
+  width: 100%;
+  border: none;
+  outline: none;
+  font: inherit;
+  text-transform: uppercase;
 }
 
-.item {
-	display: flex;
-	justify-content: space-between;
-	border-top: 1px solid #d8d8d8;
-	cursor: pointer;
-}.item:hover{
-	background-color: #c7fff6;
+/* ====== Radios inline ====== */
+.inlineRadios {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px dashed #153240a2;
+  border-radius: 6px;
+  background: #F0F3F5;
 }
 
-.item div {
-	width: 30%;
-	font-weight: 400;
-	color: #585858;
+.radioItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #1F4D64;
 }
 
-.autos {
-	width: 23%;
-	background-color: #F0F3F5;
-	border: 1px dashed #153240a2;
-	font-weight: 600;
-	padding-top: 5px;
+.radioItem input[type="radio"] {
+  transform: scale(1.1);
 }
 
-.autos div {
-	font-size: 20px;
-	padding: 7px 0;
+/* ====== Ajustes da barra/título existentes ====== */
+/* mantém seus estilos antigos sem conflito */
+
+/* ===== Segmented Radio – Pills ===== */
+.segmentedPills {
+  display: inline-flex;
+  gap: 8px;
+  padding: 3px;
 }
 
-.autos div i {
-	font-size: 23px;
+/* Cada opção (pill) */
+.pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 1px 12px;
+  border-radius: 9px;          /* pílula */
+  cursor: pointer;
+  user-select: none;
+  color: #1F2A37;
+  font-weight: 600;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease, transform .05s ease;
 }
 
-.motivo {
-	width: 35%;
-	background-color: #F0F3F5;
-	border: 1px dashed #153240a2;
-	font-weight: 600;
-	padding-top: 5px;
+/* Input real, invisível mas acessível */
+.pill input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.sumariob {
-	display: flex;
-	justify-content: space-between;
-	margin: 5px auto;
-	width: 95%;
+/* Ícone */
+.pill i {
+  font-size: 14px;
+  opacity: .9;
 }
 
-.motivobox {
-	border-right: 1px solid #1f4d6473;
-	width: 78%;
+.pill:active {
+  transform: translateY(0.5px);
 }
 
-.sumariobox {
-	width: 20%;
+/* Foco via teclado (no label) */
+.pill:focus,
+.pill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(31,77,100,0.18);
 }
 
-.listab {
-	background-color: #fff;
-	height: 240px;
-	width: 95%;
-	margin: auto;
-	margin-bottom: 8px;
-	overflow-y: auto;
+/* Selecionado */
+.pillActive {
+  background: #E6F4FA;
+  color: #1f4d64;
+  box-shadow: inset 0 0 0 2px rgba(31,77,100,0.22);
+}
+.pillActive i {
+  opacity: 1;
 }
 
-.lista::-webkit-scrollbar {
-	width: 10px;
+/* Estado desabilitado (se precisar) */
+.pill[aria-disabled="true"],
+.pill:has(input[disabled]) {
+  opacity: .55;
+  cursor: not-allowed;
 }
 
-.lista::-webkit-scrollbar-track {
-	box-shadow: inset 0 0 3px grey;
+/* Responsivo: empilha em telas pequenas */
+@media (max-width: 480px) {
+  .segmentedPills {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .pill {
+    justify-content: center;
+    padding: 12px 10px;
+  }
 }
 
-.lista::-webkit-scrollbar-thumb {
-	background: #1f4d64;
-	border-radius: 10px;
+/* Integra com seus estilos existentes */
+.labelTop {
+  font-weight: 600;
+  color: #374151;
+  font-size: .95rem;
 }
-
-.itemb {
-	display: flex;
-	justify-content: space-between;
-	border-top: 1px solid #d8d8d8;
-	font-weight: 500;
-}
-
-.motivoitem {
-	text-align: left;
-	padding-left: 3px;
-	width: 78%;
-}
-
-.sumarioitem {
-	width: 20%;
-}
-
-.pesos{
-	background-color: #F0F3F5;
-	width: 100%;
-	border: 1px dashed #153240a2;
-	font-weight: 600;
-	padding-top: 5px;
-	display: flex;
-	justify-content: space-around;
-}
-.pesos div{
-	width: 20%;
-	font-weight: 700;
-	font-size: 20px;
-	border-right: 1px solid #1f4d6473;
-}
-.pesos div div{
-	border: none;
-	width: 100%;
-	color: #000;
-	font-size: 18px;
-	font-weight: 300;
-	margin-top: -5px;
-}
-
-
-.abrirp{
-	background-color: #b80000;
-	color: #ffffff;
-	border: none;
-	padding: 8px 28px;
-	font-weight: 500;
-	border-radius: 3px;
-	cursor: pointer;
-}.abrirp:hover{
-	background-color: #ff0000;
-}
-.navio{
-	margin-top: 20px;
-	font-size: 25px;
-	font-weight: 700;
-	color: #1F4D64;
-}
-
-
-.form_control {
-	width: 100%;
-	margin-top: 2vh;
-	font-size: 16px;
-	height: 70px;
-}
-
-.form_control select{
-	font-size: 16px;
-	width: 96%;
-	padding: 8px 5px;
-	transition: 0.1s;
-	margin-top: 3px;
-	font-size: 15px;
-	border-radius: 3px;
-	border: 1px solid #ccc;
-}
-
-.form_control select:focus {
-	border: 1px solid #8ad4ee;
-	outline: 3px solid #8ad4ee80;
-}
-
-.finalizar{
-	background-color: #0A883F;
-	color: #ffffff;
-	border: none;
-	padding: 8px 28px;
-	font-weight: 500;
-	border-radius: 3px;
-	cursor: pointer;
-}.finalizar:hover{
-	background-color: #00df5d;
-}
-
-.selecti {
-
-	margin-bottom: 10px;
-	border: 1px dashed #153240a2;
-	margin-right: 5px;
-	margin-top: 15px;
-	background-color: #F0F3F5;
-	padding: 5%;
-}
+.help { font-size: .85rem; color: #6b7280; }
+.helpError { color: #b91c1c; }

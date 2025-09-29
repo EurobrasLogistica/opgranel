@@ -1,8 +1,7 @@
-import React from "react";
-import { useEffect, useState } from 'react';
-import Axios from 'axios';
-import { Navigate, useNavigate } from "react-router-dom";
-import { SnackbarProvider, useSnackbar } from 'notistack';
+import React, { useState } from "react";
+import Axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { SnackbarProvider, useSnackbar } from "notistack";
 import Navbar from "../../../components/Navbar";
 import Brackground from "../../../components/Background";
 import Container from "../../../components/Container";
@@ -12,59 +11,79 @@ import SubmitButton from "../../../components/Button";
 import style from "./CadastroNavio.module.css";
 import MaskedInput from "../../../components/InputMask";
 
-const CadastroNavio = () => {
+// Base da API: localhost em dev, produção no build
+const API_BASE =
+  process.env.REACT_APP_SERVER ||
+  (window.location.hostname === "localhost"
+    ? "http://localhost:3009"
+    : "https://opgranel.eurobraslogistica.com.br/api");
 
+Axios.defaults.baseURL = API_BASE;
+
+const CadastroNavio = () => {
   const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [nome, setNome] = useState("");
   const [imo, setImo] = useState("");
   const [bandeira, setBandeira] = useState("");
-  const usuario = JSON.parse(localStorage.getItem("user_token")).id;
 
-  const [values, setValues] = useState({});
-  function handleChange(event) {
-    setValues({
-      ...values,
-      [event.target.name]: event.target.value
-    });
-  }
+  // evita crash se não houver user_token
+  const userToken = localStorage.getItem("user_token");
+  const usuario = userToken ? JSON.parse(userToken).id : null;
 
-  
-  const addNavio = () => {
-    Axios.post('https://opgranel.eurobraslogistica.com.br/api/navio/criar', {
-      nome: nome,
-      imo: imo,
-      bandeira: bandeira,
-      status: 'AGUARDANDO INÍCIO DA OPERAÇÃO',
-      usuario: usuario
-    })
-      .then(function (res) {
-        console.log(res);
-        res.data.sqlMessage ?
-          showAlert(res.data.sqlMessage, 'error') :
-          showAlert('Navio cadastrado com sucesso!', 'success');
-          setTimeout(() => {
-            navigate("/navios")
-          }, 2000);
-      });
-  }
+  const showAlert = (txt, variant) => enqueueSnackbar(txt, { variant });
 
-  const { enqueueSnackbar } = useSnackbar();
-  const showAlert = (txt, variant) => {
-    enqueueSnackbar(txt, { variant: variant });
-  }
+const addNavio = async () => {
+  try {
+    const payload = {
+      nome: (nome || "").toUpperCase(),
+      imo: (imo || "").toUpperCase(),
+      bandeira: (bandeira || "").toUpperCase(),
+      status: "AGUARDANDO INÍCIO DA OPERAÇÃO",
+      usuario,
+    };
 
-  const validaDados = () => {
-    if (!nome | !imo | !bandeira) {
-      showAlert('Preencha todos os campos!', 'error')
+    // Se no back você usou /api/navio/criar, aqui o caminho relativo é /navio/criar (porque baseURL termina em /api)
+    const res = await Axios.post("/navio/criar", payload);
+
+    const { status, data } = res;
+    const okFlag =
+      data?.ok === true ||
+      (typeof data === "string" && data.toLowerCase().includes("sucesso"));
+
+    if (status >= 200 && status < 300 && okFlag) {
+      // sucesso
+      // usa a mensagem do back, se houver
+      showAlert(data?.message || "Navio cadastrado com sucesso!", "success");
+      setTimeout(() => navigate("/navios"), 1200);
       return;
     }
-    if (imo.length < 7) {
-      showAlert('Imo deve conter 8 digitos!', 'error')
+
+    // não veio ok -> tratar como erro
+    showAlert(data?.message || "Erro ao cadastrar navio", "error");
+  } catch (err) {
+    console.error(err);
+    showAlert(err?.response?.data?.message || err.message || "Erro ao cadastrar navio", "error");
+  }
+};
+
+  const validaDados = () => {
+    const imoDigits = (imo || "").replace(/\D/g, "");
+    if (!nome || !imo || !bandeira) {
+      showAlert("Preencha todos os campos!", "error");
+      return;
+    }
+    if (imoDigits.length !== 8) {
+      showAlert("IMO deve conter 8 dígitos!", "error");
+      return;
+    }
+    if (!usuario) {
+      showAlert("Sessão expirada. Faça login novamente.", "error");
       return;
     }
     addNavio();
-  }
+  };
 
   return (
     <>
@@ -74,51 +93,75 @@ const CadastroNavio = () => {
       <Container>
         <div className={style.content}>
           <div className={style.nav}>
-            <div onClick={() => navigate("/navios")}>
-              Navios
-            </div>
-            <div className={style.active}>
-              Cadastrar Navio
-            </div>
+            <div onClick={() => navigate("/navios")}>Navios</div>
+            <div className={style.active}>Cadastrar Navio</div>
           </div>
 
-          <div className="columns">
-
-            <div className="column is-4">
+          {/* Nome / IMO / Bandeira (floating label com “ : ”) */}
+          <div className={style.fieldsRow}>
+            {/* NOME DO NAVIO */}
+            <div className={`${style.floatField} ${!nome ? style.floatError : ""} ${nome ? style.filled : ""}`}>
               <Input
-                type={"text"}
-                text={"Nome do navio"}
-                onChange={(e) => [setNome(e.target.value.toUpperCase())]}
+                text="NAVIO"
+                type="text"
+                placeholder=" "
+                value={nome}
+                onChange={(e) => setNome((e.target.value || "").toUpperCase())}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  setNome((e.clipboardData.getData("text") || "").toUpperCase());
+                }}
+                autoCapitalize="characters"
+                aria-label="Nome do navio"
               />
             </div>
-            <div className="column is-2">
+
+            {/* IMO */}
+            <div
+              className={`${style.floatField} ${
+                (imo || "").replace(/\D/g, "").length !== 8 ? style.floatError : ""
+              } ${(imo || "").length ? style.filled : ""}`}
+            >
               <MaskedInput
-                text={'IMO'}
-                name={'IMO'}
-                mask={'99999999'}
-                value={values.Imo}
-                placeholder={'0000000'}
-                onChange={(e) => [setImo(e.target.value.toUpperCase())]}
+                text="IMO (8 DÍGITOS)"
+                name="IMO"
+                mask="99999999"
+                placeholder=" "
+                value={imo}
+                onChange={(e) => setImo((e.target.value || "").toUpperCase())}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  setImo((e.clipboardData.getData("text") || "").toUpperCase());
+                }}
+                autoCapitalize="characters"
+                aria-label="IMO"
               />
             </div>
-          </div>
-          <div className="columns">
-            <div className="column is-3">
+
+            {/* BANDEIRA */}
+            <div className={`${style.floatField} ${!bandeira ? style.floatError : ""} ${bandeira ? style.filled : ""}`}>
               <Input
-                type={"text"}
-                text={"Bandeira"}
-                placeholder={"ex: China"}
-                onChange={(e) => [setBandeira(e.target.value.toUpperCase())]}
+                type="text"
+                text="Bandeira"
+                placeholder=""
+                value={bandeira}
+                onChange={(e) => setBandeira((e.target.value || "").toUpperCase())}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  setBandeira((e.clipboardData.getData("text") || "").toUpperCase());
+                }}
+                autoCapitalize="characters"
+                aria-label="Bandeira"
               />
             </div>
           </div>
+
           <div className="columns">
             <div className="column is-5">
-              <SubmitButton text={"Cadastrar"} onClick={validaDados} />
+              <SubmitButton text="Cadastrar" onClick={validaDados} />
             </div>
           </div>
         </div>
-
       </Container>
     </>
   );
@@ -126,11 +169,8 @@ const CadastroNavio = () => {
 
 export default function IntegrationNotistack() {
   return (
-    <SnackbarProvider
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      maxSnack={3}
-      autoHideDuration={2500}>
+    <SnackbarProvider anchorOrigin={{ vertical: "bottom", horizontal: "right" }} maxSnack={3} autoHideDuration={2500}>
       <CadastroNavio />
-    </SnackbarProvider >
+    </SnackbarProvider>
   );
 }

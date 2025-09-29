@@ -1,36 +1,151 @@
+/* ===== Layout da página ===== */
 .content {
-	margin: 0 auto;
-	width: 98%;
-	color: #8A909B;
-	background-color: #F9FAFB;
-	display: grid;
-	border-radius: 5px;
-	padding: 15px 25px;
-
+  margin: 0 auto;
+  width: 98%;
+  color: #8A909B;
+  background-color: #F9FAFB;
+  display: grid;
+  border-radius: 5px;
+  padding: 15px 25px;
 }
 
+/* Navegação / tabs do topo */
 .nav {
-	font-size: 25px;
-	border-bottom: 1px solid #bbbbbb;
-	display: flex;
-	cursor: pointer;
+  font-size: 25px;
+  border-bottom: 1px solid #bbbbbb;
+  display: flex;
+  cursor: pointer;
 }
-.nav div{
-	padding: 0 1vw;
-	margin-bottom: -1px;
+.nav div {
+  padding: 0 1vw;
+  margin-bottom: -1px;
 }
-.nav a{
-	text-decoration: none;
-	color: #bbbbbb;
+.nav a {
+  text-decoration: none;
+  color: #bbbbbb;
 }
-
-.active{
-	color: #1f4d64;
-	border-bottom: 3px solid #1f4d64;
-}
-
-.SubmitButton{
-	margin-top: 10px;
+.active {
+  color: #1f4d64;
+  border-bottom: 3px solid #1f4d64;
 }
 
+/* ===== Grid dos campos ===== */
+.fieldsRow {
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 769px) {
+  /* Nome | IMO | Bandeira */
+  .fieldsRow { grid-template-columns: 2fr 1fr 1fr; }
+}
 
+/* (usado em telas que têm label acima do input) */
+.field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.labelTop,
+.label {
+  font-weight: 600;
+  color: #374151;
+  font-size: .95rem;
+}
+
+/* garante largura total para componentes customizados */
+.inputBox :global(input),
+.inputBox :global(textarea),
+.inputBox :global(select),
+.inputBox :global(.input),
+.inputBox :global(.MuiInputBase-root),
+.inputBox :global(.MuiOutlinedInput-root) {
+  width: 100%;
+}
+
+/* ajuda/erro abaixo do input */
+.help {
+  font-size: .85rem;
+  color: #6b7280;
+}
+.helpError { color: #b91c1c; }
+
+/* erro com anel suave */
+.inputError .inputBox :global(input),
+.inputError .inputBox :global(.input),
+.inputError :global(.MuiOutlinedInput-notchedOutline) {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, .12);
+  border-color: #fecaca !important;
+}
+
+/* ===== Floating label robusto ===== */
+.floatField {
+  position: relative;
+  margin-bottom: 14px;
+}
+.floatField :global(input),
+.floatField :global(.input),
+.floatField :global(textarea),
+.floatField :global(select) {
+  width: 100%;
+  padding-top: 0.5rem;       /* espaço para o label dentro */
+  text-transform: uppercase;  /* CAPS visual */
+}
+
+/* rótulo dentro do input */
+.floatLabel {
+  position: absolute;
+  left: 12px;
+  top: 8px;                   /* no topo interno */
+  padding: 0 4px;
+  line-height: 1;
+  background: #fff;           /* mesma cor do fundo do input */
+  color: #6b7280;
+  font-weight: 600;
+  letter-spacing: .02em;
+  pointer-events: none;
+  transform-origin: left top;
+  transition: transform .15s ease, color .15s ease, top .15s ease;
+  z-index: 1;
+}
+
+/* adiciona o ":" ao lado do nome do campo */
+.floatLabel::after {
+  content: " :";
+}
+
+/* sobe no focus e quando houver valor (classe .filled vinda do JSX) */
+.floatField:focus-within .floatLabel,
+.filled .floatLabel {
+  transform: scale(.85) translateY(-6px);
+  color: #1f4d64;
+}
+
+/* estado de erro para floating */
+.floatError :global(input),
+.floatError :global(.input) {
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, .12);
+  border-color: #fecaca !important;
+}
+.floatError .floatLabel { color: #b91c1c; }
+
+/* ===== CAPS & placeholder (fallback para outras telas) ===== */
+.inputUpper :global(input),
+.inputUpper :global(textarea),
+.inputUpper :global(select),
+.inputUpper :global(.input),
+.inputUpper :global(.MuiInputBase-input) {
+  text-transform: uppercase;
+}
+.inputUpper :global(input::placeholder),
+.inputUpper :global(textarea::placeholder) {
+  color: #6b7280;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+/* ===== Neutraliza ":" de temas globais em labels desta tela ===== */
+.content :global(.label)::after,
+.content :global(label)::after {
+  content: none !important;
+}

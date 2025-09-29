@@ -10,11 +10,12 @@ services:
     ports:
       - "3008:3008"
     environment:
-      REACT_APP_SERVER: http://31.97.20.141:3009
+      REACT_APP_SERVER: http://31.97.20.141:3009   # ok se quer expor o backend externamente
       PORT: 3008
       TZ: America/Sao_Paulo
     depends_on:
       - backend
+    restart: unless-stopped
 
   backend:
     build:
@@ -29,15 +30,17 @@ services:
     ports:
       - "3009:3009"
     environment:
-      DB_HOST: 31.97.20.141
+      DB_HOST: mysql              # <- fala com o serviço mysql do compose
       DB_PORT: 3306
       DB_USER: ogdev
-      DB_PASS: R0dr!m@rR##T
+      DB_PASSWORD: R0dr!m@rR##T   # <- nome correto da var
       DB_NAME: operacaogranel
       PORT: 3009
       TZ: America/Sao_Paulo
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
 
   mysql:
     image: mysql:8.0
@@ -54,8 +57,13 @@ services:
       - ./database/conf/my.cnf:/etc/mysql/conf.d/my.cnf
       - ./database/init:/docker-entrypoint-initdb.d/
     ports:
-      - "3308:3306"
-    restart: always
+      - "3308:3306"   # host:container (acesso externo opcional em 3308)
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pR0dr!m@rR##T"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
 networks:
   default:

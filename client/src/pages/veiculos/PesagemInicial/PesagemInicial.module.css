@@ -148,23 +148,52 @@
 	gap: 10px; /* Espaçamento entre o texto e os botões de rádio */
   }
   
-  .radio_group {
-	display: flex;
-	gap: 25px; /* Espaçamento entre os dois botões de rádio */
-	font-size: 18px;
-  }
-  
-  .radio_motiva {
-	display: center;
-	align-items: center; /* Alinha o texto "Sim" e "Não" com os botões de rádio */
-	gap: 20px; /* Espaço entre o botão e o texto */
-	font-size: 22px;
-  }
-  
-  .radio_motiva input {
-	width: 18px;  /* Tamanho menor para o botão de rádio */
-	height: 18px; /* Tamanho menor para o botão de rádio */
-  }
-  
+.radioGroup {
+  display: flex;
+  gap: 1rem;
+  padding-top: 20px;
+  align-items: center;
+}
+
+.radioOption {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+  position: relative;
+}
+
+.radioOption input {
+  display: none;
+}
+
+.customRadio {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #007bff;
+  border-radius: 50%;
+  margin-right: 8px;
+  position: relative;
+  transition: all 0.2s ease-in-out;
+}
+
+.radioOption input:checked + .customRadio {
+  background-color: #007bff;
+  box-shadow: 0 0 0 4px rgba(0,123,255,0.2);
+}
+
+.radioOption input:checked + .customRadio::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+}
+
   
   

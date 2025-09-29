@@ -1,294 +1,250 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { SnackbarProvider, useSnackbar } from "notistack";
+
+import { api } from "../../../api"; // usa baseURL do .env
 import Navbar from "../../../components/Navbar";
 import Brackground from "../../../components/Background";
 import Container from "../../../components/Container";
 import Header from "../../../components/Header";
-import style from "./PesagemInicial.module.css";
-import { useNavigate, useParams } from "react-router-dom";
 import Input from "../../../components/Input";
 import SubmitButton from "../../../components/Button";
-import Select from "../../../components/select";
-import { useState, useEffect } from "react";
-import Axios from "axios";
-import { SnackbarProvider, useSnackbar } from 'notistack';
-import MaskedInput from "../../../components/InputMask";
-import moment from "moment";
-import GraficoPercent from "../../../components/GraficoPercent";
-import confirm from "./Confirm.module.css"
+
+import style from "./PesagemInicial.module.css";
+import confirm from "./Confirm.module.css";
 
 const PesagemInicial = () => {
   const navigate = useNavigate();
+  const { nome, cpf, cnh, id } = useParams();
 
-
-  useEffect(() => {
-    getTipoveiculo()
-    getOperacoes()
-    getTransp()
-    getDestino()
-    BuscarPlacas(cpf); 
-  }, [])
-
+  // ----- estado -----
   const [operacoesList, setOperacoesList] = useState([]);
   const [docs, setDocs] = useState([]);
-  const [pedidoMic, setPedidoMic] = useState([]);  
-  const [teste, setTeste] = useState(false);
-  let { nome } = useParams();
-  let { cpf } = useParams();
-  let { cnh } = useParams();
-  let { id } = useParams();
+  const [pedidoMic, setPedidoMic] = useState("");
 
   const [destinos, setDestinos] = useState([]);
-  const [destino, setDestino] = useState('');
+  const [destino, setDestino] = useState("");
 
+  const [pedidos, setPedidos] = useState([]);
+  const [doc, setDoc] = useState("");       // COD_CARGA selecionado
+  const [navio, setNavio] = useState("");   // COD_OPERACAO
 
-  const [pedidos, setPedidos] =  useState([])
-  const [doc, setDoc] = useState('');
-  const [navio, setNavio] = useState('');
-  const [tara, setTara] = useState('');
-  const [placacavalo, setPlacacavalo] = useState('');
-  const [placa1, setPlaca1] = useState('');
-  const [placa2, setPlaca2] = useState(null);
-  const [placa3, setPlaca3] = useState(null);
-  const [data, setData] = useState('');
-  const [transportadora, setTransportadora] = useState([])
-  const [transportadoras, setTransportadoras] = useState([])
-  const [tipopesagem, setTipopesagem] = useState('');
-  const [tipoveiculo, setTipoveiculo] = useState([])
-  const [tipoveiculos, setTipoveiculos] = useState([])
-  const [disabled, setDisabled] = useState(false)
-  const usuario = JSON.parse(localStorage.getItem("user_token")).id;
+  const [tara, setTara] = useState("");
+  const [placacavalo, setPlacacavalo] = useState("");
+  const [placa1, setPlaca1] = useState("");
+  const [placa2, setPlaca2] = useState("");
+  const [placa3, setPlaca3] = useState("");
+  const [data, setData] = useState("");
 
-  const [codOperacao, setCodOperacao] = useState('');
-  const [codMotorista, setCodMotorista] = useState('');
-  const [idCarregamento, setIdCarregamento] = useState('');
-  const [cpfMotorista, setCpfMotorista] = useState('');
+  const [transportadora, setTransportadora] = useState("");
+  const [transportadoras, setTransportadoras] = useState([]);
 
-  const [message, setMessage] = useState('');
-  const [mostrarCpf, setMostrarCpf] = useState(false);
+  const [tipopesagem, setTipopesagem] = useState(""); // "C" ou "M"
+  const [tipoveiculo, setTipoveiculo] = useState("");
+  const [tipoveiculos, setTipoveiculos] = useState([]);
+  const [disabled, setDisabled] = useState(false);
 
+  // modal confirmação (saldo baixo)
+  const [openConfirm, setOpenConfirm] = useState(false);
 
+  // token seguro
+  const rawToken = localStorage.getItem("user_token");
+  let usuario = null;
+  try {
+    usuario = rawToken ? JSON.parse(rawToken)?.id ?? null : null;
+  } catch {
+    usuario = null;
+  }
 
+  const { enqueueSnackbar } = useSnackbar();
+  const showAlert = (txt, variant) => enqueueSnackbar(txt, { variant });
 
-  const [openA, setOpenA] = useState(false);
-  const DetalhesOp = () => {
-    setOpenA(true);
+  // ----- efeitos -----
+  useEffect(() => {
+     getTipoveiculo();
+     getOperacoes();
+     getTransp();
+     getDestino();
+    if (cpf) BuscarPlacas(cpf);
+  }, [cpf]);
+
+  // ----- helpers -----
+  const getDate = () => {
+    const date = new Date();
+    date.setHours(date.getHours() - 3);
+    return date.toISOString().slice(0, 19).replace("T", " ");
   };
-  const FecharDetalhesOp = () => {
-    setOpenA(false);
+
+  const validaTipo = (val) => {
+    if (val === "C") {
+      showAlert("Pesagem completa selecionada com sucesso!", "success");
+      setDisabled(false);
+      setTara("");
+    } else {
+      showAlert("Pesagem moega selecionada com sucesso!", "success");
+      setTara("1000"); // tara fixa para moega
+      setDisabled(true);
+    }
+    setTipopesagem(val);
   };
- const FecharConfirm = () => {
-    setOpenB(false);
+
+  // ----- API calls -----
+  const BuscarPlacas = async (cpfVal) => {
+    try {
+      const { data } = await api.get(`/pesageminicial/historico/${cpfVal}`);
+      if (Array.isArray(data) && data.length > 0) {
+        const {
+          PLACA_CAVALO,
+          PLACA_CARRETA,
+          PLACA_CARRETA2,
+          PLACA_CARRETA3,
+          TIPO_VEICULO,
+        } = data[0];
+        setPlacacavalo(PLACA_CAVALO || "");
+        setPlaca1(PLACA_CARRETA || "");
+        setPlaca2(PLACA_CARRETA2 || "");
+        setPlaca3(PLACA_CARRETA3 || "");
+        setTipoveiculo(TIPO_VEICULO || "");
+      }
+    } catch (error) {
+      console.error("[BuscarPlacas][ERR]", error);
+    }
   };
 
+  const getOperacoes = async () => {
+    try {
+      const { data } = await api.get("/operacao");
+      setOperacoesList(data || []);
+    } catch (e) {
+      console.error("[getOperacoes][ERR]", e);
+    }
+  };
 
-    const [openB, setOpenB] = useState(false);
-  const AbrirConfirm = () => {
-    FecharDetalhesOp()
-    setOpenB(true);
+  const getCargas = async (codOper) => {
+    try {
+      setNavio(codOper);
+      setDoc(""); // reset doc selecionado
+      const { data } = await api.get(`/carga/busca/${codOper}`);
+      setDocs(data || []);
+      getPedido(codOper);
+    } catch (e) {
+      console.error("[getCargas][ERR]", e);
+    }
+  };
 
+  const getPedido = async (codOper) => {
+    try {
+      const { data } = await api.get(`/buscar/pedidos/${codOper}`);
+      setPedidos(data || []);
+    } catch (e) {
+      console.error("[getPedido][ERR]", e);
+    }
+  };
+
+  const getTransp = async () => {
+    try {
+      const { data } = await api.get("/transportadora");
+      setTransportadoras(data || []);
+    } catch (e) {
+      console.error("[getTransp][ERR]", e);
+    }
+  };
+
+  const getDestino = async () => {
+    try {
+      const { data } = await api.get("/destino");
+      setDestinos(data || []);
+    } catch (e) {
+      console.error("[getDestino][ERR]", e);
+    }
+  };
+
+  const getTipoveiculo = async () => {
+    try {
+      const { data } = await api.get("/tipoveiculo");
+      setTipoveiculos(data || []);
+    } catch (e) {
+      console.error("[getTipoveiculo][ERR]", e);
+    }
+  };
+
+  // ----- validações / cadastro -----
+  const selectedDoc = docs?.find((d) => String(d.COD_CARGA) === String(doc));
+  const saldoTons =
+    selectedDoc && typeof selectedDoc.SALDO === "number"
+      ? (selectedDoc.SALDO / 1000).toFixed(2)
+      : null;
+
+  const tentarCadastrar = () => {
+    // Se saldo <= 150.000 kg (150 t), abrir confirmação
+    if (selectedDoc && Number(selectedDoc.SALDO) <= 150000) {
+      setOpenConfirm(true);
+      return;
+    }
+    validaDados(); // segue direto
   };
 
   const validaDados = () => {
-    if (!doc | !destino | !placacavalo | !data | !placa1 | !transportadora | !tipopesagem ) {
-      return showAlert('Preencha todos os campos', 'error');
+    if (!doc || !destino || !placacavalo || !data || !placa1 || !transportadora || !tipopesagem) {
+      showAlert("Preencha todos os campos", "error");
+      return;
     }
-    if (placacavalo.length < 7) {
-      showAlert('Placa do cavalo deve conter 7 digitos!', 'error');
-      return
-    } if (placa1.length < 7) {
-      showAlert('Placa 1 deve conter 7 digitos!', 'error');
-      return
+    if (!usuario) {
+      showAlert("Sessão inválida. Entre novamente.", "error");
+      return;
     }
-    if (tipoveiculo == null) {
-      setTipoveiculo(null)
-      showAlert('Preencha todos os campos', 'error');
-      return
-    } 
-   // getMotivacaoConteudo();
-    // if (!validaSaldo()) return;
+    if (placacavalo.replace(/\s/g, "").length < 7) {
+      showAlert("Placa do cavalo deve conter 7 dígitos!", "error");
+      return;
+    }
+    if (placa1.replace(/\s/g, "").length < 7) {
+      showAlert("Placa 1 deve conter 7 dígitos!", "error");
+      return;
+    }
+    if (!tipoveiculo) {
+      showAlert("Selecione o tipo do veículo.", "error");
+      return;
+    }
     addPesagem();
-  }
- const validaSaldo = () => {
-  
-    const documentosComSaldoBaixo = docs.filter(doc => doc.SALDO <= 150000);
-
-    if (documentosComSaldoBaixo.length > 0) {
-      const mensagens = documentosComSaldoBaixo.map(doc =>
-        `⚠ Documento ${doc.NUMERO_DOC} está com apenas ${(doc.SALDO / 1000).toFixed(2)} tons de saldo.`
-      ).join("\n");
-      
-      alert(mensagens);
-      return; 
-    }
-    
-    console.log("Cadastrando...");
-    
   };
 
-  const validaTecla = (e) => {
-    if (e.key === 'Enter') {
-      validaDados()
-  //    getMotivacaoConteudo()
-      //onkeypress={(e) => validaTecla(e)}
-    }
-  }
-  //tipopesagem == "PesagemMoega" ? setDisabled(true) : 
-
- const validaTipo = (val) => {
-    if (val == "C"){
-      showAlert('Pesagem completa selecionada com sucesso!', 'success');
-      setDisabled(false)
-      setTara(0)      
-      return;
-    } else {
-      showAlert('Pesagem moega selecionada com sucesso!', 'success');
-      setTara(1000)
-      setDisabled(true)
-      return;
-    }
-  }
-
-  const BuscarPlacas = async (cpf) => {
+  const addPesagem = async () => {
     try {
-      const response = await Axios.get(`https://opgranel.eurobraslogistica.com.br/api/pesageminicial/historico/${cpf}`);
-      if (response.data.length > 0) {
-        const { PLACA_CAVALO, PLACA_CARRETA, PLACA_CARRETA2, PLACA_CARRETA3, TIPO_VEICULO } = response.data[0]; // Destructure the response
-        setPlacacavalo(PLACA_CAVALO);
-        setPlaca1(PLACA_CARRETA || ''); // Set or default to empty string
-        setPlaca2(PLACA_CARRETA2 || '');
-        setPlaca3(PLACA_CARRETA3 || '');
-        setTipoveiculo(TIPO_VEICULO || '');
+      const payload = {
+        COD_CARGA: doc,
+        COD_OPERACAO: navio,
+        PLACA_CAVALO: placacavalo,
+        COD_MOTORISTA: id ?? "",
+        PLACA_CARRETA: placa1,
+        PLACA_CARRETA2: placa2 || null,
+        PLACA_CARRETA3: placa3 || null,
+        TIPO_VEICULO: tipoveiculo,
+        COD_TRANSP: transportadora,
+        COD_DESTINO: destino,
+        PESO_TARA: tara || 0,
+        DATA_TARA: data,
+        USUARIO_TARA: usuario,
+        STATUS_CARREG: "1",
+        USUARIO: usuario,
+        DATA_CADASTRO: getDate(),
+        NR_PEDIDO: pedidoMic || null,
+        TIPO_PESAGEM: tipopesagem,
+      };
+
+      const { data: resp } = await api.post("/pesagem/primeirapesagem", payload);
+      if (resp?.sqlMessage) {
+        showAlert(resp.sqlMessage, "error");
+      } else {
+        showAlert("Pesagem cadastrada com sucesso!", "success");
+        setOpenConfirm(false);
+        setTimeout(() => navigate("/veiculos/BuscarMotorista"), 20);
       }
-    } catch (error) {
-      console.error('Error fetching vehicle plate data:', error);
+    } catch (err) {
+      console.error("[addPesagem][ERR]", err);
+      showAlert("Erro ao cadastrar pesagem.", "error");
+      setOpenConfirm(false);
     }
   };
-
-  const addPesagem = () => {
-    Axios.post('https://opgranel.eurobraslogistica.com.br/api/pesagem/primeirapesagem', {
-      COD_CARGA: doc,
-      COD_OPERACAO: navio,
-      PLACA_CAVALO: placacavalo,
-      COD_MOTORISTA: id,
-      PLACA_CARRETA: placa1,
-      PLACA_CARRETA2: placa2,
-      PLACA_CARRETA3: placa3,
-      TIPO_VEICULO: tipoveiculo,
-      COD_TRANSP: transportadora,
-      COD_DESTINO: destino,
-      PESO_TARA: tara,
-      DATA_TARA: data,
-      USUARIO_TARA: usuario,
-      STATUS_CARREG: '1',
-      USUARIO: usuario,
-      DATA_CADASTRO: getDate(),
-      NR_PEDIDO: pedidoMic,
-      TIPO_PESAGEM: tipopesagem,
-    }).then(function (res) {
-      console.log(res);
-      res.data.sqlMessage ?
-        showAlert(res.data.sqlMessage, 'error') :
-        showAlert('Pesagem cadastrada com sucesso!', 'success');
-      setTimeout(() => {
-        navigate('/veiculos/BuscarMotorista')
-      });
-    }, 20);
-  }
-
-  const getDate = () => {
-    const date = new Date()
-    date.setHours(date.getHours() - 3)
-    return (date.toISOString().slice(0, 19).replace('T', ' '))
-  }
-
- const getOperacoes = () => {
-    Axios.get('https://opgranel.eurobraslogistica.com.br/api/operacao')
-      .then((response) => {
-        setOperacoesList(response.data)
-        console.log(response.data);
-        getCargas()
-      });
-  }
-
-  const getCargas = (id) => {
-    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/carga/busca/${id}`,)
-      .then(function (res) {
-        setDocs(res.data);
-        console.log(res.data);
-        getPedido(id)
-      });
-  }
-
-  // const getMotivacaoConteudo = async (id) => {
-  //   try {
-
-  //     // Faz a requisição para executar o Puppeteer com os parâmetros corretos
-  //     const response = await Axios.post('https://opgranel.eurobraslogistica.com.br/api/executarPuppeteer');
-  
-  //     // Verifica a resposta
-  //     console.log('Resposta da API Puppeteer:', response.data);
-  //     if (response.data) {
-  //       showAlert('Conteúdo carregado com sucesso!', 'success');
-  //     } else {
-  //       showAlert('Nenhum conteúdo encontrado!', 'warning');
-  //     }
-  //   } catch (error) {
-  //     console.error('Erro ao executar Puppeteer:', error.response?.data || error.message);
-  //     showAlert('Erro ao carregar o conteúdo!', 'error');
-  //   }
-  // };
-  
-  
-
-//   const getMotivacao = (id) => {
-//     Axios.post(`https://opgranel.eurobraslogistica.com.br/api/motivacao/conteudo/${id}`, {
-//     }).then((response) => {
-//         console.log(response.data);
-//         setCpfMotorista(response.data);
-//     });
-// }
-
-  const getTransp = () => {
-    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/transportadora`,)
-      .then(function (res) {
-        setTransportadoras(res.data);
-        console.log(res.data);
-      });
-  }
-
-  const getDestino = () => {
-    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/destino`,)
-      .then(function (res) {
-        setDestinos(res.data);
-        console.log(res.data);
-      });
-  }
-
-  const getTipoveiculo = () => {
-    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/tipoveiculo`,)
-      .then(function (res) {
-        setTipoveiculos(res.data);
-        console.log(res.data);
-      });
-  }
-
-
-
-  const getPedido = (id) => {
-    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/buscar/pedidos/${id}`,)
-      .then(function (res) {
-        setPedidos(res.data);
-        console.log(res.data);
-      });
-  }
-
-
-  const { enqueueSnackbar } = useSnackbar();
-  const showAlert = (txt, variant) => {
-    enqueueSnackbar(txt, { variant: variant });
-  }
-
-
 
   return (
     <>
@@ -298,303 +254,268 @@ const PesagemInicial = () => {
       <Container>
         <div className={style.content}>
           <div className={style.nav}>
-            <div className={style.nav}>
-              <div onClick={() => navigate("/veiculos/BuscarMotorista")} >
-                Buscar Motorista
-              </div>
-
-              <div onClick={() => navigate("/veiculos")}>
-                Cadastrar Motorista
-              </div>
-              <div className={style.active}>
-                Pesagem inicial
-              </div>
-            </div>
+            <div onClick={() => navigate("/veiculos/BuscarMotorista")}>Buscar Motorista</div>
+            <div onClick={() => navigate("/veiculos")}>Cadastrar Motorista</div>
+            <div className={style.active}>Pesagem inicial</div>
           </div>
-
 
           <div className={style.align}>
             <div className="columns">
+              {/* Coluna 1: Info motorista + tipo pesagem + navio + tara */}
               <div className="column is-4">
                 <div className={style.box}>
                   <div className="card">
                     <div className="card-content">
-                      <div className={style.cabecario}>
-                        INFORMAÇÕES DO MOTORISTA
-                      </div>
+                      <div className={style.cabecario}>INFORMAÇÕES DO MOTORISTA</div>
                       <div className="content">
-                        <div> <strong className={style.name}>Motorista:</strong> {nome}</div>
-                        <div><strong className={style.name}>CPF:</strong> {cpf}</div>
-                        <div><strong className={style.name}>CNH:</strong> {cnh == 'null' ? "nulo" : cnh}</div>
-                
+                        <div>
+                          <strong className={style.name}>Motorista:</strong> {nome}
+                        </div>
+                        <div>
+                          <strong className={style.name}>CPF:</strong> {cpf}
+                        </div>
 
                       </div>
                     </div>
                   </div>
                 </div>
-                
-               <div className={style.radio}> 
-                          <div className="control">
-                            <label className="radio">
-                              <input type="radio" 
-                              onChange={(e) => [setTipopesagem(e.target.value), validaTipo(e.target.value)]} 
-                              value="C"
-                               name="tipoPesagem" /> Pesagem COMPLETA  
-                              </label>
-                            <label className="radio">
-                              <input type="radio"
-                               onChange={(e) => [setTipopesagem(e.target.value), validaTipo(e.target.value)]}
-                               value="M"
-                               name="tipoPesagem" /> Pesagem MOEGA
-                            </label>                                                      
-                          </div>
-                        </div>
-                     
-                      
-                <div className={style.form_control}>
-          
-                        
-                  <label>Selecione o navio (operação):</label>
-                  <select onChange={(e) => [getCargas(e.target.value), setNavio(e.target.value)]}>{/*
-                    Chama o getCargas() passando o id o codigo da operacao que vai ser selecinado no select e depois seta o navio que vai ser operado
-                    porem na função getCargas, quando é enviado o id, automaticamente seta os documentos que vao ser lidos no outro select 
-                  */}
-                    <option disabled selected>Selecione uma opção</option>
-                    {operacoesList?.map((val) => {
-                      if (val.STATUS_OPERACAO == 'FECHADA') {
-                        return (
-                          null
-                        )
-                      }
-                      return (
-                        <option value={val.COD_OPERACAO}>{val.NOME_NAVIO}</option>
-                      )
-                    })}
-                  </select>
-                </div>
 
-                {disabled == true ?
-              <div  className={style.form_input_div}>Peso vazio (Tara):
-                 <input className={style.form_input} type={"text"} 
-                 text={"Peso vazio (Tara)"}
-                  placeholder={"1.000 kg"}
-                  disabled={true}                  
-                />
-              </div>
-                 : 
-                 <Input type={"text"} text={"Peso vazio (Tara)"}
-                  placeholder={"Insira o Peso em KG"}
-                  onChange={(e) => setTara(e.target.value)}
-                />
-              }
-              </div>
-              <div className="column is-3">
-                  <div className={style.form_control}>
-
-                  <label>Destino da carga:</label>
-                  <select onChange={(e) => { setDestino(e.target.value) }}>
-                    <option disabled selected>Selecione uma opção</option>
-                    {destinos?.map((val) => {
-                      return (
-                        <option value={val.COD_DESTINO}>{val.NOME_DESTINO}</option>
-                      )
-                    })}
-                  </select>
-                </div> 
-                
-             
-                  <div className={style.placaContainer}>
-                    <label htmlFor="placaCavalo">Placa Cavalo</label>
-                    <input
-                      type="text"
-                      id="placaCavalo"
-                      placeholder="Ex: AAA1234"
-                      value={placacavalo}
-                      onChange={(e) => setPlacacavalo(e.target.value.toUpperCase())}
-                    />
-                  </div>
-                  <div className={style.placaContainer}>
-                    <label htmlFor="placa1">Placa Carreta 1</label>
-                    <input
-                      type="text"
-                      id="placa1"
-                      placeholder="Ex: AAA1234"
-                      value={placa1}
-                      onChange={(e) => setPlaca1(e.target.value.toUpperCase())}
-                    />
-                  </div>
-
-                  <div className={style.placaContainer}>
-                    <label htmlFor="placa2">Placa Carreta 2</label>
-                    <input
-                      type="text"
-                      id="placa2"
-                      placeholder="Ex: AAA1234"
-                      value={placa2}
-                      onChange={(e) => setPlaca2(e.target.value.toUpperCase())}
-                    />
-                  </div>
-
-                  <div className={style.placaContainer}>
-                    <label htmlFor="placa3">Placa Carreta 3</label>
-                    <input
-                      type="text"
-                      id="placa3"
-                      placeholder="Ex: AAA1234"
-                      value={placa3}
-                      onChange={(e) => setPlaca3(e.target.value.toUpperCase())}
-                    />
-                  </div>
-
-
-          
-              
-                <div className={style.form_control}>
-
-                  <label>Tipo de veículo:</label>
-                  <select onChange={(e) => { setTipoveiculo(e.target.value) }}>
-                    <option disabled selected>Selecione uma opção</option>
-                    {tipoveiculos?.map((val) => {
-                      return (
-                        <option value={val.COD_TIPO}>{val.DESC_TIPO_VEICULO}</option>
-                      )
-                    })}
-                  </select>
-                </div>
-                <div className={style.form_control}>
-
-                  <label>Transportadora:</label>
-                  <select onChange={(e) => { setTransportadora(e.target.value) }}>
-                    <option disabled selected>Selecione uma opção</option>
-                    {transportadoras?.map((val) => {
-                      return (
-                        <option value={val.COD_TRANSP}>{val.NOME_TRANSP}</option>
-                      )
-                    })}
-                  </select>
-                </div>
-
-              </div>
-    
-              <div className="column is-4">
-
-              {/* <div>
-      <div className={style.form_control}>
-      <label>Deseja motivar o CPF?</label>
-  <div className={style.radio_group}>
-    <div className={style.radio_motiva}>
-      <input
-        type="radio"
-        name="informarCpf"
-        value="sim"
-        onChange={handleRadioChange}
-      />
-      <label>Sim</label>
-    </div>
-    <div className={style.radio_motiva}>
-      <input
-        type="radio"
-        name="informarCpf"
-        value="nao"
-        onChange={handleRadioChange}
-      />
-      <label>Não</label>
-    </div>
-  </div>
-      </div>
-
-      {mostrarCpf && (
-  <div className={style.form_control}>
-    <label htmlFor="cpf">CPF:</label>
+<div className={style.radioGroup}>
+  <label className={style.radioOption}>
     <input
-      type="text"
-      id="cpf"
-      placeholder="Digite o CPF"
-      value={cpfMotorista}
-      onChange={(e) => {
-        setCpfMotorista(e.target.value);
-        if (e.target.value) {
-          (e.target.value); // Chama a função ao preencher o CPF
-        }
-      }}
+      type="radio"
+      name="tipoPesagem"
+      value="C"
+      onChange={(e) => validaTipo(e.target.value)}
     />
-  </div>
-)}
+    <span className={style.customRadio}></span>
+    Pesagem COMPLETA
+  </label>
 
-    </div> */}
+  <label className={style.radioOption}>
+    <input
+      type="radio"
+      name="tipoPesagem"
+      value="M"
+      onChange={(e) => validaTipo(e.target.value)}
+    />
+    <span className={style.customRadio}></span>
+    Pesagem MOEGA
+  </label>
+</div>
+
                 <div className={style.form_control}>
-
-                  <label>Código da operação (DI ou BL):</label>
-                  <select onChange={(e) => { setDoc(e.target.value) }}>
-                    <option disabled selected>Selecione uma opção</option>
-                    {docs?.map((val) => {
-                      return (
-                        <option value={val.COD_CARGA}>{val.TIPO} - {val.NUMERO}</option>
-                      )
-                    })}
+                  <label>Selecione o navio (operação):</label>
+                  <select onChange={(e) => getCargas(e.target.value)} defaultValue="">
+                    <option value="" disabled>
+                      Selecione uma opção
+                    </option>
+                    {operacoesList
+                      ?.filter((op) => op.STATUS_OPERACAO !== "FECHADA")
+                      .map((val) => (
+                        <option key={val.COD_OPERACAO} value={val.COD_OPERACAO}>
+                          {val.NOME_NAVIO}
+                        </option>
+                      ))}
                   </select>
-               </div>
+                </div>
+
+                {disabled ? (
+                  <div className={style.form_input_div}>
+                    Peso vazio (Tara):
+                    <input
+                      className={style.form_input}
+                      type="text"
+                      placeholder="1.000 kg"
+                      disabled
+                      value="1000"
+                    />
+                  </div>
+                ) : (
+                  <Input
+                    type="text"
+                    text="Peso vazio (Tara)"
+                    placeholder="Insira o peso em KG"
+                    onChange={(e) => setTara(e.target.value)}
+                    value={tara}
+                  />
+                )}
+              </div>
+
+              {/* Coluna 2: destino, placas, tipo veículo e transp */}
+              <div className="column is-3">
+                <div className={style.form_control}>
+                  <label>Destino da carga:</label>
+                  <select onChange={(e) => setDestino(e.target.value)} defaultValue="">
+                    <option value="" disabled>
+                      Selecione uma opção
+                    </option>
+                    {destinos?.map((val) => (
+                      <option key={val.COD_DESTINO} value={val.COD_DESTINO}>
+                        {val.NOME_DESTINO}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className={style.placaContainer}>
+                  <label htmlFor="placaCavalo">Placa Cavalo</label>
+                  <input
+                    type="text"
+                    id="placaCavalo"
+                    placeholder="Ex: AAA1234"
+                    value={placacavalo}
+                    onChange={(e) => setPlacacavalo(e.target.value.toUpperCase())}
+                  />
+                </div>
+
+                <div className={style.placaContainer}>
+                  <label htmlFor="placa1">Placa Carreta 1</label>
+                  <input
+                    type="text"
+                    id="placa1"
+                    placeholder="Ex: AAA1234"
+                    value={placa1}
+                    onChange={(e) => setPlaca1(e.target.value.toUpperCase())}
+                  />
+                </div>
+
+                <div className={style.placaContainer}>
+                  <label htmlFor="placa2">Placa Carreta 2</label>
+                  <input
+                    type="text"
+                    id="placa2"
+                    placeholder="Ex: AAA1234"
+                    value={placa2}
+                    onChange={(e) => setPlaca2(e.target.value.toUpperCase())}
+                  />
+                </div>
+
+                <div className={style.placaContainer}>
+                  <label htmlFor="placa3">Placa Carreta 3</label>
+                  <input
+                    type="text"
+                    id="placa3"
+                    placeholder="Ex: AAA1234"
+                    value={placa3}
+                    onChange={(e) => setPlaca3(e.target.value.toUpperCase())}
+                  />
+                </div>
+
+                <div className={style.form_control}>
+                  <label>Tipo de veículo:</label>
+                  <select onChange={(e) => setTipoveiculo(e.target.value)} defaultValue="">
+                    <option value="" disabled>
+                      Selecione uma opção
+                    </option>
+                    {tipoveiculos?.map((val) => (
+                      <option key={val.COD_TIPO} value={val.COD_TIPO}>
+                        {val.DESC_TIPO_VEICULO}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className={style.form_control}>
+                  <label>Transportadora:</label>
+                  <select onChange={(e) => setTransportadora(e.target.value)} defaultValue="">
+                    <option value="" disabled>
+                      Selecione uma opção
+                    </option>
+                    {transportadoras?.map((val) => (
+                      <option key={val.COD_TRANSP} value={val.COD_TRANSP}>
+                        {val.NOME_TRANSP}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Coluna 3: documento, pedido e data */}
+              <div className="column is-4">
+                <div className={style.form_control}>
+                  <label>Código da operação (DI ou BL):</label>
+                  <select onChange={(e) => setDoc(e.target.value)} value={doc || ""}>
+                    <option value="" disabled>
+                      Selecione uma opção
+                    </option>
+                    {docs?.map((val) => (
+                      <option key={val.COD_CARGA} value={val.COD_CARGA}>
+                        {val.TIPO} - {val.NUMERO}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className={style.form_control}>
                   <label>Número do Pedido:</label>
-                  <select onChange={(e) => { setPedidoMic(e.target.value)}}>
-                    <option disabled selected>Selecione uma opção</option>
-                    {pedidos?.map((val) => {
-                      return (
-                        <option value={val.NR_PEDIDO}>{val.NR_PEDIDO}</option>
-                      )
-                    })}
+                  <select onChange={(e) => setPedidoMic(e.target.value)} defaultValue="">
+                    <option value="" disabled>
+                      Selecione uma opção
+                    </option>
+                    {pedidos?.map((val) => (
+                      <option key={val.NR_PEDIDO} value={val.NR_PEDIDO}>
+                        {val.NR_PEDIDO}
+                      </option>
+                    ))}
                   </select>
                 </div>
-                <Input type={"datetime-local"} text={"Data e hora(h)"}
-                  onChange={(e) => setData(e.target.value)}
-                  onKeyPress={(e) => validaTecla(e)}
-                // onChange={moment(setData).format("DD/MM/YYYY")}
-                />
 
+                <Input
+                  type="datetime-local"
+                  text="Data e hora(h)"
+                  onChange={(e) => setData(e.target.value)}
+                />
               </div>
             </div>
-
           </div>
+
           <div className={style.button}>
-            <SubmitButton text={"Cadastrar"}
-              onClick={AbrirConfirm}
-              onkeypress={(e) => validaTecla(e)}
-            />
+            <SubmitButton text={"Cadastrar"} onClick={tentarCadastrar} />
           </div>
-
         </div>
       </Container>
-      
+
+      {/* Modal simples de confirmação (saldo baixo) */}
+      {openConfirm && (
         <div className={confirm.modal}>
           <div className={confirm.nav}>
-            <div onClick={FecharConfirm}>Voltar</div>
+            <div onClick={() => setOpenConfirm(false)}>Voltar</div>
           </div>
           <div className={confirm.center}>
-            ⚠ Documento ${doc.NUMERO_DOC} está com apenas ${(doc.SALDO / 1000).toFixed(2)} tons de saldo.
-            <br />
-            <div>Deseja continuar mesmo assim?</div>
+            {selectedDoc ? (
+              <>
+                ⚠ Documento {selectedDoc.NUMERO} está com apenas {saldoTons} tons de saldo.
+                <br />
+                <div>Deseja continuar mesmo assim?</div>
+              </>
+            ) : (
+              <>Documento com saldo baixo. Deseja continuar?</>
+            )}
           </div>
-       
+
           <div className={confirm.flex}>
-            <button className={confirm.cancelar} onClick={FecharConfirm}>CANCELAR</button>
-            <button className={confirm.confirmar} onClick={validaDados}>CONFIRMAR</button>
+            <button className={confirm.cancelar} onClick={() => setOpenConfirm(false)}>
+              CANCELAR
+            </button>
+            <button className={confirm.confirmar} onClick={validaDados}>
+              CONFIRMAR
+            </button>
           </div>
         </div>
-     
+      )}
     </>
   );
 };
-
-
 
 export default function IntegrationNotistack() {
   return (
     <SnackbarProvider
       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       maxSnack={3}
-      autoHideDuration={2500}>
+      autoHideDuration={2500}
+    >
       <PesagemInicial />
-    </SnackbarProvider >
+    </SnackbarProvider>
   );
 }
-

@@ -1,111 +1,178 @@
-import React from "react";
-import { useEffect, useState } from 'react';
-import Axios from 'axios';
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Dialog from "@mui/material/Dialog";
+import { SnackbarProvider, useSnackbar } from "notistack";
+
+import { api } from "../../../api"; // baseURL vem do .env
 import Navbar from "../../../components/Navbar";
-import { SnackbarProvider, useSnackbar } from 'notistack';
 import Brackground from "../../../components/Background";
 import Container from "../../../components/Container";
 import Header from "../../../components/Header";
-import Detalhes from '@mui/material/Dialog';
-import Confirm from '@mui/material/Dialog';
 import Input from "../../../components/Input";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
-import style from "./Cargas.module.css"
+
+import style from "./Cargas.module.css";
 import modal from "./Modal.module.css";
-import confirm from "./Confirm.module.css"
+import confirm from "./Confirm.module.css";
 
 const Cargas = () => {
-
   const navigate = useNavigate();
-
+  const { enqueueSnackbar } = useSnackbar();
 
   const [operacoesList, setOperacoesList] = useState([]);
+  const [loadingOps, setLoadingOps] = useState(false);
+
   const [cargas, setCargas] = useState([]);
-  const [i, setI] = useState(0);
+  const [loadingCargas, setLoadingCargas] = useState(false);
+
+  const [selecionada, setSelecionada] = useState(null); // operação selecionada
   const [date, setDate] = useState("");
-  const [ideta, setIdeta] = useState("");
-  const [dataeta, setDataeta] = useState("");
-  
+
+  const [openDetalhes, setOpenDetalhes] = useState(false);
+  const [openConfirm, setOpenConfirm] = useState(false);
+
+  // controllers para cancelar requisições em curso
+  const opsAbortRef = useRef(null);
+  const cargasAbortRef = useRef(null);
+
+  const showAlert = (txt, variant) => enqueueSnackbar(txt, { variant });
+
+  // ===== Carrega operações (com abort + cache-busting) =====
+  const getOperacoes = async () => {
+    // cancela requisição anterior se existir
+    if (opsAbortRef.current) {
+      try { opsAbortRef.current.abort(); } catch {}
+    }
+    const controller = new AbortController();
+    opsAbortRef.current = controller;
+
+    try {
+      setLoadingOps(true);
+      const res = await api.get("/operacao", {
+        params: { pageSize: 200, t: Date.now() }, // cache-busting
+        signal: controller.signal,
+      });
+      const lista = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      setOperacoesList(lista);
+    } catch (e) {
+      if (e?.name !== "CanceledError" && e?.name !== "AbortError") {
+        console.error("[getOperacoes][ERR]", e);
+        showAlert("Erro ao carregar operações.", "error");
+      }
+    } finally {
+      if (opsAbortRef.current === controller) opsAbortRef.current = null;
+      setLoadingOps(false);
+    }
+  };
 
   useEffect(() => {
-    getOperacoes()
-  }, [])
+    getOperacoes();
+    // cleanup ao desmontar
+    return () => {
+      try { opsAbortRef.current?.abort(); } catch {}
+      try { cargasAbortRef.current?.abort(); } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const getOperacoes = () => {
-    Axios.get('https://opgranel.eurobraslogistica.com.br/api/operacao').then((response) => {
-      setOperacoesList(response.data)
-    });
-  }
-
-
-
-  const getCargas = (id) => {
-    Axios.get(`https://opgranel.eurobraslogistica.com.br/api/carga/busca/${id}`,)
-      .then(function (res) {
-        console.log(res.data);
-        setCargas(res.data);
-        setIdeta(id)
-      });
-  }
-
-const validaEta = async () => {
-  await Axios.put('https://opgranel.eurobraslogistica.com.br/api/alterar/eta',
-  {
-    id: ideta,  
-    eta: dataeta
- 
-  }).then(function (res) {
-    res.data.sqlMessage ?
-      showAlert(res.data.sqlMessage, 'error') :
-      showAlert('Data ETA alterada com sucesso!', 'success');
-
-  });
-}
-
-  const [openA, setOpenA] = useState(false);
-  const DetalhesOp = () => {
-    setOpenA(true);
-  };
-  const FecharDetalhesOp = () => {
-    setOpenA(false);
-  };
-  const DetalharOp = (index) => {
-    setI(operacoesList[index]);
-  }
-
-  const [openB, setOpenB] = useState(false);
-  const AbrirConfirm = () => {
-    FecharDetalhesOp()
-    setOpenB(true);
-
-  };
-  const FecharConfirm = () => {
-    setOpenB(false);
-  };
-
-  const { enqueueSnackbar } = useSnackbar();
-  const showAlert = (txt, variant) => {
-    enqueueSnackbar(txt, { variant: variant });
-  }
-
-  const registrarAtracacao = () => {
-    if (date == "") {
-      showAlert("Preencha a data e horário!", 'error');
-      return
+  // ===== Carrega cargas por operação (com abort + cache-busting) =====
+  const getCargas = async (idOperacao) => {
+    const id = Number(idOperacao);
+    if (!Number.isFinite(id) || id <= 0) {
+      showAlert("Operação inválida.", "error");
+      return;
     }
-    Axios.put('https://opgranel.eurobraslogistica.com.br/api/operacao/registrar/atracacao',
-      {
-        id: i.COD_OPERACAO,
-        date: date
-      }).then(function (res) {
-        res.data.sqlMessage ?
-          showAlert(res.data.sqlMessage, 'error') :
-          showAlert('Atracação registrada com sucesso!', 'success');
-        FecharConfirm();
-        getOperacoes();
-        setDate("");
+
+    if (cargasAbortRef.current) {
+      try { cargasAbortRef.current.abort(); } catch {}
+    }
+    const controller = new AbortController();
+    cargasAbortRef.current = controller;
+
+    try {
+      setLoadingCargas(true);
+      const { data } = await api.get(`/carga/busca/${id}`, {
+        signal: controller.signal,
+        params: { t: Date.now() }, // cache-busting
       });
+
+      const rows = Array.isArray(data) ? data : [];
+      rows.sort((a, b) => (b?.COD_CARGA ?? 0) - (a?.COD_CARGA ?? 0));
+      setCargas(rows);
+
+      if (rows.length === 0) {
+        showAlert("Nenhuma carga encontrada para esta operação.", "info");
+      }
+    } catch (err) {
+      if (err?.name !== "CanceledError" && err?.name !== "AbortError") {
+        console.error("[getCargas][ERR]", err);
+        showAlert(err?.response?.data?.message || "Erro ao carregar cargas.", "error");
+      }
+    } finally {
+      if (cargasAbortRef.current === controller) cargasAbortRef.current = null;
+      setLoadingCargas(false);
+    }
+  };
+
+  // ===== Ações UI =====
+  const abrirDetalhes = async (opItem) => {
+    if (loadingCargas) return;
+    setSelecionada(opItem || null);
+    setOpenDetalhes(true);
+    if (opItem?.COD_OPERACAO) {
+      await getCargas(opItem.COD_OPERACAO);
+    }
+  };
+
+  const fecharDetalhes = () => setOpenDetalhes(false);
+
+  const abrirConfirm = () => {
+    setOpenDetalhes(false);
+    setOpenConfirm(true);
+  };
+
+  const fecharConfirm = () => setOpenConfirm(false);
+
+// opcional no topo do componente:
+// const [registrando, setRegistrando] = useState(false);
+
+const registrarAtracacao = async () => {
+  const opId = Number(selecionada?.COD_OPERACAO);
+
+  if (!opId) {
+    showAlert("Operação inválida.", "error");
+    return;
   }
+  if (!date) {
+    showAlert("Preencha a data e horário!", "error");
+    return;
+  }
+  // evita duplo clique
+  // if (registrando) return;
+
+  try {
+    // setRegistrando(true);
+    const res = await api.put(
+      "/operacao/registrar/atracacao",
+      { id: opId, date },
+      { headers: { "Cache-Control": "no-store" }, params: { t: Date.now() } }
+    );
+
+    if (res?.status !== 200 || res?.data?.ok === false || res?.data?.sqlMessage) {
+      showAlert(res?.data?.message || res?.data?.sqlMessage || "Erro ao registrar atracação.", "error");
+      return;
+    }
+
+    showAlert("Atracação registrada com sucesso!", "success");
+    fecharConfirm();
+    setDate("");
+    await getOperacoes(); // recarrega lista de operações
+  } catch (err) {
+    console.error("[registrarAtracacao][ERR]", err);
+    showAlert(err?.response?.data?.message || "Erro ao registrar atracação.", "error");
+  } finally {
+    // setRegistrando(false);
+  }
+};
 
 
   return (
@@ -116,9 +183,7 @@ const validaEta = async () => {
       <Container>
         <div className={style.content}>
           <div className={style.nav}>
-            <div className={style.active}>
-              Selecione a operação
-            </div>
+            <div className={style.active}>Selecione a operação</div>
           </div>
 
           <div className={style.table}>
@@ -128,49 +193,61 @@ const validaEta = async () => {
               <div>STATUS</div>
             </div>
 
-            {operacoesList.map((val, key) => {
-              return (
-                <div className={style.table_item}
-                  onClick={() => [DetalhesOp(), DetalharOp(key), getCargas(val.COD_OPERACAO)]}>
-                  <div>{val.NOME_NAVIO || "-"} </div>
+            {loadingOps && (
+              <div className={style.table_item} style={{ opacity: 0.7 }}>
+                Carregando operações…
+              </div>
+            )}
+
+            {!loadingOps && operacoesList.length === 0 && (
+              <div className={style.table_item} style={{ opacity: 0.7 }}>
+                Nenhuma operação encontrada.
+              </div>
+            )}
+
+            {!loadingOps &&
+              operacoesList.map((val) => (
+                <div
+                  key={val.COD_OPERACAO}
+                  className={style.table_item}
+                  onClick={() => abrirDetalhes(val)}
+                >
+                  <div>{val.NOME_NAVIO || "-"}</div>
                   <div>{val.NOME_BERCO || "-"}</div>
                   <div>{val.STATUS_OPERACAO || "-"}</div>
                 </div>
-              )
-            })}
-
+              ))}
           </div>
         </div>
       </Container>
 
-      <Detalhes open={openA} onClose={FecharDetalhesOp} fullWidth>
+      {/* Detalhes */}
+      <Dialog open={openDetalhes} onClose={fecharDetalhes} fullWidth>
         <div className={modal.modal}>
           <div className={modal.nav}>
-            <div onClick={FecharDetalhesOp}>Voltar</div>
+            <div onClick={fecharDetalhes}>Voltar</div>
             <div className={modal.active}>Detalhes da Operação</div>
           </div>
 
           <div className={modal.center}>
-            <div className={modal.status}><i className="fa fa-ship icon"></i>&nbsp;&nbsp;{i.STATUS_OPERACAO}</div>
+            <div className={modal.status}>
+              <i className="fa fa-ship icon" />
+              &nbsp;&nbsp;{selecionada?.STATUS_OPERACAO || "-"}
+            </div>
           </div>
+
           <div className={modal.flex}>
             <div className={modal.detalhebox}>
-              <div><b>Navio:</b> {i.NOME_NAVIO}</div>
+              <div>
+                <b>Navio:</b> {selecionada?.NOME_NAVIO || "-"}
+              </div>
             </div>
             <div className={modal.detalhebox}>
-              <div><b>Berço:</b> {i.NOME_BERCO}</div>
+              <div>
+                <b>Berço:</b> {selecionada?.NOME_BERCO || "-"}
+              </div>
             </div>
-            {/*
-            <div className={modal.detalhebox}>     {console.log(dataeta)}
-          <Input type={"datetime-local"} text={"ETA "}    
-           onChange={(e) => { setDataeta(e.target.value)}}
-           /> 
-           <button onClick={validaEta} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-           {console.log(dataeta)}
-           </div>
-           */}
           </div>
-        
 
           <div className={modal.center}>
             <div className={modal.cargas}>
@@ -182,67 +259,85 @@ const validaEta = async () => {
                 <div>PRODUTO</div>
                 <div>QT. MANIFESTADA</div>
               </div>
+
               <div className={modal.lista}>
-                {cargas.length == 0 ?
-                  "nenhuma carga identificada"
-                  :
-                  cargas.map((val) => {
-                    return (<div className={modal.item}>
-                      <div>{val.TIPO}</div>
-                      <div>{val.NUMERO}</div>
-                      <div>{val.IMPORTADOR}</div>
-                      <div>{val.PRODUTO}</div>
-                      <div>{(val.QTDE_MANIFESTADA).toLocaleString(undefined, {maximumFractionDigits: 2,})}</div>
-                    </div>
-                    )
-                  })}
+                {loadingCargas && "Carregando cargas…"}
+                {!loadingCargas && (cargas?.length ?? 0) === 0
+                  ? "Nenhuma carga identificada"
+                  : !loadingCargas &&
+                    cargas.map((c) => (
+                      <div key={`${c.TIPO}-${c.NUMERO}`} className={modal.item}>
+                        <div>{c.TIPO}</div>
+                        <div>{c.NUMERO}</div>
+                        <div>{c.IMPORTADOR}</div>
+                        <div>{c.PRODUTO}</div>
+                        <div>
+                          {(c.QTDE_MANIFESTADA || 0).toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                      </div>
+                    ))}
               </div>
             </div>
           </div>
+
           <div className={modal.center}>
-            {i.STATUS_OPERACAO == 'AGUARDANDO DI/BL' ?
-              <button className={modal.finalizar}
-                onClick={() => navigate(`/cargas/cadastro/${i.NOME_NAVIO}/${i.COD_OPERACAO}`)}>
+            {selecionada?.STATUS_OPERACAO === "AGUARDANDO DI/BL" ? (
+              <button
+                className={modal.finalizar}
+                onClick={() =>
+                  navigate(`/cargas/cadastro/${selecionada?.NOME_NAVIO}/${selecionada?.COD_OPERACAO}`)
+                }
+              >
                 EDITAR CARGA
               </button>
-              :
-              <div className={modal.center}>Não é possivel adicionar mais DI/Bl nesta operação</div>
-            }
+            ) : (
+              <div className={modal.center}>
+                Não é possível adicionar mais DI/BL nesta operação
+              </div>
+            )}
 
-            {i.STATUS_OPERACAO == 'AGUARDANDO ATRACAÇÃO' ?
-              <button className={modal.finalizar}
-                onClick={AbrirConfirm}>
+            {selecionada?.STATUS_OPERACAO === "AGUARDANDO ATRACAÇÃO" && (
+              <button className={modal.finalizar} onClick={abrirConfirm}>
                 REGISTRAR ATRACAÇÃO
               </button>
-              : ""}
+            )}
           </div>
         </div>
+      </Dialog>
 
-      </Detalhes>
-      <Confirm open={openB} onClose={FecharConfirm} fullWidth>
+      {/* Confirmar atracação */}
+      <Dialog open={openConfirm} onClose={fecharConfirm} fullWidth>
         <div className={confirm.modal}>
           <div className={confirm.nav}>
-            <div onClick={FecharConfirm}>Voltar</div>
+            <div onClick={fecharConfirm}>Voltar</div>
           </div>
+
           <div className={confirm.center}>
             Deseja registrar a Atracação desta Operação?
             <br />
-            <div>ao confirmar o Dashboard será liberado!</div>
+            <div>Ao confirmar o Dashboard será liberado.</div>
           </div>
-          
+
           <div className={confirm.inputbox}>
             <Input
-              type={"datetime-local"}
-              text={"Data e hora da Atracação"}
-              onChange={(e) => [setDate(e.target.value)]}
+              type="datetime-local"
+              text="Data e hora da Atracação"
+              onChange={(e) => setDate(e.target.value)}
             />
           </div>
+
           <div className={confirm.flex}>
-            <button className={confirm.cancelar} onClick={FecharConfirm}>CANCELAR</button>
-            <button className={confirm.confirmar} onClick={registrarAtracacao}>CONFIRMAR</button>
+            <button className={confirm.cancelar} onClick={fecharConfirm}>
+              CANCELAR
+            </button>
+            <button className={confirm.confirmar} onClick={registrarAtracacao}>
+              CONFIRMAR
+            </button>
           </div>
         </div>
-      </Confirm>
+      </Dialog>
     </>
   );
 };
@@ -252,8 +347,9 @@ export default function IntegrationNotistack() {
     <SnackbarProvider
       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       maxSnack={3}
-      autoHideDuration={2500}>
+      autoHideDuration={2500}
+    >
       <Cargas />
-    </SnackbarProvider >
+    </SnackbarProvider>
   );
 }
