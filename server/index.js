@@ -624,7 +624,7 @@ app.get('/pedido/consultar', (req, res) => {
 });
 
 // Transportadora - Consultar todas as transportadoras
-app.get('/transportadora/consultar', async (_req, res) => {
+app.get('/api/transportadora/consultar', async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT * FROM TRANSPORTADORA ORDER BY NOME_TRANSP'
@@ -632,10 +632,11 @@ app.get('/transportadora/consultar', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
     return res.status(200).json(rows);
   } catch (err) {
-    console.error('[GET /transportadora/consultar][ERR]', err);
+    console.error('[GET /api/transportadora/consultar][ERR]', err);
     return res.status(500).json({ ok: false, message: err.message });
   }
 });
+
 
 
 // Importador - Consultar todos os importadores
