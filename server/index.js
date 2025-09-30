@@ -2157,87 +2157,87 @@ app.get(`${API_PREFIX}/dashboard/descarregado/:id`, async (req, res) => {
 });
 
 
-// // HORA A HORA NA OPERAÇÃO
-// app.get('/hora/autos/:id', (req, res) => {
-//   const { id } = req.params;
+// HORA A HORA NA OPERAÇÃO
+app.get('/hora/autos/:id', (req, res) => {
+  const { id } = req.params;
 
-//   const sql = `
-//     SELECT
-//       T.HORA,
-//       SUM(T.QUANTIDADE_AUTOS) AS QUANTIDADE_AUTOS
-//     FROM (
-//       /* Autos efetivamente carregados por hora dentro do período aberto */
-//       SELECT
-//         CASE
-//           WHEN HOUR(CAR.DATA_CARREGAMENTO) = 23 THEN '23:00 à 00:00'
-//           WHEN HOUR(CAR.DATA_CARREGAMENTO) = 0  THEN '00:00 à 01:00'
-//           ELSE CONCAT(
-//             LPAD(HOUR(CAR.DATA_CARREGAMENTO), 2, '0'), ':00 às ',
-//             LPAD(HOUR(CAR.DATA_CARREGAMENTO) + 1, 2, '0'), ':00'
-//           )
-//         END AS HORA,
-//         COUNT(1) AS QUANTIDADE_AUTOS,
-//         HOR.ORDEM AS ORDEM
-//       FROM CARREGAMENTO CAR
-//       INNER JOIN VW_HORARIOS_2 HOR
-//         ON HOR.HORA = HOUR(CAR.DATA_CARREGAMENTO)
-//       WHERE CAR.STATUS_CARREG = 3
-//         AND CAR.PESO_BRUTO > 0
-//         AND CAR.COD_OPERACAO = ?
-//         AND CAR.DATA_CARREGAMENTO >= (
-//           SELECT MAX(PO.DAT_INI_PERIODO)
-//           FROM PERIODO_OPERACAO PO
-//           WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
-//             AND PO.DAT_FIM_PERIODO IS NULL
-//         )
-//         AND CAR.DATA_CARREGAMENTO <= (
-//           SELECT CASE
-//                    WHEN TIME_FORMAT(PO.DAT_INI_PERIODO, '%H:%i:%s')
-//                         BETWEEN '19:00:00' AND '23:59:59'
-//                    THEN CONCAT(
-//                           DATE_FORMAT(MAX(DATE_ADD(PO.DAT_INI_PERIODO, INTERVAL 1 DAY)), '%Y-%m-%d'),
-//                           ' ', PE.FIM_PERIODO, ':00'
-//                         )
-//                    ELSE CONCAT(
-//                           DATE_FORMAT(MAX(PO.DAT_INI_PERIODO), '%Y-%m-%d'),
-//                           ' ', PE.FIM_PERIODO, ':00'
-//                         )
-//                  END
-//           FROM PERIODO_OPERACAO PO
-//           INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
-//           WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
-//             AND PO.DAT_FIM_PERIODO IS NULL
-//         )
-//       GROUP BY HOUR(CAR.DATA_CARREGAMENTO)
+  const sql = `
+    SELECT
+      T.HORA,
+      SUM(T.QUANTIDADE_AUTOS) AS QUANTIDADE_AUTOS
+    FROM (
+      /* Autos efetivamente carregados por hora dentro do período aberto */
+      SELECT
+        CASE
+          WHEN HOUR(CAR.DATA_CARREGAMENTO) = 23 THEN '23:00 à 00:00'
+          WHEN HOUR(CAR.DATA_CARREGAMENTO) = 0  THEN '00:00 à 01:00'
+          ELSE CONCAT(
+            LPAD(HOUR(CAR.DATA_CARREGAMENTO), 2, '0'), ':00 às ',
+            LPAD(HOUR(CAR.DATA_CARREGAMENTO) + 1, 2, '0'), ':00'
+          )
+        END AS HORA,
+        COUNT(1) AS QUANTIDADE_AUTOS,
+        HOR.ORDEM AS ORDEM
+      FROM CARREGAMENTO CAR
+      INNER JOIN VW_HORARIOS_2 HOR
+        ON HOR.HORA = HOUR(CAR.DATA_CARREGAMENTO)
+      WHERE CAR.STATUS_CARREG = 3
+        AND CAR.PESO_BRUTO > 0
+        AND CAR.COD_OPERACAO = ?
+        AND CAR.DATA_CARREGAMENTO >= (
+          SELECT MAX(PO.DAT_INI_PERIODO)
+          FROM PERIODO_OPERACAO PO
+          WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
+            AND PO.DAT_FIM_PERIODO IS NULL
+        )
+        AND CAR.DATA_CARREGAMENTO <= (
+          SELECT CASE
+                   WHEN TIME_FORMAT(PO.DAT_INI_PERIODO, '%H:%i:%s')
+                        BETWEEN '19:00:00' AND '23:59:59'
+                   THEN CONCAT(
+                          DATE_FORMAT(MAX(DATE_ADD(PO.DAT_INI_PERIODO, INTERVAL 1 DAY)), '%Y-%m-%d'),
+                          ' ', PE.FIM_PERIODO, ':00'
+                        )
+                   ELSE CONCAT(
+                          DATE_FORMAT(MAX(PO.DAT_INI_PERIODO), '%Y-%m-%d'),
+                          ' ', PE.FIM_PERIODO, ':00'
+                        )
+                 END
+          FROM PERIODO_OPERACAO PO
+          INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
+          WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
+            AND PO.DAT_FIM_PERIODO IS NULL
+        )
+      GROUP BY HOUR(CAR.DATA_CARREGAMENTO)
 
-//       UNION
+      UNION
 
-//       /* Linha base com todos os horários possíveis do período aberto */
-//       SELECT
-//         H.HORARIO AS HORA,
-//         H.QUANTIDADE_AUTOS,
-//         H.ORDEM
-//       FROM VW_HORARIOS_2 H
-//       WHERE H.INI_PERIODO = (
-//         SELECT HOUR(PO.DAT_INI_PERIODO)
-//         FROM PERIODO_OPERACAO PO
-//         INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
-//         WHERE PO.COD_OPERACAO = ?
-//           AND PO.DAT_FIM_PERIODO IS NULL
-//       )
-//     ) T
-//     GROUP BY T.HORA, T.ORDEM
-//     ORDER BY T.ORDEM;
-//   `;
+      /* Linha base com todos os horários possíveis do período aberto */
+      SELECT
+        H.HORARIO AS HORA,
+        H.QUANTIDADE_AUTOS,
+        H.ORDEM
+      FROM VW_HORARIOS_2 H
+      WHERE H.INI_PERIODO = (
+        SELECT HOUR(PO.DAT_INI_PERIODO)
+        FROM PERIODO_OPERACAO PO
+        INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
+        WHERE PO.COD_OPERACAO = ?
+          AND PO.DAT_FIM_PERIODO IS NULL
+      )
+    ) T
+    GROUP BY T.HORA, T.ORDEM
+    ORDER BY T.ORDEM;
+  `;
 
-//   db.query(sql, [id, id], (err, rows) => {
-//     if (err) {
-//       console.error('[hora/autos][ERR]', err);
-//       return res.status(500).json({ ok: false, message: 'Erro ao calcular autos por hora.' });
-//     }
-//     res.send(rows);
-//   });
-// });
+  db.query(sql, [id, id], (err, rows) => {
+    if (err) {
+      console.error('[hora/autos][ERR]', err);
+      return res.status(500).json({ ok: false, message: 'Erro ao calcular autos por hora.' });
+    }
+    res.send(rows);
+  });
+});
 
 
 
