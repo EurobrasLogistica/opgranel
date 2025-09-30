@@ -427,7 +427,7 @@ app.get(`${API_PREFIX}/documentos/:id`, async (req, res) => {
 });
 
 // NAVIOS
-app.get('/navio', async (_req, res) => {
+app.get(`${API_PREFIX}/navio`, async (_req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM NAVIO');
     res.json(rows);
@@ -2955,7 +2955,7 @@ app.post(`${API_PREFIX}/periodo/autos/:id`, (req, res) => {
 
 
 
-app.put('/alterar/docs', (req, res) => {
+app.put(`${API_PREFIX}/alterar/docs`, (req, res) => {
     const { id, data, tara, usuario } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `PESO_TARA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -2971,7 +2971,7 @@ app.put('/alterar/docs', (req, res) => {
     )
 })
 
-app.put('/alterar/tara', (req, res) => {
+app.put(`${API_PREFIX}/alterar/tara`, (req, res) => {
     const { id, data, tara, usuario } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `PESO_TARA` = ?, `DATA_TARA` = ?, `USUARIO_TARA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -2988,7 +2988,7 @@ app.put('/alterar/tara', (req, res) => {
 })
 
 
-app.put('/alterarultima/tara', (req, res) => {
+app.put(`${API_PREFIX}/alterarultima/tara`, (req, res) => {
     const { id, tara, usuario } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `PESO_TARA` = ?,  `USUARIO_TARA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -3004,7 +3004,7 @@ app.put('/alterarultima/tara', (req, res) => {
     )
 })
 
-app.put('/alterar/pesomoega', (req, res) => {
+app.put(`${API_PREFIX}/alterar/pesomoega`, (req, res) => {
     const { id, moega, usuario } = req.body
 
     db.query("UPDATE CARREGAMENTO SET  `PESO_CARREGADO` = ?, `USUARIO_CARREG` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -3021,7 +3021,7 @@ app.put('/alterar/pesomoega', (req, res) => {
 })
 
 //carga/criar
-app.put('/alterar/cavalo', (req, res) => {
+app.put(`${API_PREFIX}/alterar/cavalo`, (req, res) => {
     const { placa, id } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `PLACA_CAVALO` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -3038,7 +3038,7 @@ app.put('/alterar/cavalo', (req, res) => {
 })
 
 //veiculo/atualiza
-app.put('/alterar/carreta1', (req, res) => {
+app.put(`${API_PREFIX}/alterar/carreta1`, (req, res) => {
     const { id, placa } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `PLACA_CARRETA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -3054,7 +3054,7 @@ app.put('/alterar/carreta1', (req, res) => {
     )
 })
 
-app.put('/alterar/carreta2', (req, res) => {
+app.put(`${API_PREFIX}/alterar/carreta2`, (req, res) => {
     const { id, placa } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `PLACA_CARRETA2` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -3070,7 +3070,7 @@ app.put('/alterar/carreta2', (req, res) => {
     )
 })
 
-app.put('/alterar/carreta3', (req, res) => {
+app.put(`${API_PREFIX}/alterar/carreta3`, (req, res) => {
     const { placa, id } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `PLACA_CARRETA3` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -3086,7 +3086,7 @@ app.put('/alterar/carreta3', (req, res) => {
     )
 })
 
-app.put('/transporadora/atualiza', (req, res) => {
+app.put(`${API_PREFIX}/transporadora/atualiza`, (req, res) => {
     const { transporadora, id } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `COD_TRANSP` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -3102,7 +3102,7 @@ app.put('/transporadora/atualiza', (req, res) => {
     )
 });
 
-app.put('/documento/atualiza', (req, res) => {
+app.put(`${API_PREFIX}/documento/atualiza`, (req, res) => {
     const { documento, id } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `COD_CARGA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -3118,7 +3118,7 @@ app.put('/documento/atualiza', (req, res) => {
     )
 });
 
-app.put('/veiculo/atualiza', (req, res) => {
+app.put(`${API_PREFIX}/veiculo/atualiza`, (req, res) => {
     const { tipoveiculo, id } = req.body
 
     db.query("UPDATE CARREGAMENTO SET `TIPO_VEICULO` = ? WHERE (`ID_CARREGAMENTO` = ?);",
@@ -3134,7 +3134,7 @@ app.put('/veiculo/atualiza', (req, res) => {
     )
 });
 
-app.put('/documentos/atualiza', (req, res) => {
+app.put(`${API_PREFIX}/documentos/atualiza`, (req, res) => {
     const { pedido, id } = req.body
 
 
@@ -3151,7 +3151,7 @@ app.put('/documentos/atualiza', (req, res) => {
     )
 });
 
-app.put('/carregamento/excluir', (req, res) => {
+app.put(`${API_PREFIX}/carregamento/excluir`, (req, res) => {
     const { motivo, usuario, data_exclusao, id } = req.body
 
 
@@ -3170,7 +3170,7 @@ app.put('/carregamento/excluir', (req, res) => {
 
 
 //CARGAS PRO GRAFICO
-app.get("/relatorios", (req, res) => {
+app.get(`${API_PREFIX}/relatorios`, (req, res) => {
     db.query(`
         SELECT CA.COD_OPERACAO,
             NA.NOME_NAVIO,
@@ -3200,7 +3200,7 @@ app.get("/relatorios", (req, res) => {
 })
 
 //primeira pesagem 
-app.post('/pesagem/primeirapesagem', (req, res) => {
+app.post(`${API_PREFIX}/pesagem/primeirapesagem`, (req, res) => {
     const COD_CARGA = req.body.COD_CARGA
     const COD_OPERACAO = req.body.COD_OPERACAO
     const PLACA_CAVALO = req.body.PLACA_CAVALO
@@ -3294,7 +3294,7 @@ app.post('/pesagem/primeirapesagem', (req, res) => {
 })
 
 //Listar navios pra relatorio
-app.get("/relatorios/operacoes", (req, res) => {
+app.get(`${API_PREFIX}/relatorios/operacoes`, (req, res) => {
     db.query(`
     SELECT *  FROM  OPERACAO O 
     JOIN NAVIO N 
@@ -3313,7 +3313,7 @@ app.get("/relatorios/operacoes", (req, res) => {
 
 
 // Períodos para relatório
-app.get('/periodos/gerais/:id', async (req, res) => {
+app.get(`${API_PREFIX}/periodos/gerais/:id`, async (req, res) => {
   const { id } = req.params;
 
   const sql = `
