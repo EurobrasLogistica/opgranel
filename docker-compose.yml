@@ -1,32 +1,32 @@
 version: '3.8'
 
 services:
-  backend:
-    build:
-      context: .                 # <<< coloque o contexto no root
-      dockerfile: Dockerfile.backend
-    image: opgranel_backend_image
-    container_name: opgranel_backend_container
-    working_dir: /app
-    command: node index.js
-    shm_size: "1gb"
-    # user: "pptruser"          # opcional, se quiser forçar
-    volumes:
-      - ./server/Files/Notas_Fiscais:/app/server/Files/Notas_Fiscais
-    ports:
-      - "3009:3009"
-    environment:
-      DB_HOST: mysql            # <<< use o serviço interno
-      DB_PORT: 3306
-      DB_USER: ogdev
-      DB_PASSWORD: "R0dr!m@rR##T"
-      DB_NAME: operacaogranel
-      PORT: 3009
-      TZ: America/Sao_Paulo
-    depends_on:
-      mysql:
-        condition: service_healthy
-    restart: unless-stopped
+backend:
+  build:
+    context: ./server
+    dockerfile: Dockerfile
+  image: opgranel_backend_image
+  container_name: opgranel_backend_container
+  working_dir: /app
+  command: node index.js
+  shm_size: "1gb"
+  volumes:
+    - ./server/Files/Notas_Fiscais:/app/server/Files/Notas_Fiscais
+  ports:
+    - "3009:3009"
+  environment:
+    DB_HOST: mysql
+    DB_PORT: 3306
+    DB_USER: ogdev
+    DB_PASSWORD: "R0dr!m@rR##T"
+    DB_NAME: operacaogranel
+    PORT: 3009
+    TZ: America/Sao_Paulo
+  depends_on:
+    mysql:
+      condition: service_healthy
+  restart: unless-stopped
+
 
   frontend:
     build:
