@@ -30,7 +30,7 @@ services:
     ports:
       - "3009:3009"
     environment:
-      DB_HOST: mysql              # <- fala com o serviço mysql do compose
+      DB_HOST: 31.97.20.141
       DB_PORT: 3306
       DB_USER: ogdev
       DB_PASSWORD: R0dr!m@rR##T   # <- nome correto da var
