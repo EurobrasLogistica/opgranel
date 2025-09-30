@@ -1,3 +1,4 @@
+# Dockerfile.backend
 FROM ghcr.io/puppeteer/puppeteer:latest
 
 WORKDIR /app
@@ -6,17 +7,17 @@ ENV TZ=America/Sao_Paulo \
     PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# copie manifestos primeiro p/ cache
+# copia apenas manifestos primeiro (se houver package-lock, ele vai junto)
 COPY package*.json ./
 
-# use UID 0 (root) apenas para instalar e ajustar permissões
+# usa UID 0 só para instalar e ajustar permissão; evita o nome 'root'
 USER 0
-RUN npm ci --omit=dev && chown -R pptruser:pptruser /app
+RUN npm install --omit=dev && chown -R pptruser:pptruser /app
 
-# volte pro usuário padrão da imagem
+# volta a rodar como o usuário padrão da imagem
 USER pptruser
 
-# copie o restante do código já com owner correto
+# copia o restante do código já com owner correto
 COPY --chown=pptruser:pptruser . .
 
 EXPOSE 3009
