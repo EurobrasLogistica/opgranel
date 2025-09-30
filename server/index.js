@@ -125,7 +125,7 @@ app.get(`${API_PREFIX}/transportadora`, async (_req, res) => {
 });
 
 // GET TIPOS DE VEÍCULOS
-app.get(`${API_PREFIX}tipoveiculo`, async (_req, res) => {
+app.get(`${API_PREFIX}/tipoveiculo`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT COD_TIPO, DESC_TIPO_VEICULO FROM TIPO_VEICULO ORDER BY DESC_TIPO_VEICULO;'
