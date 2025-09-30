@@ -15,12 +15,9 @@ const puppeteer = require('puppeteer');
 const nodemailer = require('nodemailer');
 const pdf = require('html-pdf');
 
-// ===== Toggle do prefixo =====
-// Local (sem /api):
-//const API_PREFIX = '';        // <- use assim no localhost
-// Produção (com /api):
- const API_PREFIX = '/api';  // <- descomente esta linha na prod
-// =============================
+const API_PREFIX = '';
+//const API_PREFIX = '/api';
+
 // ====== DB: mysql2/promise + pool ======
 const mysql = require('mysql2/promise');
 
@@ -3293,23 +3290,35 @@ app.post(`${API_PREFIX}/pesagem/primeirapesagem`, (req, res) => {
     )
 })
 
-//Listar navios pra relatorio
-app.get(`${API_PREFIX}/relatorios/operacoes`, (req, res) => {
-    db.query(`
-    SELECT *  FROM  OPERACAO O 
-    JOIN NAVIO N 
-        ON N.COD_NAVIO = O.COD_NAVIO
-        ORDER BY 
-        O.ATRACACAO
-      DESC
-    `, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
-})
+// Listar navios para relatório
+app.get(`${API_PREFIX}/relatorios/operacoes`, async (_req, res) => {
+  try {
+    const sql = `
+      SELECT
+        op.COD_OPERACAO,
+        nv.NOME_NAVIO,
+        nv.IMO_NAVIO,
+        op.RAP,
+        op.ATRACACAO,
+        op.ATRACACAO_PREV,
+        op.ETA,
+        nv.BANDEIRA
+      FROM OPERACAO op
+      JOIN NAVIO nv ON nv.COD_NAVIO = op.COD_NAVIO
+      ORDER BY COALESCE(op.ATRACACAO, op.ATRACACAO_PREV, op.ETA) DESC
+    `;
+    const [rows] = await db.query(sql);
+    res.set('Cache-Control', 'no-store');
+    return res.json(rows);
+  } catch (err) {
+    console.error('[relatorios/operacoes][ERR]', err);
+    return res.status(500).json({
+      ok: false,
+      message: err.sqlMessage || 'Erro ao listar operações para relatório.',
+    });
+  }
+});
+
 
 
 // Períodos para relatório

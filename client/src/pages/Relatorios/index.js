@@ -1,88 +1,50 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { SnackbarProvider, useSnackbar } from "notistack";
+
+import { api } from "../../api"; // usa baseURL do .env
 import Navbar from "../../components/Navbar";
 import Brackground from "../../components/Background";
 import Container from "../../components/Container";
 import Header from "../../components/Header";
-import Axios from "axios";
-import GraficoPercent from "../../components/GraficoPercent";
+
 import style from "./Relatorios.module.css";
 import moment from "moment";
-import { useNavigate } from "react-router-dom";
-import Periodo from '@mui/material/Dialog';
-import { SnackbarProvider, useSnackbar } from 'notistack';
-
-
 
 const Relatorios = () => {
+  const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
+
+  const [naviosList, setNaviosList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const showAlert = (txt, variant) => enqueueSnackbar(txt, { variant });
 
   useEffect(() => {
-    getOp();
-  }, [])
+    (async () => {
+      try {
+        const { data } = await api.get("/relatorios/operacoes");
+        setNaviosList(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("[relatorios/operacoes][ERR]", err);
+        showAlert("Erro ao carregar operações para relatórios.", "error");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
-  const navigate = useNavigate();
-
-
-  
-
-  const getOp = () => {
-    Axios.get('https://opgranel.eurobraslogistica.com.br/api/relatorios/operacoes').then((response) => {
-      setNaviosList(response.data)
-    });
-  }
-
- const getPeriodo = (id) => {
-  Axios.get(`https://opgranel.eurobraslogistica.com.br/api/periodos/gerais/${id}`).then((response) => {
-    setPeriodo(response.data)
-  });
- }
-
- 
- const selecionarPeriodo = () => {
-  console.log(relatorios);
-    navigate(`/relatorioperiodo/${relatorios}`)
- } 
-  
-
-  
- 
-  
-  const DetalhesNavio = (id, status, nome) => {
-         navigate(`/relatorios/${id}`)
-
-
-      setList(nome)
-  
-
+  const goDetalhes = (codOperacao) => {
+    // navega para a página de relatórios da operação
+    navigate(`/relatorios/${codOperacao}`);
   };
 
-  const { enqueueSnackbar } = useSnackbar();
-  const showAlert = (txt, variant) => {
-    enqueueSnackbar(txt, { variant: variant });
-  }
-
-
-  const AbrirPesagem = () => {
-
-  }
-
-
-  const [openA, setOpenA] = useState(false);
-  
- 
-    const FecharDetalhesNavio = () => {
-    setOpenA(false);
+  const fmtDate = (d) => {
+    if (!d) return "-";
+    const m = moment(d);
+    return m.isValid() ? m.format("DD/MM/YYYY") : "-";
+    // se quiser mostrar horário: m.format("DD/MM/YYYY HH:mm")
   };
-
-
-  const [operacoeslist, setOperacoesList] = useState([]);
-  const [naviosList, setNaviosList] = useState([]);
-  const [veiculos, setVeiculos] = useState([])
-  const [i, setI] = useState([])
-  const [busca, setBusca] = useState([])
-  const [list, setList] = useState([])
-  const [navios, setNavios] = useState([])
-  const [periodo, setPeriodo] = useState([])
-  const [relatorios, setRelatorios] = useState([])
 
   return (
     <>
@@ -92,48 +54,47 @@ const Relatorios = () => {
       <Container>
         <div className={style.content}>
           <div className={style.nav}>
-            <div className={style.active}>
-            Selecione um navio
-            </div>
+            <div className={style.active}>Selecione um navio</div>
           </div>
 
-        
-            <div className={style.table}>
-
+          <div className={style.table}>
             <div className={style.sumario}>
               <div>Navio</div>
-              <div>Imo</div>
+              <div>IMO</div>
               <div>RAP</div>
               <div>Data de atracação</div>
               <div>Bandeira</div>
             </div>
 
+            {loading && (
+              <div className={style.table_item} style={{ opacity: 0.7 }}>
+                Carregando...
+              </div>
+            )}
 
-            {naviosList.map((val, key) => {
-              return (
-                <div className={style.table_item}
-                  onClick={() => [DetalhesNavio(val.COD_OPERACAO, val.STATUS_OPERACAO, val.NOME_NAVIO), getPeriodo(val.COD_OPERACAO)]}>
+            {!loading && naviosList.length === 0 && (
+              <div className={style.table_item} style={{ opacity: 0.7 }}>
+                Nenhuma operação encontrada.
+              </div>
+            )}
+
+            {!loading &&
+              naviosList.map((val) => (
+                <div
+                  key={val.COD_OPERACAO}
+                  className={style.table_item}
+                  onClick={() => goDetalhes(val.COD_OPERACAO)}
+                >
                   <div className={style.detalheNavio}>{val.NOME_NAVIO || "-"}</div>
                   <div className={style.detalheNavio}>{val.IMO_NAVIO || "-"}</div>
                   <div className={style.detalheNavio}>{val.RAP || "-"}</div>
-                  <div className={style.detalheNavio}>{moment(val.ATRACACAO).format("DD/MM/YYYY") || "-"}</div>
+                  <div className={style.detalheNavio}>{fmtDate(val.ATRACACAO)}</div>
                   <div className={style.detalheNavio}>{val.BANDEIRA || "-"}</div>
                 </div>
-              )
-            })
-
-            
-            }
-
+              ))}
           </div>
-
-
-
         </div>
-
-         </Container>
-        
-  
+      </Container>
     </>
   );
 };
@@ -143,8 +104,9 @@ export default function IntegrationNotistack() {
     <SnackbarProvider
       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       maxSnack={3}
-      autoHideDuration={3500}>
-      <Relatorios/>
-    </SnackbarProvider >
+      autoHideDuration={3500}
+    >
+      <Relatorios />
+    </SnackbarProvider>
   );
 }

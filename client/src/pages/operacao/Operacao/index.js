@@ -23,35 +23,35 @@ import emailjs from 'emailjs-com';
 const Operacao = () => {
 
   useEffect(() => {
-    DadosDashboard();
-    getVeiculos();
-    getQtDescarregado();
-    getMotivos();
-    getTotalSaldo();
-    VerificaParalisacao();
-    getComplementos();
-    getCargas();
-    getTipoveiculo();
-    getTransportadora();
-    VerificaCarregamento();
-    getDocumentos();
-    getDocs();
-    getPedido();
-    getHoraAutos();
-    getPeriodos();
+    // DadosDashboard();
+     getVeiculos();
+     getQtDescarregado();
+     getMotivos();
+     getTotalSaldo();
+     VerificaParalisacao();
+     getComplementos();
+     getCargas();
+     getTipoveiculo();
+     getTransportadora();
+     VerificaCarregamento();
+     getDocumentos();
+     getDocs();
+     getPedido();
+    // getHoraAutos();
+     getPeriodos();
   }, []);
 
   useEffect(() => {
     const interval_1 = setInterval(() => {
-      DadosDashboard();
-      getVeiculos();
-      getQtDescarregado();
-      getTotalSaldo();
-      getMotivos();
-      VerificaParalisacao();
-      getComplementos();
-      VerificaCarregamento();
-      getHoraAutos();
+      // DadosDashboard();
+       getVeiculos();
+       getQtDescarregado();
+       getTotalSaldo();
+       getMotivos();
+       VerificaParalisacao();
+       getComplementos();
+       VerificaCarregamento();
+       getHoraAutos();
     }, 1500);
 
     return () => clearInterval(interval_1);
