@@ -30,8 +30,8 @@ services:
 
   frontend:
     build:
-      context: .                 # <<< idem: use o root
-      dockerfile: Dockerfile.frontend
+      context: ./client
+      dockerfile: Dockerfile
     image: opgranel_frontend_image
     container_name: opgranel_frontend_container
     ports:
@@ -43,6 +43,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
 
 
   mysql:
