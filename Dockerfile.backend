@@ -1,23 +1,23 @@
+# Usando a imagem oficial do Puppeteer (já vem com Chromium e dependências)
 FROM ghcr.io/puppeteer/puppeteer:latest
 
+# Definindo o diretório de trabalho dentro do container
 WORKDIR /app
-ENV TZ=America/Sao_Paulo \
-    PUPPETEER_SKIP_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# copie manifestos antes p/ cache
+# Copiando os arquivos de dependências do backend
 COPY package*.json ./
 
-# garanta permissão para o pptruser
-USER 0
-RUN chown -R pptruser:pptruser /app
-USER pptruser
+# Alternar para root para garantir permissões na instalação
+USER root
 
-# instale deps como não-root
-RUN npm ci --omit=dev
+# Instalando todas as dependências listadas no package.json
+RUN npm install
 
-# copie o resto do código já com owner correto
-COPY --chown=pptruser:pptruser . .
+# Copiando o restante do código da aplicação
+COPY . .
 
+# Expondo a porta usada pelo backend (garantir que está correta)
 EXPOSE 3009
+
+# Comando padrão ao iniciar o container
 CMD ["node", "index.js"]
