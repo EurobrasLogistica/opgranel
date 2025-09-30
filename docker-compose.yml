@@ -20,7 +20,7 @@ services:
   backend:
     build:
       context: ./server
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.backend
     image: opgranel_backend_image
     container_name: opgranel_backend_container
     working_dir: /app
