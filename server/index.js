@@ -15,6 +15,12 @@ const puppeteer = require('puppeteer');
 const nodemailer = require('nodemailer');
 const pdf = require('html-pdf');
 
+// ===== Toggle do prefixo =====
+// Local (sem /api):
+//const API_PREFIX = '';        // <- use assim no localhost
+// Produção (com /api):
+ const API_PREFIX = '/api';  // <- descomente esta linha na prod
+// =============================
 // ====== DB: mysql2/promise + pool ======
 const mysql = require('mysql2/promise');
 
@@ -108,7 +114,7 @@ app.use((req, _res, next) => {
 // =================== ROTAS ===================
 
 // TRANSPORTADORA
-app.get('/transportadora', async (_req, res) => {
+app.get(`${API_PREFIX}/transportadora`, async (_req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM TRANSPORTADORA ORDER BY NOME_TRANSP');
     res.json(rows);
@@ -119,7 +125,7 @@ app.get('/transportadora', async (_req, res) => {
 });
 
 // GET TIPOS DE VEÍCULOS
-app.get('/tipoveiculo', async (_req, res) => {
+app.get(`${API_PREFIX}tipoveiculo`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT COD_TIPO, DESC_TIPO_VEICULO FROM TIPO_VEICULO ORDER BY DESC_TIPO_VEICULO;'
@@ -131,7 +137,7 @@ app.get('/tipoveiculo', async (_req, res) => {
   }
 });
 
-app.get('/transportadora/alterar', async (_req, res) => {
+app.get(`${API_PREFIX}/transportadora/alterar`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT COD_TRANSP, NOME_TRANSP FROM TRANSPORTADORA ORDER BY NOME_TRANSP;'
@@ -144,7 +150,7 @@ app.get('/transportadora/alterar', async (_req, res) => {
 });
 
 // DOCUMENTO (para alterar)
-app.get('/documento/alterar/:id', async (req, res) => {
+app.get(`${API_PREFIX}/documento/alterar/:id`, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const [rows] = await db.query(
@@ -160,7 +166,7 @@ app.get('/documento/alterar/:id', async (req, res) => {
 
 
 // ====== CARGA: CRIAR (para resolver CORS do POST) ======
-app.post('/carga/criar', async (req, res) => {
+app.post(`${API_PREFIX}/carga/criar`, async (req, res) => {
   try {
     const {
       operacao,
@@ -262,7 +268,7 @@ app.post('/carga/criar', async (req, res) => {
 
 
 // ====== CARGA: DELETE (para resolver CORS do DELETE) ======
-app.delete('/carga/delete/:id', async (req, res) => {
+app.delete(`${API_PREFIX}/carga/delete/:id`, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
@@ -292,7 +298,7 @@ app.delete('/carga/delete/:id', async (req, res) => {
 });
 
 // CARGAS PRO GRÁFICO
-app.get('/grafico/:id', async (req, res) => {
+app.get(`${API_PREFIX}/grafico/:id`, async (req, res) => {
   try {
     const id = req.params.id;
     const [rows] = await db.query(
@@ -327,7 +333,7 @@ app.get('/grafico/:id', async (req, res) => {
 });
 
 // PORÃO PRO GRÁFICO
-app.get('/grafico/porao/:id', async (req, res) => {
+app.get(`${API_PREFIX}/grafico/porao/:id`, async (req, res) => {
   try {
     const id = req.params.id;
     const [rows] = await db.query(
@@ -361,7 +367,7 @@ app.get('/grafico/porao/:id', async (req, res) => {
 });
 
 // GRÁFICO PORTAL DO CLIENTE (usa ?usuario= na query string)
-app.get('/grafico/portal/:id', async (req, res) => {
+app.get(`${API_PREFIX}/grafico/portal/:id`, async (req, res) => {
   try {
     const id = req.params.id;
     const usuario = req.query.usuario; // <- vem na URL: /grafico/portal/123?usuario=fertiparmg
@@ -406,7 +412,7 @@ app.get('/grafico/portal/:id', async (req, res) => {
 });
 
 // DOCUMENTOS por operação
-app.get('/documentos/:id', async (req, res) => {
+app.get(`${API_PREFIX}/documentos/:id`, async (req, res) => {
   try {
     const id = req.params.id;
     const [rows] = await db.query(
@@ -432,7 +438,7 @@ app.get('/navio', async (_req, res) => {
 });
 
 // CRIAR NAVIO (com console.log detalhado)
-app.post('/navio/criar', async (req, res) => {
+app.post(`${API_PREFIX}/navio/criar`, async (req, res) => {
   const t0 = Date.now();
   const { nome, imo, bandeira, status, usuario } = req.body;
 
@@ -495,7 +501,7 @@ app.post('/navio/criar', async (req, res) => {
 
 
 //CRIAR UMA TRANSPORTADORA
-app.post('/transportadora/criar', (req, res) => {
+app.post(`${API_PREFIX}/transportadora/criar`, (req, res) => {
     const nome = req.body.nome;
     const cnpj = req.body.cnpj;
   
@@ -514,7 +520,7 @@ app.post('/transportadora/criar', (req, res) => {
 });
 
 //CRIAR UMA IMPORTADOR
-app.post('/importador/criar', (req, res) => {
+app.post(`${API_PREFIX}/importador/criar`, (req, res) => {
     const nome = req.body.nome;
     const cnpj = req.body.cnpj;
     const nomereduzido = req.body.nomereduzido
@@ -534,7 +540,7 @@ app.post('/importador/criar', (req, res) => {
 
 
 //CRIAR UMA DESTINO
-app.post('/destino/criar', (req, res) => {
+app.post(`${API_PREFIX}/destino/criar`, (req, res) => {
     const nome = req.body.nome;
   
 
@@ -553,7 +559,7 @@ app.post('/destino/criar', (req, res) => {
 
 
 //CRIAR UMA NCM
-app.post('/ncm/criar', (req, res) => {
+app.post(`${API_PREFIX}/ncm/criar`, (req, res) => {
     const codncm = req.body.codncm;
     const descricao = req.body.descricao;
   
@@ -572,7 +578,7 @@ app.post('/ncm/criar', (req, res) => {
 });
 
 //CRIAR UMA PRODUTO
-app.post('/produto/criar', (req, res) => {
+app.post(`${API_PREFIX}/produto/criar`, (req, res) => {
     const produto = req.body.codncm;
     const unidade = 'KG';
     const ind_carga = 'N';
@@ -593,7 +599,7 @@ app.post('/produto/criar', (req, res) => {
 
 
 //CRIAR UM PEDIDO
-app.post('/pedido/criar', (req, res) => {
+app.post(`${API_PREFIX}/pedido/criar`, (req, res) => {
     const operacao = req.body.operacao;
     const pedido = req.body.pedido;
     const documento = req.body.pedido;
@@ -612,7 +618,7 @@ app.post('/pedido/criar', (req, res) => {
 });
 
 // pedido - Consultar todas as pedidos
-app.get('/pedido/consultar', (req, res) => {
+app.get(`${API_PREFIX}/pedido/consultar`, (req, res) => {
     const query = "SELECT * FROM PEDIDO ORDER BY ID_PEDIDO DESC;";
     db.query(query, (err, result) => {
         if (err) {
@@ -624,7 +630,7 @@ app.get('/pedido/consultar', (req, res) => {
 });
 
 // Transportadora - Consultar todas as transportadoras
-app.get('/api/transportadora/consultar', async (_req, res) => {
+app.get(`${API_PREFIX}/transportadora/consultar`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT * FROM TRANSPORTADORA ORDER BY NOME_TRANSP'
@@ -640,7 +646,7 @@ app.get('/api/transportadora/consultar', async (_req, res) => {
 
 
 // Importador - Consultar todos os importadores
-app.get('/importador/consultar', async (_req, res) => {
+app.get(`${API_PREFIX}/importador/consultar`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT * FROM CLIENTE ORDER BY NOME_CLIENTE'
@@ -655,7 +661,7 @@ app.get('/importador/consultar', async (_req, res) => {
 
 
 // Destino - Consultar todos os destinos
-app.get('/destino/consultar', async (_req, res) => {
+app.get(`${API_PREFIX}/destino/consultar`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT * FROM DESTINO ORDER BY NOME_DESTINO'
@@ -669,7 +675,7 @@ app.get('/destino/consultar', async (_req, res) => {
 });
 
 // NCM - Consultar todos os NCMs
-app.get('/ncm/consultar', async (_req, res) => {
+app.get(`${API_PREFIX}/ncm/consultar`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT COD_NCM, DESCRICAO_NCM FROM NCM ORDER BY DESCRICAO_NCM'
@@ -683,7 +689,7 @@ app.get('/ncm/consultar', async (_req, res) => {
 });
 
 // Produto - Consultar todos os produtos
-app.get('/produto/consultar', async (_req, res) => {
+app.get(`${API_PREFIX}/produto/consultar`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT COD_PRODUTO, PRODUTO, UN_MEDIDA FROM PRODUTO ORDER BY PRODUTO'
@@ -699,7 +705,7 @@ app.get('/produto/consultar', async (_req, res) => {
 
 
 // EMPRESAS (mysql2/promise)
-app.get('/empresas', async (_req, res) => {
+app.get(`${API_PREFIX}/empresas`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT COD_EMPRESA, NOME_EMPRESA FROM EMPRESA ORDER BY NOME_EMPRESA'
@@ -713,7 +719,7 @@ app.get('/empresas', async (_req, res) => {
 
 
 // AGENTES (mysql2/promise)
-app.get('/agentes', async (_req, res) => {
+app.get(`${API_PREFIX}/agentes`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT COD_AGENTE, NOME_AGENTE FROM AGENTE ORDER BY NOME_AGENTE'
@@ -727,7 +733,7 @@ app.get('/agentes', async (_req, res) => {
 });
 
 // BERÇOS (mysql2/promise)
-app.get('/bercos', async (_req, res) => {
+app.get(`${API_PREFIX}/bercos`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT COD_BERCO, NOME_BERCO FROM BERCO ORDER BY NOME_BERCO'
@@ -742,7 +748,7 @@ app.get('/bercos', async (_req, res) => {
 
 
 //AGENTE
-app.get("/agentes", (req, res) => {
+app.get(`${API_PREFIX}/agentes`, (req, res) => {
     db.query("SELECT * FROM AGENTE;", (err, result) => {
         if (err) {
             console.log(err)
@@ -753,7 +759,7 @@ app.get("/agentes", (req, res) => {
 })
 
 // === CLIENTES (lista com busca/ordem/paginação) ===
-app.get('/clientes', async (req, res) => {
+app.get(`${API_PREFIX}/clientes`, async (req, res) => {
   try {
     const {
       q = '',                 // busca por nome
@@ -790,7 +796,7 @@ app.get('/clientes', async (req, res) => {
 
 
 // === NCM (lista com busca/ordem/paginação) ===
-app.get('/ncm', async (req, res) => {
+app.get(`${API_PREFIX}/ncm`, async (req, res) => {
   try {
     const {
       q = '',                 // busca por código/descrição
@@ -827,7 +833,7 @@ app.get('/ncm', async (req, res) => {
 
 
 // === PRODUTOS (lista com busca/ordem/paginação) ===
-app.get('/produtos', async (req, res) => {
+app.get(`${API_PREFIX}/produtos`, async (req, res) => {
   try {
     const {
       q = '',                 // busca por nome/código
@@ -864,7 +870,7 @@ app.get('/produtos', async (req, res) => {
 
 
 // LISTAR OPERAÇÕES (simples)
-app.get('/operacao', async (_req, res) => {
+app.get(`${API_PREFIX}/operacao`, async (_req, res) => {
   try {
     const sql = `
       SELECT
@@ -906,7 +912,7 @@ app.get('/operacao', async (_req, res) => {
 
 
 // MOTIVOS DE PARALISAÇÃO
-app.get('/motivos', async (req, res) => {
+app.get(`${API_PREFIX}/motivos`, async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM MOTIVO_PAR;');
     res.send(rows);
@@ -917,7 +923,7 @@ app.get('/motivos', async (req, res) => {
 });
 
 // COMPLEMENTOS DE PARALISAÇÃO
-app.get('/complementos', async (req, res) => {
+app.get(`${API_PREFIX}/complementos`, async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM COMPLEMENTO_PAR;');
     res.send(rows);
@@ -930,7 +936,7 @@ app.get('/complementos', async (req, res) => {
 
 
 // CRIAR OPERAÇÃO (mysql2/promise)
-app.post('/operacao/criar', async (req, res) => {
+app.post(`${API_PREFIX}/operacao/criar`, async (req, res) => {
   const t0 = Date.now();
 
   // Extrai o payload
@@ -4215,7 +4221,7 @@ cron.schedule("*/1 * * * *", async () => {
   
         if (!waiting) {
           const mic_document = new jsdom.JSDOM(xml_result).window.document;
-          const dir = `/app/Files/Notas_Fiscais/${codRAP}`;
+          const dir = `${API_PREFIX}/app/Files/Notas_Fiscais/${codRAP}`;
           if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   
           if (mic_document.querySelector("pdf")) {
