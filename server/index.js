@@ -1038,7 +1038,7 @@ app.post(`${API_PREFIX}/operacao/criar`, async (req, res) => {
 
 
 // Concluir documentação da operação -> atualiza STATUS_OPERACAO
-app.put('/operacao/concluir/docs', async (req, res) => {
+app.put(`${API_PREFIX}/operacao/concluir/docs`, async (req, res) => {
   try {
     const { id, status } = req.body;
 
@@ -1078,7 +1078,7 @@ app.put('/operacao/concluir/docs', async (req, res) => {
 
 
 
-app.put('/login', (req, res) => {
+app.put(`${API_PREFIX}/login`, (req, res) => {
     const usuario = req.body.usuario;
     const moega = req.body.moega;
 
@@ -1097,7 +1097,7 @@ app.put('/login', (req, res) => {
     )
 })
 
-app.put('/alterar/eta', (req, res) => {
+app.put(`${API_PREFIX}/alterar/eta`, (req, res) => {
     const id = req.body.id;
     const eta = req.body.eta;
 
@@ -1114,7 +1114,7 @@ app.put('/alterar/eta', (req, res) => {
     )
 })
 
-app.put('/operacao/status/paralisado', (req, res) => {
+app.put(`${API_PREFIX}/operacao/status/paralisado`, (req, res) => {
     const id = req.body.id;
 
     db.query("UPDATE OPERACAO SET STATUS_OPERACAO = 'PARALISADO' WHERE COD_OPERACAO = ?",
@@ -1141,7 +1141,7 @@ function toMySQLDateTime(s) {
   return x;
 }
 
-app.put('/operacao/registrar/atracacao', (req, res) => {
+app.put(`${API_PREFIX}/operacao/registrar/atracacao`, (req, res) => {
   const { date, id } = req.body;
 
   const opId = Number(id);
@@ -1185,7 +1185,7 @@ app.put('/operacao/registrar/atracacao', (req, res) => {
 
 
 // PERIODOS (mysql2/promise)
-app.get("/periodos/horarios", async (_req, res) => {
+app.get(`${API_PREFIX}/periodos/horarios`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT COD_PERIODO, DEN_PERIODO
@@ -1205,7 +1205,7 @@ app.get("/periodos/horarios", async (_req, res) => {
 
 
 // PERIODO - CRIAR (mysql2/promise)
-app.post('/periodo/criar', async (req, res) => {
+app.post(`${API_PREFIX}/periodo/criar`, async (req, res) => {
   try {
     const {
       operacao,
@@ -1319,7 +1319,7 @@ app.post('/periodo/criar', async (req, res) => {
 });
 
 
-app.get('/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
+app.get(`${API_PREFIX}/periodo/busca/:id`, (req, res) => { //verifica se existe operação aberta na op. que for fornecida
     const id = req.params.id;
 
     db.query(`SELECT COUNT(1) as EXISTE FROM PERIODO_OPERACAO WHERE DAT_FIM_PERIODO IS NULL AND COD_OPERACAO = ?`,
@@ -1348,7 +1348,7 @@ app.get('/portal/periodo/busca/:id', (req, res) => { //verifica se existe opera�
 })
 
 
-app.get('/periodo/dashboard/:id', async (req, res) => {
+app.get(`${API_PREFIX}/periodo/dashboard/:id`, async (req, res) => {
   const id = Number(req.params.id);
 
   const sql = `
@@ -1400,7 +1400,7 @@ app.get('/periodo/dashboard/:id', async (req, res) => {
 
 
 
-app.put('/periodo/finalizar', (req, res) => {
+app.put(`${API_PREFIX}/periodo/finalizar`, (req, res) => {
     const id = req.body.id;
     const data = req.body.data;
     const data_carreg = req.body.data_carreg
@@ -1896,7 +1896,7 @@ UNION
     );
 });
 
-app.post('/periodo/dadosEmail', (req, res) => {
+app.post(`${API_PREFIX}/periodo/dadosEmail`, (req, res) => {
     const { id, data } = req.body;
 
     console.log('Recebido ID para obter dados do email:', id);
@@ -2013,7 +2013,7 @@ app.post('/periodo/dadosEmail', (req, res) => {
 
 
 // VEÍCULOS QUE JÁ FIZERAM TARA
-app.get('/dashboard/veiculos/:id', async (req, res) => {
+app.get(`${API_PREFIX}/dashboard/veiculos/:id`, async (req, res) => {
   const { id } = req.params;
 
   const sql = `
@@ -2072,7 +2072,7 @@ app.get('/dashboard/veiculos/:id', async (req, res) => {
 });
 
 // Buscar dados do carregamento para Alteração Cadastral
-app.get('/alteracaocadastral/veiculos/:id', async (req, res) => {
+app.get(`${API_PREFIX}/alteracaocadastral/veiculos/:id`, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {
@@ -2130,7 +2130,7 @@ app.get('/alteracaocadastral/veiculos/:id', async (req, res) => {
 
 
 // TOTAL DESCARREGADO NA OPERAÇÃO
-app.get('/dashboard/descarregado/:id', async (req, res) => {
+app.get(`${API_PREFIX}/dashboard/descarregado/:id`, async (req, res) => {
   const { id } = req.params;
 
   const sql = `
@@ -2243,7 +2243,7 @@ app.get('/dashboard/descarregado/:id', async (req, res) => {
 
 
 // SALDO TOTAL NA OPERAÇÃO
-app.get('/dashboard/saldo/:id', async (req, res) => {
+app.get(`${API_PREFIX}/dashboard/saldo/:id`, async (req, res) => {
   const { id } = req.params;
 
   // Soma manifestada - soma efetivamente carregada (em toneladas, 3 casas)
@@ -2281,7 +2281,7 @@ app.get('/dashboard/saldo/:id', async (req, res) => {
 
 
 // PARALISAÇÃO — criar (promise/async)
-app.post('/paralisacao/criar', async (req, res) => {
+app.post(`${API_PREFIX}/paralisacao/criar`, async (req, res) => {
   const {
     operacao,
     periodo,
@@ -2330,7 +2330,7 @@ app.post('/paralisacao/criar', async (req, res) => {
 
 
 // Lista paralisações do período (usando promise/async)
-app.get('/paralisacao/periodo/:id', async (req, res) => {
+app.get(`${API_PREFIX}/paralisacao/periodo/:id`, async (req, res) => {
   const id = Number(req.params.id);
 
   const sql = `
@@ -2362,7 +2362,7 @@ app.get('/paralisacao/periodo/:id', async (req, res) => {
 
 
 // Verifica se há paralisação em aberto para a operação
-app.get('/verifica/paralisacao/:id', async (req, res) => {
+app.get(`${API_PREFIX}/verifica/paralisacao/:id`, async (req, res) => {
   const id = Number(req.params.id);
 
   const sql = `
@@ -2390,7 +2390,7 @@ app.get('/verifica/paralisacao/:id', async (req, res) => {
 
 
 // Verifica se existe carregamento (peso > 0) para a operação
-app.get('/verifica/carregamento/:id', async (req, res) => {
+app.get(`${API_PREFIX}/verifica/carregamento/:id`, async (req, res) => {
   const id = Number(req.params.id);
 
   const sql = `
@@ -2418,7 +2418,7 @@ app.get('/verifica/carregamento/:id', async (req, res) => {
 
 
 // Encerrar paralisação
-app.put('/encerrar/paralisacao', (req, res) => {
+app.put(`${API_PREFIX}/encerrar/paralisacao`, (req, res) => {
   const { id, data } = req.body;
 
   if (!id || !data) {
@@ -2442,7 +2442,7 @@ app.put('/encerrar/paralisacao', (req, res) => {
 
 
 // EQUIPAMENTOS (mysql2/promise)
-app.get("/equipamentos", async (_req, res) => {
+app.get(`${API_PREFIX}/equipamentos`, async (_req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT COD_EQUIPAMENTO, DESC_EQUIPAMENTO
@@ -2460,7 +2460,7 @@ app.get("/equipamentos", async (_req, res) => {
   }
 });
 
-app.get('/destinos', (req, res) => {
+app.get(`${API_PREFIX}/destinos`, (req, res) => {
 
     db.query(`SELECT * FROM DESTINO;`,
         (err, result) => {
@@ -2474,7 +2474,7 @@ app.get('/destinos', (req, res) => {
 })
 
 //VEICULOS
-app.post('/motorista/criar', (req, res) => {
+app.post(`${API_PREFIX}/motorista/criar`, (req, res) => {
     const nome = req.body.nome
     const cnh = null
     const cpf = req.body.cpf
@@ -2494,7 +2494,7 @@ app.post('/motorista/criar', (req, res) => {
 })
 
 // Buscar motorista por CPF (usando cliente de promessa do mysql2)
-app.get('/motorista/busca/:cpf', async (req, res) => {
+app.get(`${API_PREFIX}/motorista/busca/:cpf`, async (req, res) => {
   // normaliza CPF para apenas dígitos
   const cpf = String(req.params.cpf || '').replace(/\D/g, '');
 
@@ -2515,7 +2515,7 @@ app.get('/motorista/busca/:cpf', async (req, res) => {
 
 //consulta se ID CARREGAMENTO esta apto 
 
-app.get('/valida/ticket/:idCarregamento', (req, res) => {
+app.get(`${API_PREFIX}/valida/ticket/:idCarregamento`, (req, res) => {
     const idCarregamento = req.params.idCarregamento;
 
     db.query('SELECT ID_CARREGAMENTO, PESO_CARREGADO, PLACA_CAVALO FROM CARREGAMENTO WHERE ID_CARREGAMENTO = ?',
@@ -2575,7 +2575,7 @@ app.put('/integrar/:idCarregamento', (req, res) => {
 
 // envia informações para ticket 
 
-app.get('/impressao/busca/:idCarregamento', (req, res) => {
+app.get(`${API_PREFIX}/impressao/busca/:idCarregamento`, (req, res) => {
     const idCarregamento = req.params.idCarregamento;
 
     db.query('SELECT * FROM VW_TICKET_CARREGAMENTO WHERE ID_CARREG = ?',
@@ -2591,7 +2591,7 @@ app.get('/impressao/busca/:idCarregamento', (req, res) => {
     )
 })
 
-app.get('/ultimapesagem/busca/:id', (req, res) => {
+app.get(`${API_PREFIX}/ultimapesagem/busca/:id`, (req, res) => {
     const { id } = req.params
 
     db.query(`
@@ -2643,7 +2643,7 @@ app.get('/ultimapesagem/busca/:id', (req, res) => {
     )
 })
 
-app.put('/segundapesagem', (req, res) => {
+app.put(`${API_PREFIX}/segundapesagem`, (req, res) => {
     const id = req.body.id
     const peso2 = req.body.peso2
     const data = req.body.data
@@ -2681,7 +2681,7 @@ app.put('/segundapesagem', (req, res) => {
     )
 })
 
-app.put('/operacao/concluir/docs', (req, res) => {
+app.put(`${API_PREFIX}/operacao/concluir/docs`, (req, res) => {
     const id = req.body.id;
     const status = req.body.nome;
 
@@ -2698,7 +2698,7 @@ app.put('/operacao/concluir/docs', (req, res) => {
     )
 })
 
-app.put('/ultimapesagem', (req, res) => {
+app.put(`${API_PREFIX}/ultimapesagem`, (req, res) => {
     const peso3 = req.body.peso3
     const data = req.body.data
     const usuario = req.body.usuario
@@ -2735,7 +2735,7 @@ app.put('/ultimapesagem', (req, res) => {
     )
 })
 // BUSCAR CARGAS POR OPERAÇÃO (mysql2/promise)
-app.get('/carga/busca/:id', async (req, res) => {
+app.get(`${API_PREFIX}/carga/busca/:id`, async (req, res) => {
   try {
     // validação do parâmetro
     const id = Number(req.params.id);
@@ -2782,7 +2782,7 @@ app.get('/carga/busca/:id', async (req, res) => {
 });
 
 
-app.post('/periodo/carregamentos/:id', (req, res) => {
+app.post(`${API_PREFIX}/periodo/carregamentos/:id`, (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2831,7 +2831,7 @@ DATA_CARREGAMENTO
     });
 });
 
-app.post('/portal/relatorios/:id', (req, res) => {
+app.post(`${API_PREFIX}/portal/relatorios/:id`, (req, res) => {
     const id = req.params.id;
     const { data } = req.body;
     const usuario = req.body.usuario
@@ -2887,7 +2887,7 @@ DATA_CARREGAMENTO
 
 
 
-app.post('/periodo/documentos/:id', (req, res) => {
+app.post(`${API_PREFIX}/periodo/documentos/:id`, (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
@@ -2921,7 +2921,7 @@ app.post('/periodo/documentos/:id', (req, res) => {
     });
 });
 
-app.post('/periodo/autos/:id', (req, res) => {
+app.post(`${API_PREFIX}/periodo/autos/:id`, (req, res) => {
     const id = req.params.id;
     const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
