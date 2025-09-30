@@ -1,39 +1,25 @@
 version: '3.8'
 
 services:
-  frontend:
-    build:
-      context: ./client
-      dockerfile: ../Dockerfile.frontend
-    image: opgranel_frontend_image
-    container_name: opgranel_frontend_container
-    ports:
-      - "3008:3008"
-    environment:
-      REACT_APP_SERVER: http://31.97.20.141:3009   # ok se quer expor o backend externamente
-      PORT: 3008
-      TZ: America/Sao_Paulo
-    depends_on:
-      - backend
-    restart: unless-stopped
-
   backend:
     build:
-      context: ./server
-      dockerfile: ../Dockerfile.backend
+      context: .                 # <<< coloque o contexto no root
+      dockerfile: Dockerfile.backend
     image: opgranel_backend_image
     container_name: opgranel_backend_container
     working_dir: /app
+    command: node index.js
+    shm_size: "1gb"
+    # user: "pptruser"          # opcional, se quiser forçar
     volumes:
       - ./server/Files/Notas_Fiscais:/app/server/Files/Notas_Fiscais
-    command: node index.js
     ports:
       - "3009:3009"
     environment:
-      DB_HOST: 31.97.20.141
+      DB_HOST: mysql            # <<< use o serviço interno
       DB_PORT: 3306
       DB_USER: ogdev
-      DB_PASSWORD: R0dr!m@rR##T   # <- nome correto da var
+      DB_PASSWORD: "R0dr!m@rR##T"
       DB_NAME: operacaogranel
       PORT: 3009
       TZ: America/Sao_Paulo
@@ -41,6 +27,23 @@ services:
       mysql:
         condition: service_healthy
     restart: unless-stopped
+
+  frontend:
+    build:
+      context: .                 # <<< idem: use o root
+      dockerfile: Dockerfile.frontend
+    image: opgranel_frontend_image
+    container_name: opgranel_frontend_container
+    ports:
+      - "3008:3008"
+    environment:
+      REACT_APP_SERVER: http://31.97.20.141:3009
+      PORT: 3008
+      TZ: America/Sao_Paulo
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 
   mysql:
     image: mysql:8.0
