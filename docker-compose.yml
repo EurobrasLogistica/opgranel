@@ -17,30 +17,32 @@ services:
       - backend
     restart: unless-stopped
 
-  backend:
-    build:
-      context: ./server
-      dockerfile: ../Dockerfile.backend
-    image: opgranel_backend_image
-    container_name: opgranel_backend_container
-    working_dir: /app
-    volumes:
-      - ./server/Files/Notas_Fiscais:/app/server/Files/Notas_Fiscais
-    command: node index.js
-    ports:
-      - "3009:3009"
-    environment:
-      DB_HOST: mysql              # <- fala com o serviço mysql do compose
-      DB_PORT: 3306
-      DB_USER: ogdev
-      DB_PASSWORD: R0dr!m@rR##T   # <- nome correto da var
-      DB_NAME: operacaogranel
-      PORT: 3009
-      TZ: America/Sao_Paulo
-    depends_on:
-      mysql:
-        condition: service_healthy
-    restart: unless-stopped
+backend:
+  build:
+    context: ./server
+    dockerfile: Dockerfile
+  image: opgranel_backend_image
+  container_name: opgranel_backend_container
+  working_dir: /app
+  command: node index.js
+  shm_size: "1gb"
+  volumes:
+    - ./server/Files/Notas_Fiscais:/app/server/Files/Notas_Fiscais
+  ports:
+    - "3009:3009"
+  environment:
+    DB_HOST: mysql
+    DB_PORT: 3306
+    DB_USER: ogdev
+    DB_PASSWORD: "R0dr!m@rR##T"
+    DB_NAME: operacaogranel
+    PORT: 3009
+    TZ: America/Sao_Paulo
+  depends_on:
+    mysql:
+      condition: service_healthy
+  restart: unless-stopped
+
 
   mysql:
     image: mysql:8.0
