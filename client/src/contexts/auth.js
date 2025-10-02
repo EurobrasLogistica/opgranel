@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
         { "id": "fertiparmg", "password": "fertMG#2O2A#2#3#4", "nivel": "mestre","nmcompleto": "Fertipar Sudeste (Varginha MG)", "depto": "MG", "status": "inativo"  },
         { "id": "ljfelix", "password": "eurobras@241#2#3#4", "nivel": "mestre","nmcompleto": "Lucas Joaquim Felix da Silva", "depto": "COS/STS", "status": "inativo"  },
         { "id": "wroberto", "password": "wroberto2024", "nivel": "mestre","nmcompleto": "Wesley Roberto Fernandes Machado", "depto": "COS/STS", "status": "inativo"  },
-        { "id": "wesleyf", "password": "2024wesley", "nivel": "mestre","nmcompleto": "Wesley Machado", "depto": "COS/STS", "status": "ativo"  },
+        { "id": "wesleyf", "password": "2024wesley", "nivel": "mestre","nmcompleto": "Wesley Machado", "depto": "COS/STS", "status": "inativo"  },
         { "id": "tazevedo", "password": "taz@#$%*", "nivel": "mestre","nmcompleto": "Túlio Augusto Azevedo", "depto": "COS/STS", "status": "inativo"  },
         { "id": "hollanda", "password": "hol@158", "nivel": "mestre","nmcompleto": "João Luiz Hollanda", "depto": "ADM/STS", "status": "ativo"  },
         { "id": "walmeida", "password": "wra@621", "nivel": "mestre","nmcompleto": "Wilson Ribeiro Almeida", "depto": "COS/STS", "status": "ativo"  },
@@ -49,8 +49,8 @@ export const AuthProvider = ({ children }) => {
         { "id": "ajunior", "password": "aj#2024", "nivel": "mestre","nmcompleto": "Altamiro Junior", "depto": "COS/STS", "status": "ativo"  },
         { "id": "gpsilva", "password": "solelua18", "nivel": "mestre","nmcompleto": "Gisele Prudente", "depto": "GRCMAC/STS", "status": "ativo"  },
         { "id": "wgoncalves", "password": "rodrimar@24", "nivel": "mestre","nmcompleto": "Werner do Nascimento", "depto": "ARM/STS", "status": "ativo"  },
-        { "id": "glopes", "password": "guilhermeRodrimar", "nivel": "mestre","nmcompleto": "Guilherme Nascimento", "depto": "TI/STS", "status": "ativo"  }
-   
+        { "id": "glopes", "password": "guilhermeRodrimar", "nivel": "mestre","nmcompleto": "Guilherme Nascimento", "depto": "TI/STS", "status": "ativo"  },
+           { "id": "dcustodio", "password": "diogo@25", "nivel": "mestre","nmcompleto": "Diogo Custodio", "depto": "COS/STS", "status": "ativo"  },
     ];
 
     useEffect(() => {
