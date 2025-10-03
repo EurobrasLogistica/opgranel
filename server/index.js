@@ -1224,7 +1224,7 @@ app.post(`${API_PREFIX}/periodo/criar`, async (req, res) => {
     // ---- validações mínimas
     if (
       !operacao || !periodo || !inicio || !berco || !qtbordo || !qtterra ||
-      !porao || !moega || !requisicao || !gerador || !grab || !usuario
+      !porao || !moega || !gerador || !grab || !usuario
     ) {
       return res.status(400).json({ ok: false, message: 'Campos obrigatórios ausentes.' });
     }
