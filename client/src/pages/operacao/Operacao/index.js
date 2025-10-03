@@ -24,6 +24,7 @@ const Operacao = () => {
 
   useEffect(() => {
     // DadosDashboard();
+    getPeriodoStatus();
      getVeiculos();
      getQtDescarregado();
      getMotivos();
@@ -44,6 +45,7 @@ const Operacao = () => {
   useEffect(() => {
     const interval_1 = setInterval(() => {
       // DadosDashboard();
+      getPeriodoStatus();
        getVeiculos();
        getQtDescarregado();
        getTotalSaldo();
@@ -120,6 +122,7 @@ const Operacao = () => {
   const [tipoveiculo, setTipoveiculo] = useState([]);
   const [transportadora, setTransportadora] = useState([]);
   const [transportadoras, setTransportadoras] = useState([]);
+const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido, 1 = aberto, 0 = fechado
 
   // modal 2ª pesagem
   const [openA, setOpenA] = useState(false);
@@ -405,6 +408,29 @@ const Operacao = () => {
     });
   };
 
+  const getPeriodoStatus = () => {
+  api.get(`/periodo/status/${id}`)
+    .then((res) => {
+      const st = Number(res.data?.em_andamento ?? 0);
+      setPeriodoStatus(st);
+      if (st === 1) {
+        // Carrega os dados do dashboard quando existir período em aberto
+        DadosDashboard();
+      } else {
+        // Limpa caso não haja período em aberto
+        setDadosDash({});
+        setParalisacoes([]);
+      }
+    })
+    .catch(() => {
+      // Se der erro, considera sem período aberto (mostra mensagem)
+      setPeriodoStatus(0);
+      setDadosDash({});
+      setParalisacoes([]);
+    });
+};
+
+
   const enviarEmail = async () => {
     try {
       const { data: navioData } = await api.post('/periodo/dadosEmail', {
@@ -549,11 +575,12 @@ const Operacao = () => {
               Abertura de Período
             </div>
           </div>
-          {!dadosDash.SEQ_PERIODO_OP ?          
-            <div>
-              <div className={style.notform}>NÃO HÁ PERÍODO EM ABERTO</div>
-            </div>
-            :
+          {periodoStatus === 0 ? (
+  <div>
+    <div className={style.notform}>NÃO HÁ PERÍODO EM ABERTO</div>
+  </div>
+) : (
+  dadosDash?.SEQ_PERIODO_OP ? (
             <div>
               <div className={style.flex}>
                 <div className={style.periodo}>
@@ -677,7 +704,8 @@ const Operacao = () => {
                   FINALIZAR ESTE PERÍODO
                 </button>
               </div>
-            </div>}
+            </div>) : null
+)}
         </div>
       </Container>
       <Pesagem open={openA} onClose={FecharPesagem} fullWidth>

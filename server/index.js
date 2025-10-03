@@ -1344,6 +1344,43 @@ app.get('/portal/periodo/busca/:id', (req, res) => { //verifica se existe opera�
     )
 })
 
+// GET /periodo/status/:id  -> retorna { cod_operacao, em_andamento }
+app.get(`${API_PREFIX}/periodo/status/:id`, async (req, res) => {
+  const id = Number(req.params.id);
+
+  const sql = `
+    SELECT 
+      OP.COD_OPERACAO,
+      CASE WHEN OP.DAT_FIM_PERIODO IS NULL THEN 1 ELSE 0 END AS EM_ANDAMENTO
+    FROM PERIODO_OPERACAO OP
+    WHERE OP.COD_OPERACAO = ?
+    ORDER BY OP.DAT_INI_PERIODO DESC, OP.SEQ_PERIODO_OP DESC
+    LIMIT 1
+  `;
+
+  try {
+    const [rows] = await db.query(sql, [id]);
+    res.set('Cache-Control', 'no-store');
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ ok: false, message: 'Operação não encontrada.' });
+    }
+
+    // Ex.: { COD_OPERACAO: 104, EM_ANDAMENTO: 1 }
+    const row = rows[0];
+    return res.status(200).json({
+      cod_operacao: row.COD_OPERACAO,
+      em_andamento: row.EM_ANDAMENTO
+    });
+  } catch (err) {
+    console.error('[GET /periodo/status/:id][ERR]', err);
+    return res
+      .status(500)
+      .json({ ok: false, message: err.sqlMessage || 'Erro ao buscar status do período.' });
+  }
+});
+
+
 
 app.get(`${API_PREFIX}/periodo/dashboard/:id`, async (req, res) => {
   const id = Number(req.params.id);
@@ -2160,83 +2197,69 @@ app.get('/hora/autos/:id', (req, res) => {
 
   const sql = `
   SELECT
-    T.HORA,
-    SUM(T.QUANTIDADE_AUTOS) AS QUANTIDADE_AUTOS
+  T.HORA,
+  SUM(T.QUANTIDADE_AUTOS) AS QUANTIDADE_AUTOS
 FROM (
-    /* Autos efetivamente carregados por hora dentro do período aberto */
-    SELECT
-        CASE
-            WHEN HOUR(CAR.DATA_CARREGAMENTO) = 23 THEN '23:00 à 00:00'
-            WHEN HOUR(CAR.DATA_CARREGAMENTO) = 0  THEN '00:00 à 01:00'
-            ELSE CONCAT(
-                LPAD(HOUR(CAR.DATA_CARREGAMENTO), 2, '0'), ':00 às ',
-                LPAD(HOUR(CAR.DATA_CARREGAMENTO) + 1, 2, '0'), ':00'
-            )
-        END AS HORA,
-        COUNT(*) AS QUANTIDADE_AUTOS,
-        HOR.ORDEM
-    FROM CARREGAMENTO CAR
-    INNER JOIN VW_HORARIOS_2 HOR
-        ON HOR.HORA = HOUR(CAR.DATA_CARREGAMENTO)
-    WHERE CAR.STATUS_CARREG = 3
-      AND CAR.PESO_BRUTO > 0
-      AND CAR.COD_OPERACAO = ?
-      AND CAR.DATA_CARREGAMENTO >= (
-          SELECT PO.DAT_INI_PERIODO
-          FROM PERIODO_OPERACAO PO
-          WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
-            AND PO.DAT_FIM_PERIODO IS NULL
-          ORDER BY PO.DAT_INI_PERIODO DESC
-          LIMIT 1
-      )
-      AND CAR.DATA_CARREGAMENTO <= (
-          SELECT CASE
-                    WHEN TIME_FORMAT(PO.DAT_INI_PERIODO, '%H:%i:%s')
-                         BETWEEN '19:00:00' AND '23:59:59'
-                    THEN CONCAT(
-                             DATE_FORMAT(DATE_ADD(PO.DAT_INI_PERIODO, INTERVAL 1 DAY), '%Y-%m-%d'),
-                             ' ', PE.FIM_PERIODO, ':00'
-                         )
-                    ELSE CONCAT(
-                             DATE_FORMAT(PO.DAT_INI_PERIODO, '%Y-%m-%d'),
-                             ' ', PE.FIM_PERIODO, ':00'
-                         )
-                 END
-          FROM PERIODO_OPERACAO PO
-          INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
-          WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
-            AND PO.DAT_FIM_PERIODO IS NULL
-          ORDER BY PO.DAT_INI_PERIODO DESC
-          LIMIT 1
-      )
-    GROUP BY
-        CASE
-            WHEN HOUR(CAR.DATA_CARREGAMENTO) = 23 THEN '23:00 à 00:00'
-            WHEN HOUR(CAR.DATA_CARREGAMENTO) = 0  THEN '00:00 à 01:00'
-            ELSE CONCAT(
-                LPAD(HOUR(CAR.DATA_CARREGAMENTO), 2, '0'), ':00 às ',
-                LPAD(HOUR(CAR.DATA_CARREGAMENTO) + 1, 2, '0'), ':00'
-            )
-        END,
-        HOR.ORDEM
-
-    UNION
-
-    /* Linha base com todos os horários possíveis do período aberto */
-    SELECT
-        H.HORARIO AS HORA,
-        H.QUANTIDADE_AUTOS,
-        H.ORDEM
-    FROM VW_HORARIOS_2 H
-    WHERE H.INI_PERIODO = (
-        SELECT HOUR(PO.DAT_INI_PERIODO)
-        FROM PERIODO_OPERACAO PO
-        INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
-        WHERE PO.COD_OPERACAO = ?
-          AND PO.DAT_FIM_PERIODO IS NULL
-        ORDER BY PO.DAT_INI_PERIODO DESC
-        LIMIT 1
+  /* Autos efetivamente carregados por hora dentro do período aberto */
+  SELECT
+    (
+      CASE
+        WHEN HOUR(CAR.DATA_CARREGAMENTO) = 23 THEN '23:00 à 00:00'
+        WHEN HOUR(CAR.DATA_CARREGAMENTO) = 0  THEN '00:00 à 01:00'
+        ELSE CONCAT(
+          LPAD(HOUR(CAR.DATA_CARREGAMENTO), 2, '0'), ':00 às ',
+          LPAD(HOUR(CAR.DATA_CARREGAMENTO) + 1, 2, '0'), ':00'
+        )
+      END
+    ) COLLATE utf8mb4_unicode_ci AS HORA,
+    COUNT(*) AS QUANTIDADE_AUTOS,
+    HOR.ORDEM
+  FROM CARREGAMENTO CAR
+  INNER JOIN VW_HORARIOS_2 HOR
+    ON HOR.HORA = HOUR(CAR.DATA_CARREGAMENTO)
+  WHERE CAR.STATUS_CARREG = 3
+    AND CAR.PESO_BRUTO > 0
+    AND CAR.COD_OPERACAO = ?
+    AND CAR.DATA_CARREGAMENTO >= (
+      SELECT PO.DAT_INI_PERIODO
+      FROM PERIODO_OPERACAO PO
+      WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
+        AND PO.DAT_FIM_PERIODO IS NULL
+      ORDER BY PO.DAT_INI_PERIODO DESC
+      LIMIT 1
     )
+    AND CAR.DATA_CARREGAMENTO <= (
+      SELECT CASE
+        WHEN TIME_FORMAT(PO.DAT_INI_PERIODO, '%H:%i:%s') BETWEEN '19:00:00' AND '23:59:59'
+          THEN CONCAT(DATE_FORMAT(DATE_ADD(PO.DAT_INI_PERIODO, INTERVAL 1 DAY), '%Y-%m-%d'), ' ', PE.FIM_PERIODO, ':00')
+        ELSE CONCAT(DATE_FORMAT(PO.DAT_INI_PERIODO, '%Y-%m-%d'), ' ', PE.FIM_PERIODO, ':00')
+      END
+      FROM PERIODO_OPERACAO PO
+      INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
+      WHERE PO.COD_OPERACAO = CAR.COD_OPERACAO
+        AND PO.DAT_FIM_PERIODO IS NULL
+      ORDER BY PO.DAT_INI_PERIODO DESC
+      LIMIT 1
+    )
+  GROUP BY 1, HOR.ORDEM
+
+  UNION
+
+  /* Linha base com todos os horários possíveis do período aberto */
+  SELECT
+    (H.HORARIO) COLLATE utf8mb4_unicode_ci AS HORA,
+    H.QUANTIDADE_AUTOS,
+    H.ORDEM
+  FROM VW_HORARIOS_2 H
+  WHERE H.INI_PERIODO = (
+    SELECT HOUR(PO.DAT_INI_PERIODO)
+    FROM PERIODO_OPERACAO PO
+    INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
+    WHERE PO.COD_OPERACAO = 104
+      AND PO.DAT_FIM_PERIODO IS NULL
+    ORDER BY PO.DAT_INI_PERIODO DESC
+    LIMIT 1
+  )
 ) T
 GROUP BY T.HORA, T.ORDEM
 ORDER BY T.ORDEM;
@@ -4115,16 +4138,19 @@ app.post("/gerarnfe", (req, res) => {
 
 
 const saveLog = (idCarregamento, filename, data) => {
-    var dir = `C:\\Users\\ogdev\\Desktop\\operacao_granel\\logs\\${idCarregamento}`;
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir);
-    }
+  var dir = `/app/logs/${idCarregamento}`;
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir);
+  }
 
-    fs.writeFile(`${dir}\\${filename}.txt`, JSON.stringify(data, null, 4), error => {
-        if (error)
-            throw error;
-    });
-}
+  fs.writeFile(
+    `${dir}/${filename}.txt`,
+    JSON.stringify(data, null, 4),
+    (error) => {
+      if (error) throw error;
+    }
+  );
+};
 
 // MIC SISTEMAS - CONSULTAR NOTA
 // app.post('/consultarnotamic/:id', async (req, res) => {
@@ -4397,14 +4423,18 @@ app.post('/baixarnota', async (req, res) => {
     const nomeNavio = db_result[0].NOME_NAVIO
     const codRAP = db_result[0].RAP
 
-    var dir = `\\\\rodrimar.com.br\\sistemas\\Exe\\Operacao-Granel\\Notas-Fiscais\\${nomeNavio}-${codRAP}`
-    var file = `Nota Fiscal ${idCarregamento}.pdf`
-
-
+      const networkPath = path.join(
+    __dirname,
+    "Files",
+    "Notas_Fiscais",
+    `${nomeNavio}-${codRAP}`,
+    `Nota Fiscal ${idCarregamento}.pdf`
+  );
+console.log(networkPath);
     var file_data = {}
 
     try {
-        var filepath = `${dir}\\${file}`
+    var filepath = `${networkPath}`;
 
         file_data = {
             'status': 'gerado',
