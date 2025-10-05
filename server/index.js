@@ -15,8 +15,8 @@ const puppeteer = require('puppeteer');
 const nodemailer = require('nodemailer');
 const pdf = require('html-pdf');
 
-//const API_PREFIX = '';
-const API_PREFIX = '/api';
+const API_PREFIX = '';
+//const API_PREFIX = '/api';
 
 // ====== DB: mysql2/promise + pool ======
 const mysql = require('mysql2/promise');
@@ -4834,7 +4834,7 @@ cron.schedule("*/1 * * * *", async () => {
       }
     }
   
-    //console.log("Consulta MIC finalizada");
+    console.log("Consulta MIC finalizada");
   });
 
 // MIC SISTEMAS - ENTREGAR NOTA
