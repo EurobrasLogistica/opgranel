@@ -100,15 +100,21 @@ function safeName(name) {
 
 function saveLog(idCarregamento, filename, data) {
   const dir = path.join(LOG_DIR, String(idCarregamento));
-  fs.mkdirSync(dir, { recursive: true });
-
-  const filePath = path.join(dir, `${safeName(filename)}.txt`);
   const payload = (typeof data === 'string' || Buffer.isBuffer(data))
     ? data
     : JSON.stringify(data, null, 2);
 
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch (e) {
+    console.error('[saveLog] mkdir error:', { dir, err: e.message });
+    return;
+  }
+
+  const filePath = path.join(dir, `${safeName(filename)}.txt`);
   fs.writeFile(filePath, payload, (err) => {
-    if (err) console.error('saveLog write error:', err);
+    if (err) console.error('[saveLog] write error:', { filePath, err: err.message });
+    else console.log('[saveLog] wrote:', filePath);
   });
 }
 
