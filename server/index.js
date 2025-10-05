@@ -4725,7 +4725,7 @@ cron.schedule('*/1 * * * *', async () => {
     const usuario = 'eurobrascodesp';
     const senha   = 'tiquete';
     const basic   = Buffer.from(`${usuario}:${senha}`).toString('base64');
-    const url     = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
+    const url     = 'http://webservice.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl';
     const headers = {
       'Content-Type': 'text/xml; charset=utf-8',
       Authorization: `Basic ${basic}`,
