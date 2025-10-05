@@ -4670,14 +4670,33 @@ app.post(`${API_PREFIX}/gerarnotamic/:id`, async (req, res) => {
 
 
 
+const NF_DIR = process.env.NF_DIR || '/app/server/Files/Notas_Fiscais';
+
+function ensureDirSync(dir) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log('[cron] diretório criado:', dir);
+  }
+}
+function writeFileSyncVerbose(filePath, buffer) {
+  fs.writeFileSync(filePath, buffer);
+  console.log('[cron] arquivo escrito:', filePath, '-', buffer.length, 'bytes');
+}
 
 // MIC SISTEMAS - CONSULTAR NOTA
 // app.post('/consultarnotamic/:id', async (req, res) => {
 // EXECUTA A CADA MINUTO
+// Loga quando agenda o cron
+console.log('[cron] agendando tarefa MIC a cada 1 min (America/Sao_Paulo), NF_DIR =', NF_DIR);
+
 cron.schedule('*/1 * * * *', async () => {
-  console.log('[cron] consulta MIC iniciada');
+  const startedAt = new Date();
+  console.log('[cron] >>> início execução:', startedAt.toISOString());
 
   try {
+    // Garante que a raiz existe
+    ensureDirSync(NF_DIR);
+
     const sqlPendentes = `
       SELECT 
         CARREG.TICKET, 
@@ -4694,15 +4713,19 @@ cron.schedule('*/1 * * * *', async () => {
       ORDER BY CARREG.ID_CARREGAMENTO
     `;
     const [rows] = await db.query(sqlPendentes);
+
+    console.log('[cron] pendências encontradas:', rows?.length ?? 0);
+
     if (!rows?.length) {
       console.log('[cron] nada a processar');
+      console.log('[cron] <<< fim execução (sem pendências)\n');
       return;
     }
 
     const usuario = 'eurobrascodesp';
-    const senha = 'tiquete';
-    const basic = Buffer.from(`${usuario}:${senha}`).toString('base64');
-    const url = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
+    const senha   = 'tiquete';
+    const basic   = Buffer.from(`${usuario}:${senha}`).toString('base64');
+    const url     = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
     const headers = {
       'Content-Type': 'text/xml; charset=utf-8',
       Authorization: `Basic ${basic}`,
@@ -4713,10 +4736,12 @@ cron.schedule('*/1 * * * *', async () => {
       let hasContent = true;
 
       const idCarregamento = carreg.ID_CARREGAMENTO;
-      const codTiquete = carreg.TICKET;
-      const num_DI = carreg.NUMERO_DOC;
-      const obsNota = carreg.OBS_NOTA;
-      const codRAP = carreg.RAP;
+      const codTiquete     = carreg.TICKET;
+      const num_DI         = carreg.NUMERO_DOC;
+      const obsNota        = carreg.OBS_NOTA;
+      const codRAP         = carreg.RAP;
+
+      console.log(`[cron][${idCarregamento}] iniciando consulta - TICKET=${codTiquete} DI=${num_DI} RAP=${codRAP}`);
 
       // produto (para checar NAM)
       const [prodRows] = await db.query(
@@ -4773,6 +4798,8 @@ cron.schedule('*/1 * * * *', async () => {
           mensagem = String(xml).slice(0, 2000);
         }
 
+        console.log(`[cron][${idCarregamento}] mensagem MIC:`, mensagem || '(vazia)', 'HTTP', response.status);
+
         const waiting = mensagem === 'REJEICAO: NF referente ao tiquete ainda nao foi emitida ou autorizada';
 
         // erro HTTP ou rejeição (exceto o "aguardando")
@@ -4788,6 +4815,7 @@ cron.schedule('*/1 * * * *', async () => {
               WHERE ID_CARREGAMENTO = ?`,
             [idCarregamento]
           );
+          console.log(`[cron][${idCarregamento}] ainda processando; status/obs atualizados`);
           continue; // próxima iteração
         }
 
@@ -4796,16 +4824,18 @@ cron.schedule('*/1 * * * *', async () => {
           const doc = new jsdom.JSDOM(xml).window.document;
 
           const dir = path.join(NF_DIR, String(codRAP));
-          fs.mkdirSync(dir, { recursive: true });
+          ensureDirSync(dir);
 
           const pdfNode = doc.querySelector('pdf');
           if (pdfNode) {
             const b64 = pdfNode.textContent?.trim() || '';
             if (b64.length) {
-              const buf = Buffer.from(Base64.atob(b64), 'binary');
-              fs.writeFileSync(path.join(dir, `Nota Fiscal ${idCarregamento}.pdf`), buf);
+              // O conteúdo é base64 → converte direto
+              const buf = Buffer.from(b64, 'base64');
+              writeFileSyncVerbose(path.join(dir, `Nota Fiscal ${idCarregamento}.pdf`), buf);
             } else {
               hasContent = false;
+              console.log(`[cron][${idCarregamento}] PDF vazio`);
             }
           }
 
@@ -4813,10 +4843,11 @@ cron.schedule('*/1 * * * *', async () => {
           if (xmlNode) {
             const b64 = xmlNode.textContent?.trim() || '';
             if (b64.length) {
-              const buf = Buffer.from(Base64.atob(b64), 'binary');
-              fs.writeFileSync(path.join(dir, `Nota Fiscal ${idCarregamento}.xml`), buf);
+              const buf = Buffer.from(b64, 'base64');
+              writeFileSyncVerbose(path.join(dir, `Nota Fiscal ${idCarregamento}.xml`), buf);
             } else {
               hasContent = false;
+              console.log(`[cron][${idCarregamento}] XML vazio`);
             }
           }
 
@@ -4845,7 +4876,7 @@ cron.schedule('*/1 * * * *', async () => {
                       WHERE NR_SELO_EXERCITO = ? AND ID_CARREGAMENTO IS NULL`,
                     [idCarregamento, nrSelo]
                   );
-                  console.log(`[cron] selo ${nrSelo} vinculado ao carregamento ${idCarregamento}`);
+                  console.log(`[cron][${idCarregamento}] selo ${nrSelo} vinculado`);
                 } catch (e) {
                   console.log('[cron] erro ao atualizar selo na consulta:', e.message);
                 }
@@ -4861,10 +4892,14 @@ cron.schedule('*/1 * * * *', async () => {
                 WHERE ID_CARREGAMENTO = ?`,
               [idCarregamento]
             );
+            console.log(`[cron][${idCarregamento}] status atualizado para 4 (sucesso)`);
+          } else {
+            console.log(`[cron][${idCarregamento}] nenhum conteúdo salvo (PDF/XML)`);
           }
         }
       } catch (err) {
         const msg = err?.message || String(err);
+        console.error(`[cron][${idCarregamento}] erro:`, msg);
         saveLog(idCarregamento, 'consultar_nota_response_error', msg);
 
         // mensagem amigável para erro de parse
@@ -4890,8 +4925,16 @@ cron.schedule('*/1 * * * *', async () => {
     console.log('[cron] consulta MIC finalizada');
   } catch (outer) {
     console.error('[cron] erro geral:', outer?.message || outer);
+  } finally {
+    console.log('[cron] <<< fim execução\n');
   }
-});
+}, { timezone: 'America/Sao_Paulo' });
+
+// (Opcional) roda uma vez logo após subir o servidor — útil para ver os logs na hora:
+setTimeout(() => {
+  console.log('[cron] disparo imediato (teste) — a agenda seguirá a cada 1 min');
+}, 5000);
+
 
 
 // MIC SISTEMAS - ENTREGAR NOTA
