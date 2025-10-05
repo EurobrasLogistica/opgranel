@@ -15,8 +15,8 @@ const puppeteer = require('puppeteer');
 const nodemailer = require('nodemailer');
 const pdf = require('html-pdf');
 
-//const API_PREFIX = '';
-const API_PREFIX = '/api';
+const API_PREFIX = '';
+//const API_PREFIX = '/api';
 
 // ====== DB: mysql2/promise + pool ======
 const mysql = require('mysql2/promise');
@@ -2817,43 +2817,74 @@ app.get(`${API_PREFIX}/ultimapesagem/busca/:id`, async (req, res) => {
 });
 
 
-app.put(`${API_PREFIX}/segundapesagem`, (req, res) => {
-    const id = req.body.id
-    const peso2 = req.body.peso2
-    const data = req.body.data
-    const usuario = req.body.usuario
-    const status = 2
-    const ticket = req.body.ticket
+// === SEGUNDA PESAGEM ===
+app.put(`${API_PREFIX}/segundapesagem`, async (req, res) => {
+  try {
+    const {
+      id,
+      peso2,             // PESO_CARREGADO
+      data,              // DATA_CARREGAMENTO (datetime)
+      usuario,           // USUARIO_CARREG
+      ticket             // TICKET (opcional)
+    } = req.body || {};
 
-    db.query(`
-        UPDATE 
-            CARREGAMENTO 
-        SET 
-            PESO_CARREGADO = ?, 
-            DATA_CARREGAMENTO = ?, 
-            USUARIO_CARREG = ?, 
-            STATUS_CARREG = ?, 
-            TICKET = ? 
-        WHERE 
-            ID_CARREGAMENTO = ?`,
-        [
-            peso2,
-            data,
-            usuario,
-            status,
-            ticket,
-            id,
-        ], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Segunda pesagem cadastrada!');
-            }
-        }
-    )
-})
+    const carregamentoId = Number(id);
+    const pesoCarregado = Number(peso2);
+
+    // validações básicas
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (!Number.isFinite(pesoCarregado)) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'peso2' inválido." });
+    }
+    if (!data) {
+      return res.status(400).json({ ok: false, error: "Campo 'data' é obrigatório." });
+    }
+    if (!usuario) {
+      return res.status(400).json({ ok: false, error: "Campo 'usuario' é obrigatório." });
+    }
+
+    // STATUS_CARREG = 2 (em segunda pesagem / carregado)
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PESO_CARREGADO   = ?,
+             DATA_CARREGAMENTO = ?,
+             USUARIO_CARREG    = ?,
+             STATUS_CARREG     = 2,
+             TICKET            = ?
+       WHERE ID_CARREGAMENTO  = ?
+       LIMIT 1
+    `;
+
+    const [result] = await db.query(sql, [
+      pesoCarregado,
+      data,
+      usuario,
+      ticket ?? null,
+      carregamentoId
+    ]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Segunda pesagem cadastrada com sucesso.",
+      id: carregamentoId,
+      affectedRows: result.affectedRows
+    });
+  } catch (err) {
+    console.error("[PUT /segundapesagem][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      error: "Erro interno ao registrar a segunda pesagem.",
+      detail: err?.sqlMessage || err?.message || String(err)
+    });
+  }
+});
+
 
 app.put(`${API_PREFIX}/operacao/concluir/docs`, (req, res) => {
     const id = req.body.id;
@@ -3180,201 +3211,417 @@ app.post(`${API_PREFIX}/periodo/autos/:id`, (req, res) => {
 
 
 
-app.put(`${API_PREFIX}/alterar/docs`, (req, res) => {
-    const { id, data, tara, usuario } = req.body
+// === ALTERAR TARA (com data e usuário) ===
+app.put(`${API_PREFIX}/alterar/docs`, async (req, res) => {
+  try {
+    const { id, data, tara, usuario } = req.body || {};
+    const carregamentoId = Number(id);
 
-    db.query("UPDATE CARREGAMENTO SET `PESO_TARA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [tara, data, usuario, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Tara atualizada!');
-            }
-        }
-    )
-})
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (!tara && tara !== 0) {
+      return res.status(400).json({ ok: false, error: "Campo 'tara' é obrigatório." });
+    }
+    if (!data) {
+      return res.status(400).json({ ok: false, error: "Campo 'data' é obrigatório." });
+    }
+    if (!usuario) {
+      return res.status(400).json({ ok: false, error: "Campo 'usuario' é obrigatório." });
+    }
 
-app.put(`${API_PREFIX}/alterar/tara`, (req, res) => {
-    const { id, data, tara, usuario } = req.body
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PESO_TARA = ?, DATA_TARA = ?, USUARIO_TARA = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [tara, data, usuario, carregamentoId]);
 
-    db.query("UPDATE CARREGAMENTO SET `PESO_TARA` = ?, `DATA_TARA` = ?, `USUARIO_TARA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [tara, data, usuario, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Tara atualizada!');
-            }
-        }
-    )
-})
-
-
-app.put(`${API_PREFIX}/alterarultima/tara`, (req, res) => {
-    const { id, tara, usuario } = req.body
-
-    db.query("UPDATE CARREGAMENTO SET `PESO_TARA` = ?,  `USUARIO_TARA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [tara, usuario, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Tara atualizada!');
-            }
-        }
-    )
-})
-
-app.put(`${API_PREFIX}/alterar/pesomoega`, (req, res) => {
-    const { id, moega, usuario } = req.body
-
-    db.query("UPDATE CARREGAMENTO SET  `PESO_CARREGADO` = ?, `USUARIO_CARREG` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [moega, usuario, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Peso moega atualizado!');
-            }
-        }
-    )
-})
-
-//carga/criar
-app.put(`${API_PREFIX}/alterar/cavalo`, (req, res) => {
-    const { placa, id } = req.body
-
-    db.query("UPDATE CARREGAMENTO SET `PLACA_CAVALO` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [placa, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Placa cavalo alterada!');
-            }
-        }
-    )
-})
-
-//veiculo/atualiza
-app.put(`${API_PREFIX}/alterar/carreta1`, (req, res) => {
-    const { id, placa } = req.body
-
-    db.query("UPDATE CARREGAMENTO SET `PLACA_CARRETA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [placa, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Placa 1 alterada! !');
-            }
-        }
-    )
-})
-
-app.put(`${API_PREFIX}/alterar/carreta2`, (req, res) => {
-    const { id, placa } = req.body
-
-    db.query("UPDATE CARREGAMENTO SET `PLACA_CARRETA2` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [placa, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Placa 2 alterada! ');
-            }
-        }
-    )
-})
-
-app.put(`${API_PREFIX}/alterar/carreta3`, (req, res) => {
-    const { placa, id } = req.body
-
-    db.query("UPDATE CARREGAMENTO SET `PLACA_CARRETA3` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [placa, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Placa 3 alterada!');
-            }
-        }
-    )
-})
-
-app.put(`${API_PREFIX}/transporadora/atualiza`, (req, res) => {
-    const { transporadora, id } = req.body
-
-    db.query("UPDATE CARREGAMENTO SET `COD_TRANSP` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [transporadora, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Tipo do veiculo alterado!');
-            }
-        }
-    )
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({
+      ok: true,
+      message: "Tara atualizada com sucesso.",
+      id: carregamentoId,
+      affectedRows: result.affectedRows
+    });
+  } catch (err) {
+    console.error("[PUT /alterar/docs][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar tara.", detail: err.message });
+  }
 });
 
-app.put(`${API_PREFIX}/documento/atualiza`, (req, res) => {
-    const { documento, id } = req.body
+// === ALTERAR TARA (com data e usuário) - duplicata mais clara ===
+app.put(`${API_PREFIX}/alterar/tara`, async (req, res) => {
+  try {
+    const { id, data, tara, usuario } = req.body || {};
+    const carregamentoId = Number(id);
 
-    db.query("UPDATE CARREGAMENTO SET `COD_CARGA` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [doumento, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('DI/BL alterado!');
-            }
-        }
-    )
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (!tara && tara !== 0) return res.status(400).json({ ok: false, error: "Campo 'tara' é obrigatório." });
+    if (!data) return res.status(400).json({ ok: false, error: "Campo 'data' é obrigatório." });
+    if (!usuario) return res.status(400).json({ ok: false, error: "Campo 'usuario' é obrigatório." });
+
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PESO_TARA = ?, DATA_TARA = ?, USUARIO_TARA = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [tara, data, usuario, carregamentoId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({ ok: true, message: "Tara atualizada com sucesso.", id: carregamentoId, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("[PUT /alterar/tara][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar tara.", detail: err.message });
+  }
 });
 
-app.put(`${API_PREFIX}/veiculo/atualiza`, (req, res) => {
-    const { tipoveiculo, id } = req.body
+// === ALTERAR ÚLTIMA TARA (sem data, só peso e usuário) ===
+app.put(`${API_PREFIX}/alterarultima/tara`, async (req, res) => {
+  try {
+    const { id, tara, usuario } = req.body || {};
+    const carregamentoId = Number(id);
 
-    db.query("UPDATE CARREGAMENTO SET `TIPO_VEICULO` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [tipoveiculo, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Tipo do veiculo alterado!');
-            }
-        }
-    )
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (!tara && tara !== 0) return res.status(400).json({ ok: false, error: "Campo 'tara' é obrigatório." });
+    if (!usuario) return res.status(400).json({ ok: false, error: "Campo 'usuario' é obrigatório." });
+
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PESO_TARA = ?, USUARIO_TARA = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [tara, usuario, carregamentoId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({ ok: true, message: "Tara atualizada com sucesso.", id: carregamentoId, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("[PUT /alterarultima/tara][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar tara.", detail: err.message });
+  }
 });
 
-app.put(`${API_PREFIX}/documentos/atualiza`, (req, res) => {
-    const { pedido, id } = req.body
+// === ALTERAR PESO MOEGA ===
+app.put(`${API_PREFIX}/alterar/pesomoega`, async (req, res) => {
+  try {
+    const { id, moega, usuario } = req.body || {};
+    const carregamentoId = Number(id);
 
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (!moega && moega !== 0) return res.status(400).json({ ok: false, error: "Campo 'moega' é obrigatório." });
+    if (!usuario) return res.status(400).json({ ok: false, error: "Campo 'usuario' é obrigatório." });
 
-    db.query("UPDATE CARREGAMENTO SET `PEDIDO_MIC` = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [pedido, id], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Pedido alterado!');
-            }
-        }
-    )
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PESO_CARREGADO = ?, USUARIO_CARREG = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [moega, usuario, carregamentoId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({ ok: true, message: "Peso moega atualizado com sucesso.", id: carregamentoId, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("[PUT /alterar/pesomoega][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar peso moega.", detail: err.message });
+  }
 });
+
+// === ALTERAR PLACA CAVALO ===
+app.put(`${API_PREFIX}/alterar/cavalo`, async (req, res) => {
+  try {
+    const { placa, id } = req.body || {};
+    const carregamentoId = Number(id);
+
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (!placa) return res.status(400).json({ ok: false, error: "Campo 'placa' é obrigatório." });
+
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PLACA_CAVALO = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [String(placa).trim().toUpperCase(), carregamentoId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({ ok: true, message: "Placa do cavalo atualizada com sucesso.", id: carregamentoId, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("[PUT /alterar/cavalo][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar placa do cavalo.", detail: err.message });
+  }
+});
+
+// === ALTERAR PLACA CARRETA 1 ===
+app.put(`${API_PREFIX}/alterar/carreta1`, async (req, res) => {
+  try {
+    const { id, placa } = req.body || {};
+    const carregamentoId = Number(id);
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+
+    const placaVal = placa ? String(placa).trim().toUpperCase() : null; // permite limpar
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PLACA_CARRETA = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [placaVal, carregamentoId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({ ok: true, message: "Placa da carreta 1 atualizada com sucesso.", id: carregamentoId, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("[PUT /alterar/carreta1][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar placa da carreta 1.", detail: err.message });
+  }
+});
+
+// === ALTERAR PLACA CARRETA 2 ===
+app.put(`${API_PREFIX}/alterar/carreta2`, async (req, res) => {
+  try {
+    const { id, placa } = req.body || {};
+    const carregamentoId = Number(id);
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+
+    const placaVal = placa ? String(placa).trim().toUpperCase() : null;
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PLACA_CARRETA2 = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [placaVal, carregamentoId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({ ok: true, message: "Placa da carreta 2 atualizada com sucesso.", id: carregamentoId, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("[PUT /alterar/carreta2][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar placa da carreta 2.", detail: err.message });
+  }
+});
+
+// === ALTERAR PLACA CARRETA 3 ===
+app.put(`${API_PREFIX}/alterar/carreta3`, async (req, res) => {
+  try {
+    const { id, placa } = req.body || {};
+    const carregamentoId = Number(id);
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+
+    const placaVal = placa ? String(placa).trim().toUpperCase() : null;
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PLACA_CARRETA3 = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [placaVal, carregamentoId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({ ok: true, message: "Placa da carreta 3 atualizada com sucesso.", id: carregamentoId, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("[PUT /alterar/carreta3][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar placa da carreta 3.", detail: err.message });
+  }
+});
+
+// === ATUALIZAR TRANSPORTADORA ===
+app.put(`${API_PREFIX}/transporadora/atualiza`, async (req, res) => {
+  try {
+    // aceita 'transporadora' (typo herdado) ou 'transportadora'
+    const { transporadora, transportadora, id } = req.body || {};
+    const codTransp = transporadora ?? transportadora;
+    const carregamentoId = Number(id);
+
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (codTransp === undefined || codTransp === null || String(codTransp).trim() === "") {
+      return res.status(400).json({ ok: false, error: "Campo 'transportadora' é obrigatório." });
+    }
+
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET COD_TRANSP = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [codTransp, carregamentoId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({ ok: true, message: "Transportadora atualizada com sucesso.", id: carregamentoId, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("[PUT /transporadora/atualiza][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar transportadora.", detail: err.message });
+  }
+});
+
+// === ATUALIZAR DOCUMENTO (DI/BL) ===
+app.put(`${API_PREFIX}/documento/atualiza`, async (req, res) => {
+  try {
+    const { documento, id } = req.body || {};
+    const carregamentoId = Number(id);
+
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (documento === undefined || documento === null || String(documento).trim() === "") {
+      return res.status(400).json({ ok: false, error: "Campo 'documento' (COD_CARGA) é obrigatório." });
+    }
+
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET COD_CARGA = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+    const [result] = await db.query(sql, [documento, carregamentoId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    return res.json({ ok: true, message: "Documento (DI/BL) atualizado com sucesso.", id: carregamentoId, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("[PUT /documento/atualiza][ERR]", err);
+    return res.status(500).json({ ok: false, error: "Erro interno ao atualizar documento.", detail: err.message });
+  }
+});
+
+
+// ATUALIZAR TIPO DE VEÍCULO DE UM CARREGAMENTO
+app.put(`${API_PREFIX}/veiculo/atualiza`, async (req, res) => {
+  try {
+    const { tipoveiculo, id } = req.body || {};
+
+    // validações mínimas
+    const carregamentoId = Number(id);
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (tipoveiculo === undefined || tipoveiculo === null || String(tipoveiculo).trim() === "") {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'tipoveiculo' é obrigatório." });
+    }
+
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET TIPO_VEICULO = ?
+       WHERE ID_CARREGAMENTO = ?
+      LIMIT 1
+    `;
+
+    const [result] = await db.query(sql, [tipoveiculo, carregamentoId]);
+
+    // nada alterado (não encontrado ou mesmo valor)
+    if (!result || result.affectedRows === 0) {
+      return res.status(404).json({
+        ok: false,
+        error: "Carregamento não encontrado ou já possui esse tipo de veículo.",
+      });
+    }
+
+    // sucesso
+    return res.status(200).json({
+      ok: true,
+      message: "Tipo do veículo alterado com sucesso.",
+      id: carregamentoId,
+      tipoveiculo,
+      affectedRows: result.affectedRows,
+    });
+  } catch (err) {
+    console.error("[PUT /veiculo/atualiza][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      error: "Erro interno ao atualizar o tipo de veículo.",
+      detail: err?.sqlMessage || err?.message || String(err),
+    });
+  }
+});
+
+
+// ATUALIZAR O PEDIDO (PEDIDO_MIC) DE UM CARREGAMENTO
+app.put(`${API_PREFIX}/documentos/atualiza`, async (req, res) => {
+  try {
+    const { pedido, id } = req.body || {};
+
+    // valida id
+    const carregamentoId = Number(id);
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+
+    // permitir limpar o pedido (null) quando vier vazio
+    const pedidoVal =
+      pedido === undefined || pedido === null || String(pedido).trim() === ""
+        ? null
+        : String(pedido).trim();
+
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PEDIDO_MIC = ?
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
+
+    const [result] = await db.query(sql, [pedidoVal, carregamentoId]);
+
+    if (!result || result.affectedRows === 0) {
+      return res.status(404).json({
+        ok: false,
+        error: "Carregamento não encontrado ou o pedido já estava com esse valor.",
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      message: "Pedido atualizado com sucesso.",
+      id: carregamentoId,
+      pedido: pedidoVal,
+      affectedRows: result.affectedRows,
+    });
+  } catch (err) {
+    console.error("[PUT /documentos/atualiza][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      error: "Erro interno ao atualizar o pedido.",
+      detail: err?.sqlMessage || err?.message || String(err),
+    });
+  }
+});
+
 
 app.put(`${API_PREFIX}/carregamento/excluir`, (req, res) => {
     const { motivo, usuario, data_exclusao, id } = req.body
