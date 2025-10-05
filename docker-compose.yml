@@ -11,7 +11,6 @@ services:
     command: node index.js
     shm_size: "1gb"
     volumes:
-      - ./server:/app
       - ./server/Files/Notas_Fiscais:/app/server/Files/Notas_Fiscais
     ports:
       - "3009:3009"
