@@ -71,7 +71,7 @@ const corsOptions = {
     return cb(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true,
-  methods: ['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'],
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
     'Authorization',
@@ -600,131 +600,131 @@ app.post(`${API_PREFIX}/navio/criar`, async (req, res) => {
 
 //CRIAR UMA TRANSPORTADORA
 app.post(`${API_PREFIX}/transportadora/criar`, (req, res) => {
-    const nome = req.body.nome;
-    const cnpj = req.body.cnpj;
-  
+  const nome = req.body.nome;
+  const cnpj = req.body.cnpj;
 
-    db.query('INSERT INTO TRANSPORTADORA (NOME_TRANSP, CNPJ_TRANSP) VALUES (?,?)',
-        [nome, cnpj], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Transportadora adicionada!');
-            }
-        }
-    )
+
+  db.query('INSERT INTO TRANSPORTADORA (NOME_TRANSP, CNPJ_TRANSP) VALUES (?,?)',
+    [nome, cnpj], (err, result) => {
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send("sucesso")
+        console.log('Transportadora adicionada!');
+      }
+    }
+  )
 });
 
 //CRIAR UMA IMPORTADOR
 app.post(`${API_PREFIX}/importador/criar`, (req, res) => {
-    const nome = req.body.nome;
-    const cnpj = req.body.cnpj;
-    const nomereduzido = req.body.nomereduzido
+  const nome = req.body.nome;
+  const cnpj = req.body.cnpj;
+  const nomereduzido = req.body.nomereduzido
 
-    db.query('INSERT INTO CLIENTE (NOME_CLIENTE, CNPJ_CLIENTE, NOME_REDUZIDO) VALUES (?,?,?)',
-        [nome, cnpj, nomereduzido], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Importador adicionado!');
-            }
-        }
-    )
+  db.query('INSERT INTO CLIENTE (NOME_CLIENTE, CNPJ_CLIENTE, NOME_REDUZIDO) VALUES (?,?,?)',
+    [nome, cnpj, nomereduzido], (err, result) => {
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send("sucesso")
+        console.log('Importador adicionado!');
+      }
+    }
+  )
 });
 
 
 //CRIAR UMA DESTINO
 app.post(`${API_PREFIX}/destino/criar`, (req, res) => {
-    const nome = req.body.nome;
-  
+  const nome = req.body.nome;
 
-    db.query('INSERT INTO DESTINO (NOME_DESTINO) VALUES (?)',
-        [nome], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Destino adicionado!');
-            }
-        }
-    )
+
+  db.query('INSERT INTO DESTINO (NOME_DESTINO) VALUES (?)',
+    [nome], (err, result) => {
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send("sucesso")
+        console.log('Destino adicionado!');
+      }
+    }
+  )
 });
 
 
 //CRIAR UMA NCM
 app.post(`${API_PREFIX}/ncm/criar`, (req, res) => {
-    const codncm = req.body.codncm;
-    const descricao = req.body.descricao;
-  
+  const codncm = req.body.codncm;
+  const descricao = req.body.descricao;
 
-    db.query('INSERT INTO NCM (COD_NCM, DESCRICAO_NCM) VALUES (?,?)',
-        [codncm, descricao], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('NCM adicionado!');
-            }
-        }
-    )
+
+  db.query('INSERT INTO NCM (COD_NCM, DESCRICAO_NCM) VALUES (?,?)',
+    [codncm, descricao], (err, result) => {
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send("sucesso")
+        console.log('NCM adicionado!');
+      }
+    }
+  )
 });
 
 //CRIAR UMA PRODUTO
 app.post(`${API_PREFIX}/produto/criar`, (req, res) => {
-    const produto = req.body.codncm;
-    const unidade = 'KG';
-    const ind_carga = 'N';
-  
+  const produto = req.body.codncm;
+  const unidade = 'KG';
+  const ind_carga = 'N';
 
-    db.query('INSERT INTO PRODUTO (PRODUTO, UN_MEDIDA, IND_CARGA_IMO) VALUES (?,?, ?)',
-        [produto, unidade, ind_carga], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Produto adicionado!');
-            }
-        }
-    )
+
+  db.query('INSERT INTO PRODUTO (PRODUTO, UN_MEDIDA, IND_CARGA_IMO) VALUES (?,?, ?)',
+    [produto, unidade, ind_carga], (err, result) => {
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send("sucesso")
+        console.log('Produto adicionado!');
+      }
+    }
+  )
 });
 
 
 //CRIAR UM PEDIDO
 app.post(`${API_PREFIX}/pedido/criar`, (req, res) => {
-    const operacao = req.body.operacao;
-    const pedido = req.body.pedido;
-    const documento = req.body.pedido;
-    const transportadora = req.body.pedido;
-    db.query('INSERT INTO PEDIDO ( COD_OPERACAO, NR_PEDIDO, COD_CARGA, COD_TRANSP) VALUES (?,?, ?,?)',
-        [operacao, pedido, documento, transportadora], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Pedido adicionado!');
-            }
-        }
-    )
+  const operacao = req.body.operacao;
+  const pedido = req.body.pedido;
+  const documento = req.body.pedido;
+  const transportadora = req.body.pedido;
+  db.query('INSERT INTO PEDIDO ( COD_OPERACAO, NR_PEDIDO, COD_CARGA, COD_TRANSP) VALUES (?,?, ?,?)',
+    [operacao, pedido, documento, transportadora], (err, result) => {
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send("sucesso")
+        console.log('Pedido adicionado!');
+      }
+    }
+  )
 });
 
 // pedido - Consultar todas as pedidos
 app.get(`${API_PREFIX}/pedido/consultar`, (req, res) => {
-    const query = "SELECT * FROM PEDIDO ORDER BY ID_PEDIDO DESC;";
-    db.query(query, (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.json(result);
-        }
-    });
+  const query = "SELECT * FROM PEDIDO ORDER BY ID_PEDIDO DESC;";
+  db.query(query, (err, result) => {
+    if (err) {
+      res.status(500).send(err);
+    } else {
+      res.json(result);
+    }
+  });
 });
 
 // Transportadora - Consultar todas as transportadoras
@@ -847,13 +847,13 @@ app.get(`${API_PREFIX}/bercos`, async (_req, res) => {
 
 //AGENTE
 app.get(`${API_PREFIX}/agentes`, (req, res) => {
-    db.query("SELECT * FROM AGENTE;", (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
+  db.query("SELECT * FROM AGENTE;", (err, result) => {
+    if (err) {
+      console.log(err)
+    } else {
+      res.send(result)
+    }
+  })
 })
 
 // === CLIENTES (lista com busca/ordem/paginação) ===
@@ -868,7 +868,7 @@ app.get(`${API_PREFIX}/clientes`, async (req, res) => {
     } = req.query;
 
     const off = (Number(page) - 1) * Number(pageSize);
-    const ordCol = ['NOME_CLIENTE','COD_CLIENTE','CNPJ_CLIENTE'].includes(orderBy) ? orderBy : 'NOME_CLIENTE';
+    const ordCol = ['NOME_CLIENTE', 'COD_CLIENTE', 'CNPJ_CLIENTE'].includes(orderBy) ? orderBy : 'NOME_CLIENTE';
     const ordDir = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
     const like = `%${q}%`;
@@ -888,7 +888,7 @@ app.get(`${API_PREFIX}/clientes`, async (req, res) => {
     return res.json(rows);
   } catch (err) {
     console.error('[CLIENTES][ERR]', err);
-    return res.status(500).json({ ok:false, message: err.message });
+    return res.status(500).json({ ok: false, message: err.message });
   }
 });
 
@@ -905,7 +905,7 @@ app.get(`${API_PREFIX}/ncm`, async (req, res) => {
     } = req.query;
 
     const off = (Number(page) - 1) * Number(pageSize);
-    const ordCol = ['COD_NCM','DESCRICAO_NCM'].includes(orderBy) ? orderBy : 'COD_NCM';
+    const ordCol = ['COD_NCM', 'DESCRICAO_NCM'].includes(orderBy) ? orderBy : 'COD_NCM';
     const ordDir = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
     const like = `%${q}%`;
@@ -925,7 +925,7 @@ app.get(`${API_PREFIX}/ncm`, async (req, res) => {
     return res.json(rows);
   } catch (err) {
     console.error('[NCM][ERR]', err);
-    return res.status(500).json({ ok:false, message: err.message });
+    return res.status(500).json({ ok: false, message: err.message });
   }
 });
 
@@ -942,7 +942,7 @@ app.get(`${API_PREFIX}/produtos`, async (req, res) => {
     } = req.query;
 
     const off = (Number(page) - 1) * Number(pageSize);
-    const ordCol = ['PRODUTO','COD_PRODUTO','UN_MEDIDA'].includes(orderBy) ? orderBy : 'PRODUTO';
+    const ordCol = ['PRODUTO', 'COD_PRODUTO', 'UN_MEDIDA'].includes(orderBy) ? orderBy : 'PRODUTO';
     const ordDir = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
     const like = `%${q}%`;
@@ -962,7 +962,7 @@ app.get(`${API_PREFIX}/produtos`, async (req, res) => {
     return res.json(rows);
   } catch (err) {
     console.error('[PRODUTOS][ERR]', err);
-    return res.status(500).json({ ok:false, message: err.message });
+    return res.status(500).json({ ok: false, message: err.message });
   }
 });
 
@@ -1056,8 +1056,8 @@ app.post(`${API_PREFIX}/operacao/criar`, async (req, res) => {
   const toSec = (s) =>
     s && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(s) ? `${s}:00` : s;
 
-  const etaSec      = toSec(eta);
-  const prevSec     = toSec(previsao);
+  const etaSec = toSec(eta);
+  const prevSec = toSec(previsao);
   const cadastroSec = toSec(data);
 
   // Log de entrada (útil p/ auditoria)
@@ -1177,57 +1177,57 @@ app.put(`${API_PREFIX}/operacao/concluir/docs`, async (req, res) => {
 
 
 app.put(`${API_PREFIX}/login`, (req, res) => {
-    const usuario = req.body.usuario;
-    const moega = req.body.moega;
+  const usuario = req.body.usuario;
+  const moega = req.body.moega;
 
-    db.query("UPDATE USUARIO SET COD_MOEGA = ? WHERE USUARIO = ?",
-        [usuario, moega],
-        (err, result) => {
-            if (err) {
-                console.log(err)
+  db.query("UPDATE USUARIO SET COD_MOEGA = ? WHERE USUARIO = ?",
+    [usuario, moega],
+    (err, result) => {
+      if (err) {
+        console.log(err)
 
 
-                res.send(result)
-            } else {
-                res.send(result)
-            }
-        }
-    )
+        res.send(result)
+      } else {
+        res.send(result)
+      }
+    }
+  )
 })
 
 app.put(`${API_PREFIX}/alterar/eta`, (req, res) => {
-    const id = req.body.id;
-    const eta = req.body.eta;
+  const id = req.body.id;
+  const eta = req.body.eta;
 
-    db.query("UPDATE OPERACAO set ETA = ? WHERE COD_OPERACAO = ?;",
-        [id, eta],
-        (err, result) => {
-            if (err) {
-                console.log(err)
-                res.send(result)
-            } else {
-                res.send(result)
-            }
-        }
-    )
+  db.query("UPDATE OPERACAO set ETA = ? WHERE COD_OPERACAO = ?;",
+    [id, eta],
+    (err, result) => {
+      if (err) {
+        console.log(err)
+        res.send(result)
+      } else {
+        res.send(result)
+      }
+    }
+  )
 })
 
 app.put(`${API_PREFIX}/operacao/status/paralisado`, (req, res) => {
-    const id = req.body.id;
+  const id = req.body.id;
 
-    db.query("UPDATE OPERACAO SET STATUS_OPERACAO = 'PARALISADO' WHERE COD_OPERACAO = ?",
-        id,
-        (err, result) => {
-            if (err) {
-                console.log(err)
-                res.send(result)
-            } else {
-                res.send(result)
-                console.log('status alterado')
+  db.query("UPDATE OPERACAO SET STATUS_OPERACAO = 'PARALISADO' WHERE COD_OPERACAO = ?",
+    id,
+    (err, result) => {
+      if (err) {
+        console.log(err)
+        res.send(result)
+      } else {
+        res.send(result)
+        console.log('status alterado')
 
-            }
-        }
-    )
+      }
+    }
+  )
 })
 
 // Normaliza "2025-09-29T14:30" -> "2025-09-29 14:30:00"
@@ -1331,16 +1331,16 @@ app.post(`${API_PREFIX}/periodo/criar`, async (req, res) => {
     }
 
     // ---- normalizações
-    const opId      = Number(operacao);
-    const perId     = Number(periodo);
-    const bercoId   = Number(berco);
-    const bordoNum  = Number(qtbordo);
-    const terraNum  = Number(qtterra);
-    const poraoNum  = Number(porao);
-    const moegaId   = Number(moega);
+    const opId = Number(operacao);
+    const perId = Number(periodo);
+    const bercoId = Number(berco);
+    const bordoNum = Number(qtbordo);
+    const terraNum = Number(qtterra);
+    const poraoNum = Number(porao);
+    const moegaId = Number(moega);
 
     if (
-      !Number.isFinite(opId)   || !Number.isFinite(perId)   || !Number.isFinite(bercoId) ||
+      !Number.isFinite(opId) || !Number.isFinite(perId) || !Number.isFinite(bercoId) ||
       !Number.isFinite(bordoNum) || !Number.isFinite(terraNum) || !Number.isFinite(poraoNum) ||
       !Number.isFinite(moegaId)
     ) {
@@ -1576,25 +1576,25 @@ app.get(`${API_PREFIX}/periodo/dashboard/:id`, async (req, res) => {
 
 
 app.put(`${API_PREFIX}/periodo/finalizar`, (req, res) => {
-    const id = req.body.id;
-    const data = req.body.data;
-    const data_carreg = req.body.data_carreg
-    const cod_operacao = req.body.cod_operacao; // Recebendo o COD_OPERACAO
-console.log(data);
+  const id = req.body.id;
+  const data = req.body.data;
+  const data_carreg = req.body.data_carreg
+  const cod_operacao = req.body.cod_operacao; // Recebendo o COD_OPERACAO
+  console.log(data);
 
-    // Primeiro: realizar o update no período de operação
-    db.query(
-        "UPDATE PERIODO_OPERACAO SET DAT_FIM_PERIODO = ? WHERE SEQ_PERIODO_OP = ?;",
-        [data, id],
-        (err, result) => {
-            if (err) {
-                console.log(err);
-                return res.status(500).send('Erro ao finalizar o período.');
-            }
+  // Primeiro: realizar o update no período de operação
+  db.query(
+    "UPDATE PERIODO_OPERACAO SET DAT_FIM_PERIODO = ? WHERE SEQ_PERIODO_OP = ?;",
+    [data, id],
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).send('Erro ao finalizar o período.');
+      }
 
-            // Após o sucesso do UPDATE, realizar a QUERY1 desejada
+      // Após o sucesso do UPDATE, realizar a QUERY1 desejada
 
-            db.query(`
+      db.query(`
                   SELECT NA.NOME_NAVIO AS NAVIO,
                                                   BE.NOME_BERCO AS BERCO,
                                                   (SELECT MIN(FC_PERIODO_CARREGAMENTO(CA3.DATA_CARREGAMENTO))
@@ -1680,15 +1680,15 @@ console.log(data);
                                  JOIN PRODUTO PR
                                                ON PR.COD_PRODUTO = CG.COD_PRODUTO
                                WHERE CG.COD_OPERACAO = ?;`,
-                [data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, cod_operacao],
-                (err, result1) => {
-                    if (err) {
-                        console.log(err);
-                        return res.status(500).send('Erro ao realizar a consulta.');
-                    }
+        [data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, data_carreg, cod_operacao],
+        (err, result1) => {
+          if (err) {
+            console.log(err);
+            return res.status(500).send('Erro ao realizar a consulta.');
+          }
 
-                    // Gerar a tabela em HTML com os resultados da QUERY1
-                    let tableHTML1 = `
+          // Gerar a tabela em HTML com os resultados da QUERY1
+          let tableHTML1 = `
                         <table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; width: 100%;">
                             <thead>
                                 <tr style="background-color: #ced4d9">
@@ -1703,36 +1703,36 @@ console.log(data);
                             </thead>
                             <tbody>`;
 
-                        let previousPeriod = null;
-                        let rowCount = 0;
-                        let startRowIndex = 0;
-                        let totalManifestado = 0;
-                        let totalVolume = 0;
-                        let totalAutos = 0;
-                        let totalMovimentado = 0;
-                        let totalSaldo = 0;
-                        
-                        result1.forEach((row, index) => {
-                            totalManifestado = (row.MANIFESTADO_NAVIO) || 0;
-                            totalVolume = (row.CARREGADO_PERIODO) || 0;
-                            totalAutos = (row.QTDE_AUTOS_PERIODO) || 0;
-                            totalMovimentado = (row.MOV_ATE_PERIODO) || 0;
-                            totalSaldo = (row.SALDO_NAVIO) || 0;
+          let previousPeriod = null;
+          let rowCount = 0;
+          let startRowIndex = 0;
+          let totalManifestado = 0;
+          let totalVolume = 0;
+          let totalAutos = 0;
+          let totalMovimentado = 0;
+          let totalSaldo = 0;
 
-                        if (row.PERIODO === previousPeriod) {
-                            rowCount++; // Contando quantas linhas têm o mesmo período
-                        } else {
-                            // Se o período mudou e houve repetição do período anterior, unificar as células anteriores
-                            if (rowCount > 0) {
-                                tableHTML1 = tableHTML1.replace(`{{ROWSPAN_${startRowIndex}}}`, `rowspan="${rowCount + 1}"`);
-                            }
-                            // Resetando o contador e marcando o início do novo período
-                            previousPeriod = row.PERIODO;
-                            rowCount = 0;
-                            startRowIndex = index;
-                        }
+          result1.forEach((row, index) => {
+            totalManifestado = (row.MANIFESTADO_NAVIO) || 0;
+            totalVolume = (row.CARREGADO_PERIODO) || 0;
+            totalAutos = (row.QTDE_AUTOS_PERIODO) || 0;
+            totalMovimentado = (row.MOV_ATE_PERIODO) || 0;
+            totalSaldo = (row.SALDO_NAVIO) || 0;
 
-                        tableHTML1 += `
+            if (row.PERIODO === previousPeriod) {
+              rowCount++; // Contando quantas linhas têm o mesmo período
+            } else {
+              // Se o período mudou e houve repetição do período anterior, unificar as células anteriores
+              if (rowCount > 0) {
+                tableHTML1 = tableHTML1.replace(`{{ROWSPAN_${startRowIndex}}}`, `rowspan="${rowCount + 1}"`);
+              }
+              // Resetando o contador e marcando o início do novo período
+              previousPeriod = row.PERIODO;
+              rowCount = 0;
+              startRowIndex = index;
+            }
+
+            tableHTML1 += `
                             <tr>
                                
                             <td style="border: 1px solid #000000; padding: 8px; background-color: #f1c40f;">${row.NUM_DI}</td>
@@ -1743,8 +1743,8 @@ console.log(data);
                             <td style="border: 1px solid #000000; padding: 8px;">${row.MOV_DI_ATE_PERIODO}</td>
                             <td style="border: 1px solid #000000; padding: 8px;">${row.SALDO_DI_ATE_PERIODO}</td>
                             </tr>`;
-                    });
-                    tableHTML1 += `
+          });
+          tableHTML1 += `
                     <tr style="background-color: #f1c40f;">
                        <td style="border: 1px solid #000000; padding: 8px; font-weight: bold;">TOTAIS</td>
     <td style="border: 1px solid #000000; padding: 8px; font-weight: bold;">-</td>
@@ -1754,24 +1754,24 @@ console.log(data);
     <td style="border: 1px solid #000000; padding: 8px; font-weight: bold;">${totalMovimentado}</td>
     <td style="border: 1px solid #000000; padding: 8px; font-weight: bold;">${totalSaldo}</td>
                     </tr>`;
-                
 
-                    // Para o último período
-                    if (rowCount > 0) {
-                        tableHTML1 = tableHTML1.replace(`{{ROWSPAN_${startRowIndex}}}`, `rowspan="${rowCount + 1}"`);
-                    }
 
-                    // Remover placeholders não utilizados
-                    tableHTML1 = tableHTML1.replace(/{{ROWSPAN_\d+}}/g, '');
+          // Para o último período
+          if (rowCount > 0) {
+            tableHTML1 = tableHTML1.replace(`{{ROWSPAN_${startRowIndex}}}`, `rowspan="${rowCount + 1}"`);
+          }
 
-                    tableHTML1 += `
+          // Remover placeholders não utilizados
+          tableHTML1 = tableHTML1.replace(/{{ROWSPAN_\d+}}/g, '');
+
+          tableHTML1 += `
                             </tbody>
                         </table>`;
- 
 
-                             // Executar a QUERY3
-                    db.query(
-                        `SELECT NA.NOME_NAVIO AS NAVIO,
+
+          // Executar a QUERY3
+          db.query(
+            `SELECT NA.NOME_NAVIO AS NAVIO,
 		CL.NOME_CLIENTE AS CLIENTE,
 		DE.NOME_DESTINO AS DESTINO,
         COUNT(CA.ID_CARREGAMENTO) AS QTDE_AUTOS,
@@ -1799,15 +1799,15 @@ UNION
  WHERE CA.PESO_CARREGADO > 0
    AND CA.STATUS_CARREG = 3
    AND CA.COD_OPERACAO = ?;`,
-                        [cod_operacao, cod_operacao],
-                        (err, result3) => {
-                            if (err) {
-                                console.log(err);
-                                return res.status(500).send('Erro ao realizar a consulta 2.');
-                            }
+            [cod_operacao, cod_operacao],
+            (err, result3) => {
+              if (err) {
+                console.log(err);
+                return res.status(500).send('Erro ao realizar a consulta 2.');
+              }
 
-                            // Gerar as tabelas em HTML com os resultados da QUERY3
-                          let tableHTML3 =   `
+              // Gerar as tabelas em HTML com os resultados da QUERY3
+              let tableHTML3 = `
                             <table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; width: 100%;">
                                 <thead>
                                     <tr style="background-color: #ced4d9">
@@ -1817,27 +1817,27 @@ UNION
                                     </tr>
                                 </thead>
                                 <tbody>`;
-                        
-                        result3.forEach((row, index) => {
-                            // Verifica se é a última linha
-                            const isLastRow = index === result3.length - 1;
-                        
-                            tableHTML3 += `
+
+              result3.forEach((row, index) => {
+                // Verifica se é a última linha
+                const isLastRow = index === result3.length - 1;
+
+                tableHTML3 += `
                                 <tr style="${isLastRow ? 'background-color: #f1c40f;' : ''}">
                                     <td style="border: 1px solid #000000; padding: 8px;">${row.DESTINO || '-'}</td>
                                     <td style="border: 1px solid #000000; padding: 8px; text-align: center;">${row.QTDE_AUTOS}</td>
                                     <td style="border: 1px solid #000000; padding: 8px; text-align: right;">${row.PESO_CARREGADO}</td>
                                 </tr>`;
-                        });
-                        
-                        // Encerrando a tabela
-                        tableHTML3 += `
+              });
+
+              // Encerrando a tabela
+              tableHTML3 += `
                                 </tbody>
                             </table>`;
-                            
-                        //Executar a QUERY4
-                            db.query(
-                                `SELECT NA.NOME_NAVIO AS NAVIO,
+
+              //Executar a QUERY4
+              db.query(
+                `SELECT NA.NOME_NAVIO AS NAVIO,
 		CL.NOME_CLIENTE AS CLIENTE,
 		DE.NOME_DESTINO AS DESTINO,
         COUNT(CA.ID_CARREGAMENTO) AS QTDE_AUTOS,
@@ -1867,15 +1867,15 @@ UNION
    AND CA.STATUS_CARREG = 3
    AND CA.COD_OPERACAO = ?
     AND FC_PERIODO_CARREGAMENTO(CA.DATA_CARREGAMENTO) = ?;`,
-                                [cod_operacao, data_carreg, cod_operacao, data_carreg],
-                                (err, result4) => {
-                                    if (err) {
-                                        console.log(err);
-                                        return res.status(500).send('Erro ao realizar a consulta 2.');
-                                    }
-        
-                                    // Gerar as tabelas em HTML com os resultados da QUERY3
-                                  let tableHTML4 =   `
+                [cod_operacao, data_carreg, cod_operacao, data_carreg],
+                (err, result4) => {
+                  if (err) {
+                    console.log(err);
+                    return res.status(500).send('Erro ao realizar a consulta 2.');
+                  }
+
+                  // Gerar as tabelas em HTML com os resultados da QUERY3
+                  let tableHTML4 = `
                                     <table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; width: 100%;">
                                         <thead>
                                             <tr style="background-color: #ced4d9">
@@ -1885,28 +1885,28 @@ UNION
                                             </tr>
                                         </thead>
                                         <tbody>`;
-                                
-                                result4.forEach((row, index) => {
-                                    // Verifica se é a última linha
-                                    const isLastRow = index === result4.length - 1;
-                                
-                                    tableHTML4 += `
+
+                  result4.forEach((row, index) => {
+                    // Verifica se é a última linha
+                    const isLastRow = index === result4.length - 1;
+
+                    tableHTML4 += `
                                             <tr style="${isLastRow ? 'background-color: #f1c40f; ' : ''}">
                                             <td style="border: 1px solid #000000; padding: 8px;">${row.DESTINO || '-'}</td>
                                             <td style="border: 1px solid #000000; padding: 8px; text-align: center;">${row.QTDE_AUTOS}</td>
                                             <td style="border: 1px solid #000000; padding: 8px; text-align: right;">${row.PESO_CARREGADO}</td>
                                         </tr>`;
-                                });
-                                
-                                // Encerrando a tabela
-                                tableHTML4 += `
+                  });
+
+                  // Encerrando a tabela
+                  tableHTML4 += `
                                         </tbody>
                                     </table>`;
-                                    
-        
-                    // Executar a QUERY2
-                    db.query(
-                        `SELECT 
+
+
+                  // Executar a QUERY2
+                  db.query(
+                    `SELECT 
                             FC_PERIODO_CARREGAMENTO(CA.DATA_CARREGAMENTO) AS PERIODO,
                             FORMAT(CA.PESO_CARREGADO / 1000, 3, 'de_DE') AS PESO_CARREGADO,
                             CONCAT(PR.PRODUTO, ' (', CG.NCM, ')') AS PRODUTO,
@@ -1939,32 +1939,32 @@ UNION
                             AND CA.STATUS_CARREG = 3
                         ORDER BY 
                             CA.DATA_CARREGAMENTO;`,
-                        [cod_operacao, id],
-                        (err, result2) => {
-                            if (err) {
-                                console.log(err);
-                                return res.status(500).send('Erro ao realizar a consulta 2.');
-                            }
+                    [cod_operacao, id],
+                    (err, result2) => {
+                      if (err) {
+                        console.log(err);
+                        return res.status(500).send('Erro ao realizar a consulta 2.');
+                      }
 
-                            // Gerar as tabelas em HTML com os resultados da QUERY2
-                            let tableHTML2 = '';
+                      // Gerar as tabelas em HTML com os resultados da QUERY2
+                      let tableHTML2 = '';
 
-                            // Agrupar por PERÍODO para cada tabela
-                            let currentPeriod = null;
-                            let currentTable = '';
+                      // Agrupar por PERÍODO para cada tabela
+                      let currentPeriod = null;
+                      let currentTable = '';
 
-                            result2.forEach((row, index) => {
-                                // Verifica se o período mudou
-                                if (row.PERIODO !== currentPeriod) {
-                                    // Se houver uma tabela em construção, finalize-a e adicione ao HTML final
-                                    if (currentTable !== '') {
-                                        currentTable += `</tbody></table>`;
-                                        tableHTML2 += `<h3><br>Período ${currentPeriod}</h3>${currentTable}`;
-                                    }
+                      result2.forEach((row, index) => {
+                        // Verifica se o período mudou
+                        if (row.PERIODO !== currentPeriod) {
+                          // Se houver uma tabela em construção, finalize-a e adicione ao HTML final
+                          if (currentTable !== '') {
+                            currentTable += `</tbody></table>`;
+                            tableHTML2 += `<h3><br>Período ${currentPeriod}</h3>${currentTable}`;
+                          }
 
-                                    // Comece uma nova tabela para o novo período
-                                    currentPeriod = row.PERIODO;
-                                    currentTable = `
+                          // Comece uma nova tabela para o novo período
+                          currentPeriod = row.PERIODO;
+                          currentTable = `
                                         <table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; width: 100%;">
                                             <thead>
                                                 <tr style="background-color: #95a5a6;">
@@ -1976,10 +1976,10 @@ UNION
                                                 </tr>
                                             </thead>
                                             <tbody>`;
-                                }
+                        }
 
-                                // Adicione a linha atual à tabela em construção
-                                currentTable += `
+                        // Adicione a linha atual à tabela em construção
+                        currentTable += `
                                     <tr>
                                         <td style="border: 1px solid #ddd; padding: 8px;">${row.ID_CARREGAMENTO}</td>
                                         <td style="border: 1px solid #ddd; padding: 8px;">${row.NUM_DI}</td>
@@ -1987,30 +1987,30 @@ UNION
                                         <td style="border: 1px solid #ddd; padding: 8px;">${row.PLACA_CAVALO}</td>
                                         <td style="border: 1px solid #ddd; padding: 8px;">${row.PLACA_CARRETA}</td>
                                     </tr>`;
-                            });
+                      });
 
-                            // Adicione a última tabela ao HTML final
-                            if (currentTable !== '') {
-                                currentTable += `</tbody></table>`;
-                                tableHTML2 += `<h3> ${currentPeriod}</h3>${currentTable}`;
-                            }
-                           
-                           
-                     
-                            const nomeNavio = result1.length > 0 ? result1[0].NAVIO : 'Indisponível';
-                            const periodo = currentPeriod || 'Indisponível';
-                            const berco = result1.length > 0 ? result1[0].BERCO : 'Indisponível';
-                            const total_movimentado = result1.length > 0 ? result1[0].MOV_ATE_PERIODO : 'Indisponível';
-                            const total_saldo = result1.length > 0 ? result1[0].SALDO_NAVIO : 'Indisponível'; 
-                            const hora = result1.length > 0 ? result1[0].HORA : 'Indisponível'; 
-                            // Configurar o e-mail
-                            const mailOptions = {
-                                from: 'e-service.crm@rodrimar.com.br',
-                                // to: 'jmichelotto@eurobraslogistica.com.br',
-                                to: 'e-service.crm@rodrimar.com.br',
-                                cc: 'jmichelotto@eurobraslogistica.com.br',
-                                subject: `Fechamento de período - Navio ${nomeNavio} - ${periodo}`,
-                                html: `
+                      // Adicione a última tabela ao HTML final
+                      if (currentTable !== '') {
+                        currentTable += `</tbody></table>`;
+                        tableHTML2 += `<h3> ${currentPeriod}</h3>${currentTable}`;
+                      }
+
+
+
+                      const nomeNavio = result1.length > 0 ? result1[0].NAVIO : 'Indisponível';
+                      const periodo = currentPeriod || 'Indisponível';
+                      const berco = result1.length > 0 ? result1[0].BERCO : 'Indisponível';
+                      const total_movimentado = result1.length > 0 ? result1[0].MOV_ATE_PERIODO : 'Indisponível';
+                      const total_saldo = result1.length > 0 ? result1[0].SALDO_NAVIO : 'Indisponível';
+                      const hora = result1.length > 0 ? result1[0].HORA : 'Indisponível';
+                      // Configurar o e-mail
+                      const mailOptions = {
+                        from: 'e-service.crm@rodrimar.com.br',
+                        // to: 'jmichelotto@eurobraslogistica.com.br',
+                        to: 'e-service.crm@rodrimar.com.br',
+                        cc: 'jmichelotto@eurobraslogistica.com.br',
+                        subject: `Fechamento de período - Navio ${nomeNavio} - ${periodo}`,
+                        html: `
 
                                     <p>Olá!</p>
                                     <p>Seguem dados da operação até o momento:</p>
@@ -2030,54 +2030,54 @@ UNION
                                     <p>Atenciosamente,
                                     <br>Eurobras S/A Logística Aduaneira.</p>
                                 `
-                            };
-                            
+                      };
 
-                            // Enviar o e-mail
-                            transporter.sendMail(mailOptions, (err, info) => {
-                                if (err) {
-                                    console.log(err);
-                                    const logMessage = `Erro ao enviar e-mail para ${mailOptions.to} em ${new Date().toISOString()}: ${err.message}\n`;
 
-                                    // Registrar erro no log
-                                    fs.appendFile('email_log.txt', logMessage, (fsErr) => {
-                                        if (fsErr) console.log('Erro ao registrar o log:', fsErr);
-                                    });
+                      // Enviar o e-mail
+                      transporter.sendMail(mailOptions, (err, info) => {
+                        if (err) {
+                          console.log(err);
+                          const logMessage = `Erro ao enviar e-mail para ${mailOptions.to} em ${new Date().toISOString()}: ${err.message}\n`;
 
-                                    return res.status(500).send('Erro ao enviar o e-mail.');
-                                }
+                          // Registrar erro no log
+                          fs.appendFile('email_log.txt', logMessage, (fsErr) => {
+                            if (fsErr) console.log('Erro ao registrar o log:', fsErr);
+                          });
 
-                                // Registrar sucesso no log
-                                const logMessage = `E-mail enviado com sucesso para ${mailOptions.to} em ${new Date().toISOString()}\n`;
-                                fs.appendFile('email_log.txt', logMessage, (fsErr) => {
-                                    if (fsErr) console.log('Erro ao registrar o log:', fsErr);
-                                });
-
-                                // Log no console
-                                console.log(`E-mail enviado com sucesso para ${mailOptions.to} em ${new Date().toISOString()}`);
-
-                                // Retornar a resposta de sucesso
-                                res.send('Período finalizado e e-mail enviado com sucesso.');
-                             });
-                            }
-                            );
+                          return res.status(500).send('Erro ao enviar o e-mail.');
                         }
-                        );
+
+                        // Registrar sucesso no log
+                        const logMessage = `E-mail enviado com sucesso para ${mailOptions.to} em ${new Date().toISOString()}\n`;
+                        fs.appendFile('email_log.txt', logMessage, (fsErr) => {
+                          if (fsErr) console.log('Erro ao registrar o log:', fsErr);
+                        });
+
+                        // Log no console
+                        console.log(`E-mail enviado com sucesso para ${mailOptions.to} em ${new Date().toISOString()}`);
+
+                        // Retornar a resposta de sucesso
+                        res.send('Período finalizado e e-mail enviado com sucesso.');
+                      });
                     }
-                );
+                  );
+                }
+              );
             }
-        );
+          );
+        }
+      );
     }
-    );
+  );
 });
 
 app.post(`${API_PREFIX}/periodo/dadosEmail`, (req, res) => {
-    const { id, data } = req.body;
+  const { id, data } = req.body;
 
-    console.log('Recebido ID para obter dados do email:', id);
-    console.log('Recebido Data para obter dados do email:', data);
+  console.log('Recebido ID para obter dados do email:', id);
+  console.log('Recebido Data para obter dados do email:', data);
 
-    const query = `
+  const query = `
          SELECT NA.NOME_NAVIO AS NAVIO,
                                                   BE.NOME_BERCO AS BERCO,
                                                   (SELECT MIN(FC_PERIODO_CARREGAMENTO(CA3.DATA_CARREGAMENTO))
@@ -2166,21 +2166,21 @@ app.post(`${API_PREFIX}/periodo/dadosEmail`, (req, res) => {
 
     `;
 
-    db.query(query, [data, data, data, data, data, data, data, data, data, data, id], (err, navioResult) => {
-        if (err) {
-            console.log('Erro ao obter informações do navio:', err);
-            return res.status(500).json({ message: 'Erro ao obter informações do navio' });
-        }
+  db.query(query, [data, data, data, data, data, data, data, data, data, data, id], (err, navioResult) => {
+    if (err) {
+      console.log('Erro ao obter informações do navio:', err);
+      return res.status(500).json({ message: 'Erro ao obter informações do navio' });
+    }
 
-        if (navioResult.length === 0) {
-            console.log('Nenhum resultado encontrado para o período especificado');
-            return res.status(404).json({ message: 'Nenhum resultado encontrado para o período especificado' });
-        }
+    if (navioResult.length === 0) {
+      console.log('Nenhum resultado encontrado para o período especificado');
+      return res.status(404).json({ message: 'Nenhum resultado encontrado para o período especificado' });
+    }
 
-        const navio = navioResult[0];
-        console.log('Resultado da consulta:', navioResult);
-        res.json(navioResult);
-    });
+    const navio = navioResult[0];
+    console.log('Resultado da consulta:', navioResult);
+    res.json(navioResult);
+  });
 });
 
 
@@ -2667,22 +2667,22 @@ app.get(`${API_PREFIX}/destinos`, async (req, res) => {
 
 //VEICULOS
 app.post(`${API_PREFIX}/motorista/criar`, (req, res) => {
-    const nome = req.body.nome
-    const cnh = null
-    const cpf = req.body.cpf
-    const usuario = req.body.usuario
+  const nome = req.body.nome
+  const cnh = null
+  const cpf = req.body.cpf
+  const usuario = req.body.usuario
 
-    db.query('INSERT INTO MOTORISTA (NOME_MOTORISTA, CPF_MOTORISTA, CNH_MOTORISTA, USUARIO) VALUES (?,?,?,?)',
-        [nome, cpf, cnh, usuario], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('motorista adicionado!');
-            }
-        }
-    )
+  db.query('INSERT INTO MOTORISTA (NOME_MOTORISTA, CPF_MOTORISTA, CNH_MOTORISTA, USUARIO) VALUES (?,?,?,?)',
+    [nome, cpf, cnh, usuario], (err, result) => {
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send("sucesso")
+        console.log('motorista adicionado!');
+      }
+    }
+  )
 })
 
 // Buscar motorista por CPF (usando cliente de promessa do mysql2)
@@ -2708,21 +2708,21 @@ app.get(`${API_PREFIX}/motorista/busca/:cpf`, async (req, res) => {
 //consulta se ID CARREGAMENTO esta apto 
 
 app.get(`${API_PREFIX}/valida/ticket/:idCarregamento`, (req, res) => {
-    const idCarregamento = req.params.idCarregamento;
+  const idCarregamento = req.params.idCarregamento;
 
-    db.query('SELECT ID_CARREGAMENTO, PESO_CARREGADO, PLACA_CAVALO FROM CARREGAMENTO WHERE ID_CARREGAMENTO = ?',
-        idCarregamento, (err, result) => {
-            if (err) {
-                res.send(err)
-                idCarregamento = {}
-                console.log(err)
-            } else {
+  db.query('SELECT ID_CARREGAMENTO, PESO_CARREGADO, PLACA_CAVALO FROM CARREGAMENTO WHERE ID_CARREGAMENTO = ?',
+    idCarregamento, (err, result) => {
+      if (err) {
+        res.send(err)
+        idCarregamento = {}
+        console.log(err)
+      } else {
 
-                res.send(result)
-                console.log(result);
-            }
-        }
-    )
+        res.send(result)
+        console.log(result);
+      }
+    }
+  )
 })
 
 //informações enviada do banco - integração  
@@ -2768,19 +2768,19 @@ app.put('/integrar/:idCarregamento', (req, res) => {
 // envia informações para ticket 
 
 app.get(`${API_PREFIX}/impressao/busca/:idCarregamento`, (req, res) => {
-    const idCarregamento = req.params.idCarregamento;
+  const idCarregamento = req.params.idCarregamento;
 
-    db.query('SELECT * FROM VW_TICKET_CARREGAMENTO WHERE ID_CARREG = ?',
-        idCarregamento, (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send(result)
-                console.log(result);
-            }
-        }
-    )
+  db.query('SELECT * FROM VW_TICKET_CARREGAMENTO WHERE ID_CARREG = ?',
+    idCarregamento, (err, result) => {
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send(result)
+        console.log(result);
+      }
+    }
+  )
 })
 
 // exemplo com mysql2/promise (pool)
@@ -3004,30 +3004,30 @@ app.put(`${API_PREFIX}/segundapesagemcomnf`, async (req, res) => {
 
 
 app.put(`${API_PREFIX}/operacao/concluir/docs`, (req, res) => {
-    const id = req.body.id;
-    const status = req.body.nome;
+  const id = req.body.id;
+  const status = req.body.nome;
 
-    db.query("UPDATE OPERACAO SET STATUS_OPERACAO = 'AGUARDANDO ATRACAÇÃO' WHERE COD_OPERACAO = ?",
-        [id, status],
-        (err, result) => {
-            if (err) {
-                console.log(err)
-                res.send(result)
-            } else {
-                res.send(result)
-            }
-        }
-    )
+  db.query("UPDATE OPERACAO SET STATUS_OPERACAO = 'AGUARDANDO ATRACAÇÃO' WHERE COD_OPERACAO = ?",
+    [id, status],
+    (err, result) => {
+      if (err) {
+        console.log(err)
+        res.send(result)
+      } else {
+        res.send(result)
+      }
+    }
+  )
 })
 
 app.put(`${API_PREFIX}/ultimapesagem`, (req, res) => {
-    const peso3 = req.body.peso3
-    const data = req.body.data
-    const usuario = req.body.usuario
-    const status = 3
-    const id = req.body.id
+  const peso3 = req.body.peso3
+  const data = req.body.data
+  const usuario = req.body.usuario
+  const status = 3
+  const id = req.body.id
 
-    db.query(`
+  db.query(`
         UPDATE 
             CARREGAMENTO 
         SET 
@@ -3036,25 +3036,25 @@ app.put(`${API_PREFIX}/ultimapesagem`, (req, res) => {
             USUARIO_BRUTO = ?, 
             STATUS_CARREG = ? 
         WHERE ID_CARREGAMENTO = ?`,
-        [
-            peso3,
-            data,
-            usuario,
-            status,
-            id
-        ], (err, result) => {
-            console.log();
+    [
+      peso3,
+      data,
+      usuario,
+      status,
+      id
+    ], (err, result) => {
+      console.log();
 
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Ultima pesagem cadastrada!');
-                console.log(result);
-            }
-        }
-    )
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send("sucesso")
+        console.log('Ultima pesagem cadastrada!');
+        console.log(result);
+      }
+    }
+  )
 })
 // BUSCAR CARGAS POR OPERAÇÃO (mysql2/promise)
 app.get(`${API_PREFIX}/carga/busca/:id`, async (req, res) => {
@@ -3105,10 +3105,10 @@ app.get(`${API_PREFIX}/carga/busca/:id`, async (req, res) => {
 
 
 app.post(`${API_PREFIX}/periodo/carregamentos/:id`, (req, res) => {
-    const id = req.params.id;
-    const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
+  const id = req.params.id;
+  const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
-    db.query(`
+  db.query(`
     SELECT 
     CAR.ID_CARREGAMENTO,
 MO.NOME_MOTORISTA,
@@ -3143,22 +3143,22 @@ ORDER BY
 DATA_CARREGAMENTO
 
     `, [id, data], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            console.log(id, data);
-            res.send(result)
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(id, data);
+      res.send(result)
 
-        }
-    });
+    }
+  });
 });
 
 app.post(`${API_PREFIX}/portal/relatorios/:id`, (req, res) => {
-    const id = req.params.id;
-    const { data } = req.body;
-    const usuario = req.body.usuario
+  const id = req.params.id;
+  const { data } = req.body;
+  const usuario = req.body.usuario
 
-    db.query(`
+  db.query(`
     SELECT 
     CAR.ID_CARREGAMENTO,
 MO.NOME_MOTORISTA,
@@ -3197,14 +3197,14 @@ ORDER BY
 DATA_CARREGAMENTO
 
     `, [id, data, usuario], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            console.log(id, data);
-            res.send(result)
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(id, data);
+      res.send(result)
 
-        }
-    });
+    }
+  });
 });
 
 app.post(`${API_PREFIX}/periodo/documentos/:id`, (req, res) => {
@@ -3741,26 +3741,26 @@ app.put(`${API_PREFIX}/documentos/atualiza`, async (req, res) => {
 
 
 app.put(`${API_PREFIX}/carregamento/excluir`, (req, res) => {
-    const { motivo, usuario, data_exclusao, id } = req.body
+  const { motivo, usuario, data_exclusao, id } = req.body
 
 
-    db.query("UPDATE CARREGAMENTO SET STATUS_CARREG = 8, MOTIVO_EXCLUSAO = ?, USUARIO_EXCLUSAO = ?, DATA_EXCLUSAO = ? WHERE (`ID_CARREGAMENTO` = ?);",
-        [motivo, usuario, data_exclusao, id ], (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Pedido alterado!');
-            }
-        }
-    )
+  db.query("UPDATE CARREGAMENTO SET STATUS_CARREG = 8, MOTIVO_EXCLUSAO = ?, USUARIO_EXCLUSAO = ?, DATA_EXCLUSAO = ? WHERE (`ID_CARREGAMENTO` = ?);",
+    [motivo, usuario, data_exclusao, id], (err, result) => {
+      if (err) {
+        res.send(err)
+        console.log(err)
+      } else {
+        res.send("sucesso")
+        console.log('Pedido alterado!');
+      }
+    }
+  )
 });
 
 
 //CARGAS PRO GRAFICO
 app.get(`${API_PREFIX}/relatorios`, (req, res) => {
-    db.query(`
+  db.query(`
         SELECT CA.COD_OPERACAO,
             NA.NOME_NAVIO,
             CA.TIPO_DOC,
@@ -3780,12 +3780,12 @@ app.get(`${API_PREFIX}/relatorios`, (req, res) => {
         GROUP BY 
             CA.COD_OPERACAO, NA.NOME_NAVIO, CA.TIPO_DOC, CA.NUMERO_DOC
         `, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
-    })
+    if (err) {
+      console.log(err)
+    } else {
+      res.send(result)
+    }
+  })
 })
 
 
@@ -3858,9 +3858,9 @@ app.get(`${API_PREFIX}/periodos/gerais/:id`, async (req, res) => {
 
 
 app.get('/portal/periodos/gerais/:id', (req, res) => {
-    const id = req.params.id;
+  const id = req.params.id;
 
-    db.query(`   
+  db.query(`   
         SELECT O.COD_OPERACAO,
         O.COD_NAVIO,
         CONCAT(N.NOME_NAVIO, " (", O.RAP, ")") AS NAVIO,
@@ -3874,22 +3874,22 @@ app.get('/portal/periodos/gerais/:id', (req, res) => {
         WHERE O.COD_OPERACAO = ?
         ORDER BY PERIODO DESC;         
     `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
+    if (err) {
+      console.log(err)
+    } else {
+      res.send(result)
     }
-    )
+  }
+  )
 })
 
 
 
 app.post('/operacao/paralisacao/:id', (req, res) => {
-    const id = req.params.id;
-    const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
+  const id = req.params.id;
+  const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
-    db.query(`
+  db.query(`
     SELECT PA2.COD_OPERACAO,
     PA2.MOTIVO,
     TIME_FORMAT(SEC_TO_TIME(SUM(PA2.DURACAO)), "%H:%i") AS HORAS
@@ -3904,37 +3904,37 @@ GROUP BY PA2.COD_OPERACAO, PA2.MOTIVO
 ORDER BY COD_OPERACAO, MOTIVO;
 
     `, [id, data], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            console.log(id, data);
-            res.send(result)
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(id, data);
+      res.send(result)
 
-        }
-    });
+    }
+  });
 });
 
 app.post('/login/user', (req, res) => {
-    const usuario = req.body.usuario;
-    const senha = req.body.senha;
+  const usuario = req.body.usuario;
+  const senha = req.body.senha;
 
-    console.log('Recebendo requisição para usuário:', usuario);
-    console.log('Senha recebida:', senha);
+  console.log('Recebendo requisição para usuário:', usuario);
+  console.log('Senha recebida:', senha);
 
-    db.query(` SELECT * FROM USUARIO WHERE USUARIO = ? AND SENHA = ?`, [usuario, senha], (err, result) => {
-        if (err) {
-            console.error('Erro ao verificar o usuário: ' + err);
-            res.status(500).json({ message: 'Erro interno ao verificar o usuário. Tente novamente.' });
-        } else {
-            if (result.length > 0) {
-                console.log('Usuário conectou');
-                req.session.user = usuario;
-                res.status(200).json({ message: 'Login bem-sucedido' });
-            } else {
-                res.status(400).json({ message: 'Login falhou. Verifique suas credenciais.' });
-            }
-        }
-    });
+  db.query(` SELECT * FROM USUARIO WHERE USUARIO = ? AND SENHA = ?`, [usuario, senha], (err, result) => {
+    if (err) {
+      console.error('Erro ao verificar o usuário: ' + err);
+      res.status(500).json({ message: 'Erro interno ao verificar o usuário. Tente novamente.' });
+    } else {
+      if (result.length > 0) {
+        console.log('Usuário conectou');
+        req.session.user = usuario;
+        res.status(200).json({ message: 'Login bem-sucedido' });
+      } else {
+        res.status(400).json({ message: 'Login falhou. Verifique suas credenciais.' });
+      }
+    }
+  });
 });
 
 // Puxa a última placa usada pelo motorista (histórico mais recente)
@@ -3980,10 +3980,10 @@ app.get('/pesageminicial/historico/:cpf', async (req, res) => {
 
 
 app.post('/operacao/complemento/:id', (req, res) => {
-    const id = req.params.id;
-    const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
+  const id = req.params.id;
+  const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
-    db.query(`
+  db.query(`
     SELECT PA2.COD_OPERACAO,
     PA2.COMPLEMENTO,
     PA2.OBSERVACAO,
@@ -4001,21 +4001,21 @@ ORDER BY COD_OPERACAO, COMPLEMENTO;
 
 
     `, [id, data], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            console.log(id, data);
-            res.send(result)
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(id, data);
+      res.send(result)
 
-        }
-    });
+    }
+  });
 });
 
 //Relatorio Por Operação 
 app.get('/operacao/gerais/:id', (req, res) => {
-    const id = req.params.id;
+  const id = req.params.id;
 
-    db.query(`   
+  db.query(`   
     SELECT O.COD_OPERACAO,
     O.COD_NAVIO,
     CONCAT(N.NOME_NAVIO, " (", O.RAP, ")") AS NAVIO
@@ -4024,20 +4024,20 @@ app.get('/operacao/gerais/:id', (req, res) => {
     ON N.COD_NAVIO = O.COD_NAVIO
     WHERE O.COD_OPERACAO = ?;        
     `, id, (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            res.send(result)
-        }
+    if (err) {
+      console.log(err)
+    } else {
+      res.send(result)
     }
-    )
+  }
+  )
 })
 
 app.post('/operacao/autos/:id', (req, res) => {
-    const id = req.params.id;
-    const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
+  const id = req.params.id;
+  const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
 
-    db.query(`
+  db.query(`
       SELECT CAR.COD_OPERACAO,
 	   COUNT(CAR.ID_CARREGAMENTO) AS QTDE_AUTOS,
        SUM(DISTINCT CG.QTDE_MANIFESTADA) AS MANIFESTADO,
@@ -4055,38 +4055,38 @@ app.post('/operacao/autos/:id', (req, res) => {
    AND CAR.COD_OPERACAO = ?
  GROUP BY CAR.COD_OPERACAO
     `, [id, data], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            console.log(id, data);
-            res.send(result)
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(id, data);
+      res.send(result)
 
-        }
-    });
+    }
+  });
 });
 
 // Rota para obter o conteúdo do arquivo de motivação baseado no ID
 app.get('/motivacao/conteudo/:id', async (req, res) => {
-    const { id } = req.params; // Aqui, id já é '51.txt'
+  const { id } = req.params; // Aqui, id já é '51.txt'
 
-    const fileName = id.endsWith('.txt') ? id : `${id}.txt`;
-    const filePath = `\\\\10.10.3.57\\Public\\GC\\TI\\MOTIVAÇÃO\\${fileName}`;
+  const fileName = id.endsWith('.txt') ? id : `${id}.txt`;
+  const filePath = `\\\\10.10.3.57\\Public\\GC\\TI\\MOTIVAÇÃO\\${fileName}`;
 
 
-    try {
-        const content = await fsp.readFile(filePath, 'utf8'); // Lê o arquivo como uma string UTF-8
-        res.send({ content });
-    } catch (error) {
-        console.error('Erro ao ler o arquivo:', error);
-        res.status(500).send('Erro ao ler o arquivo');
-    }
+  try {
+    const content = await fsp.readFile(filePath, 'utf8'); // Lê o arquivo como uma string UTF-8
+    res.send({ content });
+  } catch (error) {
+    console.error('Erro ao ler o arquivo:', error);
+    res.status(500).send('Erro ao ler o arquivo');
+  }
 });
 
 app.post('/executarPuppeteer', async (req, res) => {
 
-    const { COD_OPERACAO, COD_MOTORISTA, ID_CARREGAMENTO, CPF_MOTORISTA } = req.body;
-    const queryResult = await new Promise((resolve, reject) => {
-        db.query(`
+  const { COD_OPERACAO, COD_MOTORISTA, ID_CARREGAMENTO, CPF_MOTORISTA } = req.body;
+  const queryResult = await new Promise((resolve, reject) => {
+    db.query(`
             SELECT 
                 MOTORISTA.CPF_MOTORISTA,
                 NAVIO.NOME_NAVIO,
@@ -4102,100 +4102,100 @@ app.post('/executarPuppeteer', async (req, res) => {
             WHERE 
                 CARREGAMENTO.ID_CARREGAMENTO = ?
         `,
-            [ID_CARREGAMENTO], (err, result) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(result[0]);
-                }
-            });
+      [ID_CARREGAMENTO], (err, result) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result[0]);
+        }
+      });
+  });
+
+  console.log("RESULTADO DO GET: ", queryResult)
+
+  try {
+    const browser = await puppeteer.launch({ headless: false });
+    const page = await browser.newPage();
+    await page.goto('http://www.codesp.com.br/asp/login.asp');
+
+    await page.evaluate(() => {
+      document.querySelector('input[name="nr_cnpj"]').value = '28673764000167';
+      document.querySelector('input[name="nm_usuario"]').value = '17430193862';
+      document.querySelector('input[name="nm_senha"]').value = 'Tania@23';
+      document.querySelector('input[type="submit"]').click();
     });
 
-    console.log("RESULTADO DO GET: ", queryResult)
 
-    try {
-        const browser = await puppeteer.launch({ headless: false });
-        const page = await browser.newPage();
-        await page.goto('http://www.codesp.com.br/asp/login.asp');
-
-        await page.evaluate(() => {
-            document.querySelector('input[name="nr_cnpj"]').value = '28673764000167';
-            document.querySelector('input[name="nm_usuario"]').value = '17430193862';
-            document.querySelector('input[name="nm_senha"]').value = 'Tania@23';
-            document.querySelector('input[type="submit"]').click();
-        });
+    await page.waitForNavigation();
 
 
-        await page.waitForNavigation();
+    await page.goto('http://www.codesp.com.br/asp/manutencao/adicionar_locais_pessoas.asp');
 
 
-        await page.goto('http://www.codesp.com.br/asp/manutencao/adicionar_locais_pessoas.asp');
+    await page.focus('textarea[name="cpfs"]');
+
+    await page.keyboard.type(queryResult.CPF_MOTORISTA);
 
 
-        await page.focus('textarea[name="cpfs"]');
+    await page.click('input[type="submit"]');
+    await page.click('input[type="checkbox"][name="loc"][value="5"]');
+    await page.click('input[type="checkbox"][name="loc"][value="6"]');
+    const currentDate = new Date().toLocaleDateString('pt-BR');
 
-        await page.keyboard.type(queryResult.CPF_MOTORISTA);
+    await page.type('input[name="datainicial_d"]', currentDate);
 
+    const nextDay = new Date();
+    nextDay.setDate(nextDay.getDate() + 1);
 
-        await page.click('input[type="submit"]');
-        await page.click('input[type="checkbox"][name="loc"][value="5"]');
-        await page.click('input[type="checkbox"][name="loc"][value="6"]');
-        const currentDate = new Date().toLocaleDateString('pt-BR');
+    const nextDayFormatted = nextDay.toLocaleDateString('pt-BR');
 
-        await page.type('input[name="datainicial_d"]', currentDate);
+    await page.type('input[name="datafinal_d"]', nextDayFormatted);
 
-        const nextDay = new Date();
-        nextDay.setDate(nextDay.getDate() + 1);
+    await page.type('textarea[name="justificativa"]', `Operação no navio ${queryResult.NOME_NAVIO}`);
 
-        const nextDayFormatted = nextDay.toLocaleDateString('pt-BR');
+    // Clique no botão <input> com type="submit", name="sub" e valor "SIM"
+    await page.click('input[type="submit"][name="sub"][value="SIM"]');
 
-        await page.type('input[name="datafinal_d"]', nextDayFormatted);
+    // Aguarde um pequeno atraso para garantir que o texto esteja carregado (ajuste conforme necessário)
+    await page.waitForTimeout(1000);
 
-        await page.type('textarea[name="justificativa"]', `Operação no navio ${queryResult.NOME_NAVIO}`);
+    // Selecione e copie o texto desejado
+    const selectedText = await page.evaluate(() => {
+      const textToSelect = document.body.innerText;
+      const startIndex = textToSelect.indexOf("COMPROVANTE MECÂNICO PARA ACESSO");
+      const endIndex = textToSelect.indexOf("CODESP");
+      return textToSelect.substring(startIndex, endIndex + "CODESP".length);
+    });
 
-        // Clique no botão <input> com type="submit", name="sub" e valor "SIM"
-        await page.click('input[type="submit"][name="sub"][value="SIM"]');
+    // Copie o texto para a área de transferência
+    await page.evaluate((selectedText) => {
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = selectedText;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempTextArea);
+    }, selectedText);
 
-        // Aguarde um pequeno atraso para garantir que o texto esteja carregado (ajuste conforme necessário)
-        await page.waitForTimeout(1000);
+    console.log("Texto copiado para a área de transferência:");
+    console.log(selectedText);
 
-        // Selecione e copie o texto desejado
-        const selectedText = await page.evaluate(() => {
-            const textToSelect = document.body.innerText;
-            const startIndex = textToSelect.indexOf("COMPROVANTE MECÂNICO PARA ACESSO");
-            const endIndex = textToSelect.indexOf("CODESP");
-            return textToSelect.substring(startIndex, endIndex + "CODESP".length);
-        });
+    const filePath = `\\\\10.10.3.57\Public\GC\\TI\MOTIVAÇÃO\\${ID_CARREGAMENTO}.txt`;
 
-        // Copie o texto para a área de transferência
-        await page.evaluate((selectedText) => {
-            const tempTextArea = document.createElement('textarea');
-            tempTextArea.value = selectedText;
-            document.body.appendChild(tempTextArea);
-            tempTextArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempTextArea);
-        }, selectedText);
+    // Escreva o texto no arquivo
+    fs.writeFileSync(filePath, selectedText);
 
-        console.log("Texto copiado para a área de transferência:");
-        console.log(selectedText);
-
-        const filePath = `\\\\10.10.3.57\Public\GC\\TI\MOTIVAÇÃO\\${ID_CARREGAMENTO}.txt`;
-
-        // Escreva o texto no arquivo
-        fs.writeFileSync(filePath, selectedText);
-
-        console.log(`Texto copiado e salvo em ${filePath}`);
+    console.log(`Texto copiado e salvo em ${filePath}`);
 
 
-        // Feche o navegador
-        await browser.close();
+    // Feche o navegador
+    await browser.close();
 
-        res.status(200).send('Código Puppeteer executado com sucesso!');
-    } catch (error) {
-        console.error('Erro ao executar o código Puppeteer:', error);
-        res.status(500).send('Erro ao executar o código Puppeteer');
-    }
+    res.status(200).send('Código Puppeteer executado com sucesso!');
+  } catch (error) {
+    console.error('Erro ao executar o código Puppeteer:', error);
+    res.status(500).send('Erro ao executar o código Puppeteer');
+  }
 });
 
 // app.post('/motivacao/registrar', async (req, res) => {
@@ -4255,10 +4255,10 @@ app.post('/executarPuppeteer', async (req, res) => {
 
 
 app.post('/operacao/documentos/:id', (req, res) => {
-    const id = req.params.id;
-    const { data } = req.body;
+  const id = req.params.id;
+  const { data } = req.body;
 
-    db.query(`
+  db.query(`
     SELECT CAR.COD_OPERACAO,
     CONCAT(CG.TIPO_DOC, " ", CG.NUMERO_DOC) AS DOCUMENTO,
     SUM(DISTINCT CG.QTDE_MANIFESTADA) AS QTDE_MANIFESTADA,
@@ -4274,14 +4274,14 @@ app.post('/operacao/documentos/:id', (req, res) => {
     GROUP BY CAR.COD_OPERACAO, CG.TIPO_DOC, CG.NUMERO_DOC
 
     `, [id, data], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            console.log(id, data);
-            res.send(result)
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(id, data);
+      res.send(result)
 
-        }
-    });
+    }
+  });
 });
 
 
@@ -4367,28 +4367,28 @@ app.get(`${API_PREFIX}/buscar/pedidos/:id`, async (req, res) => {
 
 //MIC SISTEMAS - API NF-e
 app.post("/gerarnfe", (req, res) => {
-    const id = req.body.id;
-    const cnh = req.body.cnh;
-    const cnpj = req.body.cnpj;
-    const cnpjTrasnp = req.body.cnpjTrasnp;
-    const hr = req.body.hr;
-    const carreta1 = req.body.carreta1;
-    const carreta2 = req.body.carreta2;
-    const carreta3 = req.body.carreta3;
-    const cavalo = req.body.cavalo;
-    const di = req.body.di;
-    const pedido = req.body.pedido;
-    const bruto = req.body.bruto;
-    const liquido = req.body.liquido;
-    const tara = req.body.tara;
-  
-    const options = {
-      method: "POST",
-      Accept: "application/xml",
-      "Content-Type": "application/xml",
-    };
-  
-    const data = `<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:ejb="http://ejb.postos.notafiscal.micsistemas.com.br/">
+  const id = req.body.id;
+  const cnh = req.body.cnh;
+  const cnpj = req.body.cnpj;
+  const cnpjTrasnp = req.body.cnpjTrasnp;
+  const hr = req.body.hr;
+  const carreta1 = req.body.carreta1;
+  const carreta2 = req.body.carreta2;
+  const carreta3 = req.body.carreta3;
+  const cavalo = req.body.cavalo;
+  const di = req.body.di;
+  const pedido = req.body.pedido;
+  const bruto = req.body.bruto;
+  const liquido = req.body.liquido;
+  const tara = req.body.tara;
+
+  const options = {
+    method: "POST",
+    Accept: "application/xml",
+    "Content-Type": "application/xml",
+  };
+
+  const data = `<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:ejb="http://ejb.postos.notafiscal.micsistemas.com.br/">
           <soap:Header/>
           <soap:Body>
               <ejb:tiqueteConsultaV2>
@@ -4403,32 +4403,41 @@ app.post("/gerarnfe", (req, res) => {
               </ejb:tiqueteConsultaV2>
           </soap:Body>
           </soap:Envelope>`;
-    let result = "";
-    const request = http.request(micUrl, options, (response) => {
-      console.log(response.statusCode);
-  
-      response.setEncoding("utf8");
-      response.on("data", (chunk) => {
-        result += chunk;
-      });
-  
-      response.on("end", () => {
-        let json = convert.xml2js(result);
-        json =
-          json.elements[0].elements[0].elements[0].elements[0].elements[0].text;
-        console.log(json);
-        res.send(json);
-      });
+  let result = "";
+  const request = http.request(micUrl, options, (response) => {
+    console.log(response.statusCode);
+
+    response.setEncoding("utf8");
+    response.on("data", (chunk) => {
+      result += chunk;
     });
-  
-    request.on("error", (e) => {
-      console.error(e);
+
+    response.on("end", () => {
+      let json = convert.xml2js(result);
+      json =
+        json.elements[0].elements[0].elements[0].elements[0].elements[0].text;
+      console.log(json);
+      res.send(json);
     });
-  
-    request.write(data);
-    request.end();
   });
-  
+
+  request.on("error", (e) => {
+    console.error(e);
+  });
+
+  request.write(data);
+  request.end();
+});
+
+function formatPlaca(v) {
+  if (!v) return '';
+  const s = String(v).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Somente formata quando for 3 letras + 4 dígitos (ex.: AAA1111 -> AAA 1111)
+  const m = s.match(/^([A-Z]{3})(\d{4})$/);
+  return m ? `${m[1]} ${m[2]}` : s; // mantém como está caso não seja nesse padrão
+}
+
+
 // ========= MIC SISTEMAS - GERAR NOTA =========
 app.post(`${API_PREFIX}/gerarnotamic/:id`, async (req, res) => {
   const id = Number(req.params.id);
@@ -4471,24 +4480,24 @@ app.post(`${API_PREFIX}/gerarnotamic/:id`, async (req, res) => {
     const r = rows[0];
 
     // ===== Monta os campos a partir do SELECT =====
-    const codTiquete       = r.ID_CARREGAMENTO;          // conforme solicitado
-    const placa1           = r.PLACA_CARRETA  || '';
-    const placa2           = r.PLACA_CARRETA2 || '';
-    const placa3           = r.PLACA_CARRETA3 || '';
-    const placaCavalo      = r.PLACA_CAVALO   || '';
-    const num_DI           = r.NUMERO_DOC     || '';
-    const pedido_mic       = r.PEDIDO_MIC     || '';
-    const pesoBrutoRaw     = Number(r.PESO_BRUTO);       // decimal(15,3) → string → Number
-    const qtBruto          = Number.isFinite(pesoBrutoRaw) ? (pesoBrutoRaw / 1000) : NaN; // 48720 → 48.72
-    const qtLiquido        = Number.isFinite(pesoBrutoRaw) ? ((pesoBrutoRaw - 1000) / 1000) : NaN; // 47.72
-    const qtTara           = 1;
-    const dtCarreg         = r.DATA_CARREGAMENTO ? new Date(r.DATA_CARREGAMENTO) : null;
-    const dtTiqueteIso     = dtCarreg ? dtCarreg.toISOString().slice(0, 19) : null;
+    const codTiquete = r.ID_CARREGAMENTO;          // conforme solicitado
+    const placa1 = formatPlaca(r.PLACA_CARRETA);
+    const placa2 = formatPlaca(r.PLACA_CARRETA2);
+    const placa3 = formatPlaca(r.PLACA_CARRETA3);
+    const placaCavalo = formatPlaca(r.PLACA_CAVALO);
+    const num_DI = r.NUMERO_DOC || '';
+    const pedido_mic = r.PEDIDO_MIC || '';
+    const pesoBrutoRaw = Number(r.PESO_BRUTO);       // decimal(15,3) → string → Number
+    const qtBruto = Number.isFinite(pesoBrutoRaw) ? (pesoBrutoRaw / 1000) : NaN; // 48720 → 48.72
+    const qtLiquido = Number.isFinite(pesoBrutoRaw) ? ((pesoBrutoRaw - 1000) / 1000) : NaN; // 47.72
+    const qtTara = 1;
+    const dtCarreg = r.DATA_CARREGAMENTO ? new Date(r.DATA_CARREGAMENTO) : null;
+    const dtTiqueteIso = dtCarreg ? dtCarreg.toISOString().slice(0, 19) : null;
 
-    const cnpjEmpresa         = r.CNPJ_CLIENTE;
-    const cnpjTransportadora  = r.CNPJ_TRANSP;
-    const nomeProduto         = r.NOME_REDUZIDO_PRODUTO || null;
-    const codCarga            = r.COD_CARGA || null;
+    const cnpjEmpresa = r.CNPJ_CLIENTE;
+    const cnpjTransportadora = r.CNPJ_TRANSP;
+    const nomeProduto = r.NOME_REDUZIDO_PRODUTO || null;
+    const codCarga = r.COD_CARGA || null;
 
     // Validações mínimas (agora com base no SELECT)
     const problemas = [];
@@ -4521,7 +4530,7 @@ app.post(`${API_PREFIX}/gerarnotamic/:id`, async (req, res) => {
 
     // ===== SOAP XML =====
     const usuario = 'eurobrascodesp';
-    const senha   = 'tiquete';
+    const senha = 'tiquete';
     const soapXml = `
 <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:ejb="http://ejb.postos.notafiscal.micsistemas.com.br/">
   <soap:Header/>
@@ -4559,7 +4568,7 @@ app.post(`${API_PREFIX}/gerarnotamic/:id`, async (req, res) => {
 
     // ===== Chamada MIC =====
     const basic = Buffer.from(`${usuario}:${senha}`).toString('base64');
-    const url   = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
+    const url = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
 
     const response = await axios.post(url, soapXml, {
       headers: {
@@ -4614,7 +4623,7 @@ app.post(`${API_PREFIX}/gerarnotamic/:id`, async (req, res) => {
         'REJEICAO: DI nao pertence ao LOCAL de emissao': 'DI não pertence ao local de emissão',
         'REJEICAO: Quantidade muito baixa': 'qtLiquido inferior a 0.2',
       };
-      const key   = Object.keys(errorMap).find(k => result_message.includes(k));
+      const key = Object.keys(errorMap).find(k => result_message.includes(k));
       const pretty = key ? errorMap[key] : (result_message || `HTTP ${response.status}`);
 
       saveLog(id, 'gerar_nota_response_error', pretty);
@@ -4691,9 +4700,9 @@ cron.schedule('*/1 * * * *', async () => {
     }
 
     const usuario = 'eurobrascodesp';
-    const senha   = 'tiquete';
-    const basic   = Buffer.from(`${usuario}:${senha}`).toString('base64');
-    const url     = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
+    const senha = 'tiquete';
+    const basic = Buffer.from(`${usuario}:${senha}`).toString('base64');
+    const url = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
     const headers = {
       'Content-Type': 'text/xml; charset=utf-8',
       Authorization: `Basic ${basic}`,
@@ -4704,10 +4713,10 @@ cron.schedule('*/1 * * * *', async () => {
       let hasContent = true;
 
       const idCarregamento = carreg.ID_CARREGAMENTO;
-      const codTiquete     = carreg.TICKET;
-      const num_DI         = carreg.NUMERO_DOC;
-      const obsNota        = carreg.OBS_NOTA;
-      const codRAP         = carreg.RAP;
+      const codTiquete = carreg.TICKET;
+      const num_DI = carreg.NUMERO_DOC;
+      const obsNota = carreg.OBS_NOTA;
+      const codRAP = carreg.RAP;
 
       // produto (para checar NAM)
       const [prodRows] = await db.query(
@@ -4887,28 +4896,28 @@ cron.schedule('*/1 * * * *', async () => {
 
 // MIC SISTEMAS - ENTREGAR NOTA
 app.post('/entregarnotamic/:id', async (req, res) => {
-    console.log(req.params)
-    const idCarregamento = req.params.id;
+  console.log(req.params)
+  const idCarregamento = req.params.id;
 
-    // NOTA ENTREGUE
-    db.query(`
+  // NOTA ENTREGUE
+  db.query(`
         UPDATE CARREGAMENTO
         SET STATUS_NOTA_MIC = 6, OBS_NOTA = 'Nota entregue ao motorista'
         WHERE ID_CARREGAMENTO = ?
     `, idCarregamento, (err, result) => {
-        if (err)
-            res.status(400).send(`Erro ao atualizar BD(${err}).`);
-    });
+    if (err)
+      res.status(400).send(`Erro ao atualizar BD(${err}).`);
+  });
 
-    res.status(200).send();
+  res.status(200).send();
 })
 
 app.post('/baixarnota', async (req, res) => {
-    console.log(req.body)
+  console.log(req.body)
 
-    const idCarregamento = req.body.idCarregamento
+  const idCarregamento = req.body.idCarregamento
 
-    let db_result = await new Promise((resolve, reject) => db.query(`
+  let db_result = await new Promise((resolve, reject) => db.query(`
         SELECT 
             NA.NOME_NAVIO, OPER.RAP
         FROM 
@@ -4920,46 +4929,46 @@ app.post('/baixarnota', async (req, res) => {
         WHERE 
             CARREG.ID_CARREGAMENTO = ?
         `, idCarregamento, (err, result) => {
-        if (err)
-            reject(err)
+    if (err)
+      reject(err)
 
-        resolve(result)
-    }
-    ));
+    resolve(result)
+  }
+  ));
 
-    console.log(db_result)
+  console.log(db_result)
 
-    const nomeNavio = db_result[0].NOME_NAVIO
-    const codRAP = db_result[0].RAP
+  const nomeNavio = db_result[0].NOME_NAVIO
+  const codRAP = db_result[0].RAP
 
-      const networkPath = path.join(
+  const networkPath = path.join(
     __dirname,
     "Files",
     "Notas_Fiscais",
     `${nomeNavio}-${codRAP}`,
     `Nota Fiscal ${idCarregamento}.pdf`
   );
-console.log(networkPath);
-    var file_data = {}
+  console.log(networkPath);
+  var file_data = {}
 
-    try {
+  try {
     var filepath = `${networkPath}`;
 
-        file_data = {
-            'status': 'gerado',
-            'filename': file,
-            'pdf': fs.readFileSync(filepath, { encoding: 'base64' })
-        }
+    file_data = {
+      'status': 'gerado',
+      'filename': file,
+      'pdf': fs.readFileSync(filepath, { encoding: 'base64' })
+    }
 
-        res.status(200).send(file_data);
+    res.status(200).send(file_data);
+  }
+  catch (err) {
+    file_data = {
+      'status': 'erro',
+      'mensagem': err
     }
-    catch (err) {
-        file_data = {
-            'status': 'erro',
-            'mensagem': err
-        }
-        res.status(400).send(file_data);
-    }
+    res.status(400).send(file_data);
+  }
 })
 
 //RODAR API
