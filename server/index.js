@@ -4568,7 +4568,7 @@ app.post(`${API_PREFIX}/gerarnotamic/:id`, async (req, res) => {
 
     // ===== Chamada MIC =====
     const basic = Buffer.from(`${usuario}:${senha}`).toString('base64');
-    const url = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
+    const url = 'http://webservice.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl';
 
     const response = await axios.post(url, soapXml, {
       headers: {
