@@ -172,7 +172,7 @@ const PesagemInicial = () => {
 
   const getDestino = async () => {
     try {
-      const { data } = await Axios.get("/destino");
+      const { data } = await Axios.get("/destinos");
       setDestinos(data || []);
     } catch (e) {
       console.error("[getDestino][ERR]", e);

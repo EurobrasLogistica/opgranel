@@ -2603,18 +2603,32 @@ app.get(`${API_PREFIX}/equipamentos`, async (_req, res) => {
   }
 });
 
-app.get(`${API_PREFIX}/destinos`, (req, res) => {
+// LISTAR DESTINOS
+app.get(`${API_PREFIX}/destinos`, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `
+      SELECT
+        COD_DESTINO,
+        NOME_DESTINO
+      FROM DESTINO
+      ORDER BY NOME_DESTINO
+      `
+    );
 
-    db.query(`SELECT * FROM DESTINO;`,
-        (err, result) => {
-            if (err) {
-                console.log(err)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
+    // Sempre retorna array (mesmo vazio) e evita cache
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json(Array.isArray(rows) ? rows : []);
+  } catch (err) {
+    console.error("[GET /destinos][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      error: "Erro interno ao listar destinos.",
+      detail: err?.sqlMessage || err?.message || String(err),
+    });
+  }
+});
+
 
 //VEICULOS
 app.post(`${API_PREFIX}/motorista/criar`, (req, res) => {
