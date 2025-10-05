@@ -83,7 +83,7 @@ const corsOptions = {
 };
 
 // Base dos logs: variável de ambiente ou fallback para ./logs ao lado do index.js
-const LOG_ROOT = process.env.LOG_DIR || path.join(__dirname, 'logs');
+const LOG_DIR = process.env.LOG_DIR || path.join(__dirname, 'logs');
 
 // garante a pasta base na inicialização
 fs.mkdirSync(LOG_ROOT, { recursive: true });
@@ -93,17 +93,21 @@ function ensureDirSync(p) {
   fs.mkdirSync(p, { recursive: true });
 }
 
-function saveLog(idCarregamento, filename, data) {
-  const dir = path.join(LOG_ROOT, String(idCarregamento));   // ex.: server/logs/19474
-  ensureDirSync(dir);
+function safeName(name) {
+  return String(name).replace(/[^\w.-]+/g, '_').slice(0, 100);
+}
 
-  const filePath = path.join(dir, `${filename}.txt`);
-  fs.writeFile(filePath, JSON.stringify(data, null, 4), (err) => {
-    if (err) {
-      console.error('Falha ao salvar log:', err);
-      return;
-    }
-    // opcional: console.log('Log salvo em', filePath);
+function saveLog(idCarregamento, filename, data) {
+  const dir = path.join(LOG_DIR, String(idCarregamento));
+  fs.mkdirSync(dir, { recursive: true });
+
+  const filePath = path.join(dir, `${safeName(filename)}.txt`);
+  const payload = (typeof data === 'string' || Buffer.isBuffer(data))
+    ? data
+    : JSON.stringify(data, null, 2);
+
+  fs.writeFile(filePath, payload, (err) => {
+    if (err) console.error('saveLog write error:', err);
   });
 }
 
@@ -4621,20 +4625,7 @@ app.post("/gerarnfe", (req, res) => {
   });
 
 
-const saveLog = (idCarregamento, filename, data) => {
-  var dir = `/app/logs/${idCarregamento}`;
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir);
-  }
 
-  fs.writeFile(
-    `${dir}/${filename}.txt`,
-    JSON.stringify(data, null, 4),
-    (error) => {
-      if (error) throw error;
-    }
-  );
-};
 
 // MIC SISTEMAS - CONSULTAR NOTA
 // app.post('/consultarnotamic/:id', async (req, res) => {
