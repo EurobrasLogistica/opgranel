@@ -25,35 +25,35 @@ const Operacao = () => {
   useEffect(() => {
     // DadosDashboard();
     getPeriodoStatus();
-     getVeiculos();
-     getQtDescarregado();
-     getMotivos();
-     getTotalSaldo();
-     VerificaParalisacao();
-     getComplementos();
-     getCargas();
-     getTipoveiculo();
-     getTransportadora();
-     VerificaCarregamento();
-     getDocumentos();
-     getDocs();
-     getPedido();
+    getVeiculos();
+    getQtDescarregado();
+    getMotivos();
+    getTotalSaldo();
+    VerificaParalisacao();
+    getComplementos();
+    getCargas();
+    getTipoveiculo();
+    getTransportadora();
+    VerificaCarregamento();
+    getDocumentos();
+    getDocs();
+    getPedido();
     // getHoraAutos();
-     getPeriodos();
+    getPeriodos();
   }, []);
 
   useEffect(() => {
     const interval_1 = setInterval(() => {
       // DadosDashboard();
       getPeriodoStatus();
-       getVeiculos();
-       getQtDescarregado();
-       getTotalSaldo();
-       getMotivos();
-       VerificaParalisacao();
-       getComplementos();
-       VerificaCarregamento();
-       getHoraAutos();
+      getVeiculos();
+      getQtDescarregado();
+      getTotalSaldo();
+      getMotivos();
+      VerificaParalisacao();
+      getComplementos();
+      VerificaCarregamento();
+      getHoraAutos();
     }, 1500);
 
     return () => clearInterval(interval_1);
@@ -77,7 +77,7 @@ const Operacao = () => {
   const [docs, setDocs] = useState([]);
   const [doc, setDoc] = useState('');
   const [horaAutos, setHoraAutos] = useState([]);
-  const allowedUsers = ["jmichelotto","dcruz","tazevedo","wgoncalves","walmeida","mssilva","toliveira","enascimento","vhsilva","ajunior"];
+  const allowedUsers = ["jmichelotto", "dcruz", "tazevedo", "wgoncalves", "walmeida", "mssilva", "toliveira", "enascimento", "vhsilva", "ajunior"];
   const [motivos, setMotivos] = useState([]);
   const [complementos, setComplementos] = useState([]);
   const [motivo, setMotivo] = useState("");
@@ -122,7 +122,10 @@ const Operacao = () => {
   const [tipoveiculo, setTipoveiculo] = useState([]);
   const [transportadora, setTransportadora] = useState([]);
   const [transportadoras, setTransportadoras] = useState([]);
-const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido, 1 = aberto, 0 = fechado
+  const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido, 1 = aberto, 0 = fechado
+
+  // === helper: flag para emitir NF ===
+  const shouldEmitNF = (v) => String(v?.EMITIR_NF || "").toUpperCase() === "S";
 
   // modal 2ª pesagem
   const [openA, setOpenA] = useState(false);
@@ -386,14 +389,19 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
     addParalisacao();
   };
 
-  const validaDados2 = () => {
-    if (!peso2 | !data) { showAlert('Preencha todos os campos', 'error'); return; }
-    if (i.PESO_TARA == 0 || i.PESO_TARA == null) { showAlert('Tara é obrigatória para 3ª pesagem', 'error'); return; }
-    if (i.DESC_TIPO_VEICULO == "AGUARDANDO MODELO") { showAlert('É obrigatório a escolha do tipo do veículo','error'); return; }
-    if (peso2 > 55000){ showAlert('Peso excedido!', 'error'); return; }
-    SegundaPesagem();
-    // Integra();
-  };
+const validaDados2 = () => {
+  if (!peso2 || !data) { showAlert('Preencha todos os campos', 'error'); return; }
+  if (i.PESO_TARA == 0 || i.PESO_TARA == null) { showAlert('Tara é obrigatória para 3ª pesagem', 'error'); return; }
+  if (i.DESC_TIPO_VEICULO === "AGUARDANDO MODELO") { showAlert('É obrigatório a escolha do tipo do veículo', 'error'); return; }
+  if (peso2 > 55000) { showAlert('Peso excedido!', 'error'); return; }
+
+  const flag = String((getVeiculoAtual()?.EMITIR_NF ?? i?.EMITIR_NF) || '').toUpperCase();
+  if (flag === 'S') {
+    SegundaPesagemComNF();   // emite NF após registrar a 2ª pesagem
+  } else {
+    SegundaPesagem();        // apenas registra a 2ª pesagem
+  }
+};
 
   const encerrarPeriodo = () => {
     api.put('/periodo/finalizar', {
@@ -409,26 +417,26 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
   };
 
   const getPeriodoStatus = () => {
-  api.get(`/periodo/status/${id}`)
-    .then((res) => {
-      const st = Number(res.data?.em_andamento ?? 0);
-      setPeriodoStatus(st);
-      if (st === 1) {
-        // Carrega os dados do dashboard quando existir período em aberto
-        DadosDashboard();
-      } else {
-        // Limpa caso não haja período em aberto
+    api.get(`/periodo/status/${id}`)
+      .then((res) => {
+        const st = Number(res.data?.em_andamento ?? 0);
+        setPeriodoStatus(st);
+        if (st === 1) {
+          // Carrega os dados do dashboard quando existir período em aberto
+          DadosDashboard();
+        } else {
+          // Limpa caso não haja período em aberto
+          setDadosDash({});
+          setParalisacoes([]);
+        }
+      })
+      .catch(() => {
+        // Se der erro, considera sem período aberto (mostra mensagem)
+        setPeriodoStatus(0);
         setDadosDash({});
         setParalisacoes([]);
-      }
-    })
-    .catch(() => {
-      // Se der erro, considera sem período aberto (mostra mensagem)
-      setPeriodoStatus(0);
-      setDadosDash({});
-      setParalisacoes([]);
-    });
-};
+      });
+  };
 
 
   const enviarEmail = async () => {
@@ -451,7 +459,7 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
         total_movimentado: (navioData[0].MOV_ATE_PERIODO),
         total_saldo: (navioData[0].SALDO_NAVIO),
         hora: navioData[0].HORA,
-        numero_documento:  navioData[0]?.NUM_DI ?? "-",
+        numero_documento: navioData[0]?.NUM_DI ?? "-",
         manifestado: (navioData[0]?.QTDE_MANIFESTADA) ?? "0.000",
         volume: (navioData[0]?.PESO_CARREGADO_DI) ?? "0.00",
         autos: navioData[0]?.QTDE_AUTOS_DI ?? "-",
@@ -472,8 +480,11 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
     encerrarPeriodo();
   };
 
+  // ===== MIC =====
   const GerarNotaMIC = async () => {
-    if (getVeiculoAtual().STATUS_NOTA_MIC == 4) return;
+    const v = getVeiculoAtual();
+    if (!v) return;
+    if (v.STATUS_NOTA_MIC == 4) return;
 
     const preparaPlaca = (placa) => {
       if (!placa) return '';
@@ -481,20 +492,20 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
     };
 
     const input_data = {
-      placa1: preparaPlaca(i.PLACA_CARRETA),
-      placa2: preparaPlaca(i.PLACA_CARRETA2),
-      placa3: preparaPlaca(i.PLACA_CARRETA3),
-      placaCavalo: preparaPlaca(i.PLACA_CAVALO),
-      num_DI: i.NUMERO_DOC,
-      pedido_mic: i.PEDIDO_MIC,
-      peso_bruto: parseFloat(i.PESO_TARA) + parseFloat(i.PESO_CARREGADO || peso2),
-      peso_liquido: parseFloat(i.PESO_CARREGADO || peso2),
+      placa1: preparaPlaca(v.PLACA_CARRETA),
+      placa2: preparaPlaca(v.PLACA_CARRETA2),
+      placa3: preparaPlaca(v.PLACA_CARRETA3),
+      placaCavalo: preparaPlaca(v.PLACA_CAVALO),
+      num_DI: v.NUMERO_DOC,
+      pedido_mic: v.PEDIDO_MIC,
+      peso_bruto: parseFloat(v.PESO_TARA || 0) + parseFloat(v.PESO_CARREGADO || peso2 || 0),
+      peso_liquido: parseFloat(v.PESO_CARREGADO || peso2 || 0),
       tara: 1.0,
-      codTiquete: i.ID_CARREGAMENTO || id,
-      data: i.DATA_CARREGAMENTO || data
+      codTiquete: v.ID_CARREGAMENTO || id,
+      data: v.DATA_CARREGAMENTO || data
     };
 
-    await api.post(`/gerarnotamic/${i.ID_CARREGAMENTO}`, input_data);
+    await api.post(`/gerarnotamic/${v.ID_CARREGAMENTO}`, input_data);
     FecharPesagem();
   };
 
@@ -541,22 +552,46 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
     }).then((res) => {
       if (res.data.sqlMessage) return showAlert(res.data.sqlMessage, 'error');
       showAlert('Veiculo pesado com sucesso!', 'success');
-      // if (i.PESO_TARA == 1000) GerarNotaMIC();
+      // Emissão automática de NF se a flag vier "S"
+      if (shouldEmitNF(getVeiculoAtual())) GerarNotaMIC();
       FecharPesagem();
     }).catch((error) => console.log(error));
   };
 
+const SegundaPesagemComNF = () => {
+  api.put('/segundapesagemcomnf', {
+    peso2,
+    data,
+    usuario,
+    ticket,
+    id: i.ID_CARREGAMENTO,
+  })
+  .then((res) => {
+    if (res.data?.sqlMessage) {
+      return showAlert(res.data.sqlMessage, 'error');
+    }
+    showAlert('Veículo pesado com sucesso!', 'success');
+    // Sempre emitir a NF nesta rota
+    GerarNotaMIC();
+    FecharPesagem();
+  })
+  .catch((error) => {
+    console.log(error);
+    showAlert('Erro ao registrar a segunda pesagem.', 'error');
+  });
+};
+
   const { enqueueSnackbar } = useSnackbar();
   const showAlert = (txt, variant) => enqueueSnackbar(txt, { variant });
 
-  
+
   return (
     <>
       <Navbar operacao />
       <Header />
       <Brackground />
-      <Container>  
-        
+      <Container>
+
         <div className={style.content}>
           <div className={style.nav}>
             <div onClick={() => navigate(`/operacoes`)}>
@@ -576,138 +611,135 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
             </div>
           </div>
           {periodoStatus === 0 ? (
-  <div>
-    <div className={style.notform}>NÃO HÁ PERÍODO EM ABERTO</div>
-  </div>
-) : (
-  dadosDash?.SEQ_PERIODO_OP ? (
             <div>
-              <div className={style.flex}>
-                <div className={style.periodo}>
-                  {dadosDash.DEN_PERIODO || "--/--"}
-                  <div className={style.data}>
-                    {/* 02/01/2023 */}
-                    {moment(dadosDash.INI_PERIODO).format("DD/MM/YYYY") || "--/--"}
-                  </div>
-                </div>
-                <div>
-                </div>
-                <div className={style.status}>
-                  <div className={`${style[dadosDash.STATUS_OPERACAO]}`}>
-                    <i className="fa fa-truck"></i>&nbsp;&nbsp;{dadosDash.STATUS_OPERACAO || "--"}
-                  </div>
-                </div>
-              </div>
-              <div className={style.flex}>
-                <div className={style.tara}>
-                  <div className={style.taratitulo}>
-                    1º Pesagem (Tara)
-                    <div>
-                      <input type="text" onChange={(e) => { setBusca(e.target.value) }} />
-                      <i className="fa fa-search"></i>
+              <div className={style.notform}>NÃO HÁ PERÍODO EM ABERTO</div>
+            </div>
+          ) : (
+            dadosDash?.SEQ_PERIODO_OP ? (
+              <div>
+                <div className={style.flex}>
+                  <div className={style.periodo}>
+                    {dadosDash.DEN_PERIODO || "--/--"}
+                    <div className={style.data}>
+                      {moment(dadosDash.INI_PERIODO).format("DD/MM/YYYY") || "--/--"}
                     </div>
                   </div>
-                  <div className={style.sumario}>
-                    <div>NOME</div>
-                    <div>CAVALO</div>
-                    <div>DATA | HORA </div>
+                  <div>
                   </div>
-                  <div className={style.lista}>
-                    {veiculos.filter((val) => {
-                      let nome = val.NOME_MOTORISTA.trim().split(' ')[0]
-                      let horario = moment(val.DATA_TARA).format(' DD/MM HH:mm')
-
-                      val.COR = 'item_status_' + (val.STATUS_NOTA_MIC == 1 ? 'def' : val.STATUS_NOTA_MIC)
-
-                      if (busca == "") {
-                        return val
-                      } else if (nome.toLowerCase().includes(busca.toLowerCase()) || val.PLACA_CAVALO.toLowerCase().includes(busca.toLowerCase()) || horario.toLowerCase().includes(busca.toLowerCase())) {
-                        return val
-                      }
-                    }).map((val, key) => {
-                      return (
-                        <div className={style.item + ' ' + style[val.COR]} onClick={() => [AbrirPesagem(), setI(val)]}>
-                          <div className={style.item_cell}>{val.NOME_MOTORISTA.trim().split(' ')[0] || "-"}</div>
-                          <div className={style.item_cell}>{val.PLACA_CAVALO || "-"}</div>
-                          <div className={style.item_cell}>{moment(val.DATA_TARA).format('DD/MM | HH:mm') || "-"}</div>
-                        </div>
-                      )
-                    })
-
-                    }
+                  <div className={style.status}>
+                    <div className={`${style[dadosDash.STATUS_OPERACAO]}`}>
+                      <i className="fa fa-truck"></i>&nbsp;&nbsp;{dadosDash.STATUS_OPERACAO || "--"}
+                    </div>
                   </div>
                 </div>
-                <div className={style.autos}>
-                {horaAutos?.map((val) => {
-                        return (
-                          <div><i className="fa fa-stopwatch"></i> {val.HORA} = {val.QUANTIDADE_AUTOS} Autos</div>
-                        )
-                      })}
-        
+                <div className={style.flex}>
+                  <div className={style.tara}>
+                    <div className={style.taratitulo}>
+                      1º Pesagem (Tara)
+                      <div>
+                        <input type="text" onChange={(e) => { setBusca(e.target.value) }} />
+                        <i className="fa fa-search"></i>
+                      </div>
+                    </div>
+                    <div className={style.sumario}>
+                      <div>NOME</div>
+                      <div>CAVALO</div>
+                      <div>DATA | HORA </div>
+                    </div>
+                    <div className={style.lista}>
+                      {veiculos.filter((val) => {
+                        let nome = val.NOME_MOTORISTA.trim().split(' ')[0]
+                        let horario = moment(val.DATA_TARA).format(' DD/MM HH:mm')
 
-                  
-             
-                </div>
-                <div className={style.motivo}>
-                  <div className={style.sumariob}>
-                    <div className={style.motivobox}>MOTIVO</div>
-                    <div className={style.sumariobox}>DURAÇÃO</div>
-                  </div>
-                  <div className={style.listab}>
-                    {!paralisacoes.length ?
-                      <div>--</div>
-                      :
-                      paralisacoes.map((val) => {
+                        val.COR = 'item_status_' + (val.STATUS_NOTA_MIC == 1 ? 'def' : val.STATUS_NOTA_MIC)
+
+                        if (busca == "") {
+                          return val
+                        } else if (nome.toLowerCase().includes(busca.toLowerCase()) || val.PLACA_CAVALO.toLowerCase().includes(busca.toLowerCase()) || horario.toLowerCase().includes(busca.toLowerCase())) {
+                          return val
+                        }
+                      }).map((val, key) => {
                         return (
-                          <div className={style.itemb} >
-                            <div>{val.DESC_MOTIVO || "-"}</div>
-                            <div>{val.DURACAO || "-"} min</div>
+                          <div className={style.item + ' ' + style[val.COR]} onClick={() => [AbrirPesagem(), setI(val)]} key={val.ID_CARREGAMENTO}>
+                            <div className={style.item_cell}>{val.NOME_MOTORISTA.trim().split(' ')[0] || "-"}</div>
+                            <div className={style.item_cell}>{val.PLACA_CAVALO || "-"}</div>
+                            <div className={style.item_cell}>{moment(val.DATA_TARA).format('DD/MM | HH:mm') || "-"}</div>
                           </div>
                         )
-                      })}
+                      })
+
+                      }
+                    </div>
+                  </div>
+                  <div className={style.autos}>
+                    {horaAutos?.map((val) => {
+                      return (
+                        <div key={val.HORA}><i className="fa fa-stopwatch"></i> {val.HORA} = {val.QUANTIDADE_AUTOS} Autos</div>
+                      )
+                    })}
+                  </div>
+                  <div className={style.motivo}>
+                    <div className={style.sumariob}>
+                      <div className={style.motivobox}>MOTIVO</div>
+                      <div className={style.sumariobox}>DURAÇÃO</div>
+                    </div>
+                    <div className={style.listab}>
+                      {!paralisacoes.length ?
+                        <div>--</div>
+                        :
+                        paralisacoes.map((val) => {
+                          return (
+                            <div className={style.itemb} key={val.SEQ_PARALISACAO}>
+                              <div>{val.DESC_MOTIVO || "-"}</div>
+                              <div>{val.DURACAO || "-"} min</div>
+                            </div>
+                          )
+                        })}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className={style.flex}>
-                <div className={style.pesos}>
-                  <div>
-                    DESCARREGADO
-                    <div>{(descarregado / 1000).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 3,}) || "0"} TONS</div>
-                  </div>
-                  <div>
-                    MANIFESTADO
-                    <div>{(dadosDash.MANIFESTADO / 1000).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2,})|| "--"} TONS</div>
-                  </div>
-                  <div>
-                    SALDO
-                    <div>{(saldo) || "--"} TONS</div>
-                  </div>
-                  <div>
-                    AUTOS
-                    <div>{veiculos.length || "0"}</div>
-                  </div>
-                  <div>
-                    BERÇO
-                    <div>{dadosDash.NOME_BERCO || "--"}</div>
+                <div className={style.flex}>
+                  <div className={style.pesos}>
+                    <div>
+                      DESCARREGADO
+                      <div>{(descarregado / 1000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3, }) || "0"} TONS</div>
+                    </div>
+                    <div>
+                      MANIFESTADO
+                      <div>{(dadosDash.MANIFESTADO / 1000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2, }) || "--"} TONS</div>
+                    </div>
+                    <div>
+                      SALDO
+                      <div>{(saldo) || "--"} TONS</div>
+                    </div>
+                    <div>
+                      AUTOS
+                      <div>{veiculos.length || "0"}</div>
+                    </div>
+                    <div>
+                      BERÇO
+                      <div>{dadosDash.NOME_BERCO || "--"}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className={style.flex}>
-                <button
-                  className={style.abrirp}
-                  onClick={dadosDash.STATUS_OPERACAO == 'OPERANDO' ? AbrirParalisacao : AbrirParalisacaoFim}>
-                  {dadosDash.STATUS_OPERACAO == 'OPERANDO' ? "ABRIR PARALISAÇÃO" : "ENCERRAR PARALISAÇÃO"}
-                </button>
-                <div className={style.navio}><i className="fa fa-ship icon"></i>&nbsp;&nbsp;&nbsp;{dadosDash.NOME_NAVIO || "--"}</div>
-                <button
-                  className={style.finalizar} onClick={AbrirConfirm}>
-                  FINALIZAR ESTE PERÍODO
-                </button>
-              </div>
-            </div>) : null
-)}
+                <div className={style.flex}>
+                  <button
+                    className={style.abrirp}
+                    onClick={dadosDash.STATUS_OPERACAO == 'OPERANDO' ? AbrirParalisacao : AbrirParalisacaoFim}>
+                    {dadosDash.STATUS_OPERACAO == 'OPERANDO' ? "ABRIR PARALISAÇÃO" : "ENCERRAR PARALISAÇÃO"}
+                  </button>
+                  <div className={style.navio}><i className="fa fa-ship icon"></i>&nbsp;&nbsp;&nbsp;{dadosDash.NOME_NAVIO || "--"}</div>
+                  <button
+                    className={style.finalizar} onClick={AbrirConfirm}>
+                    FINALIZAR ESTE PERÍODO
+                  </button>
+                </div>
+              </div>) : null
+          )}
         </div>
       </Container>
+
+
       <Pesagem open={openA} onClose={FecharPesagem} fullWidth>
         <div className={modal.modal}>
           <div className={modal.nav}>
@@ -720,236 +752,147 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
               <div className={modal.data}>
                 {moment(dadosDash.INI_PERIODO).format("DD/MM/YYYY") || "--/--"}
               </div>
-              
-              {getVeiculoAtual().PESO_TARA == 1000 && getVeiculoAtual().STATUS_CARREG >= 3 && (
-              <div className={modal.nota}>
-                <h2>MIC Sistemas</h2>
-                {getVeiculoAtual().STATUS_NOTA_MIC == 4 &&
-                <div className={modal.gera_nota} onClick={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? DownloadNota : undefined} style={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? {"cursor": "pointer"} : {"cursor": "auto"}}>
-                  <i className="fa fa-file-pdf icon"></i>
-                  <h3>BAIXAR Nota Fiscal</h3>
-                </div>}
-                {![2, 4].includes(getVeiculoAtual().STATUS_NOTA_MIC) &&
-                <div className={modal.gera_nota} onClick={GerarNotaMIC} style={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? {"cursor": "auto"} : {"cursor": "pointer"}}>
-                  <i className="fa fa-file-pdf icon"></i>
-                  <h3>GERAR nota fiscal</h3>
-                </div>}
-                {getVeiculoAtual().STATUS_NOTA_MIC != 4 &&
-                (<label className={modal['obs_nota_status_' + (getVeiculoAtual().STATUS_NOTA_MIC < 3 ? 'def' : getVeiculoAtual().STATUS_NOTA_MIC)]}>
-                  {getVeiculoAtual().OBS_NOTA}
-                </label>)}
-                {getVeiculoAtual().STATUS_NOTA_MIC == 4 &&
-                (<label>
-                  <input onClick={EntregarNotaMIC} type="checkbox" style={{"width" : "auto", "marginRight" : "5px"}} value="1" />
-                  Entregue ao Motorista
-                </label>)}
-              </div>
+
+              {shouldEmitNF(getVeiculoAtual()) && getVeiculoAtual().STATUS_CARREG >= 3 && (
+                <div className={modal.nota}>
+                  <h2>MIC Sistemas</h2>
+                  {getVeiculoAtual().STATUS_NOTA_MIC == 4 &&
+                    <div className={modal.gera_nota} onClick={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? DownloadNota : undefined} style={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? { "cursor": "pointer" } : { "cursor": "auto" }}>
+                      <i className="fa fa-file-pdf icon"></i>
+                      <h3>BAIXAR Nota Fiscal</h3>
+                    </div>}
+                  {![2, 4].includes(getVeiculoAtual().STATUS_NOTA_MIC) &&
+                    <div className={modal.gera_nota} onClick={GerarNotaMIC} style={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? { "cursor": "auto" } : { "cursor": "pointer" }}>
+                      <i className="fa fa-file-pdf icon"></i>
+                      <h3>GERAR nota fiscal</h3>
+                    </div>}
+                  {getVeiculoAtual().STATUS_NOTA_MIC != 4 &&
+                    (<label className={modal['obs_nota_status_' + (getVeiculoAtual().STATUS_NOTA_MIC < 3 ? 'def' : getVeiculoAtual().STATUS_NOTA_MIC)]}>
+                      {getVeiculoAtual().OBS_NOTA}
+                    </label>)}
+                  {getVeiculoAtual().STATUS_NOTA_MIC == 4 &&
+                    (<label>
+                      <input onClick={EntregarNotaMIC} type="checkbox" style={{ "width": "auto", "marginRight": "5px" }} value="1" />
+                      Entregue ao Motorista
+                    </label>)}
+                </div>
               )}
             </div>
-            
+
             <div className={modal.motorista}>
-            <div><b>ID: </b>{i.ID_CARREGAMENTO}</div>
+              <div><b>ID: </b>{i.ID_CARREGAMENTO}</div>
               <div><b>Motorista: </b>{i.NOME_MOTORISTA}</div>
               <div className={style.line}>
                 <b>Cavalo: </b>{mostaInput2 &&
-                  < >
+                  <>
                     <input onChange={(e) => { setPlacaCavalo(e.target.value.toUpperCase()) }} placeholder="Placa do cavalo" className={style.inputline} type="text" />
-                    <button onClick={validaCavalo} className={style.buttontline} type="submit"><i class="fa fa-check" aria-hidden="true"></i></button>
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput2(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
+                    <button onClick={validaCavalo} className={style.buttontline} type="submit"><i className="fa fa-check" aria-hidden="true"></i></button>
+                    <button className={style.buttontlinecancel} onClick={() => setMostaInput2(false)}><i className="fa fa-times" aria-hidden="true"></i></button>
                   </> || i.PLACA_CAVALO}
-                <span><i onClick={divClick2} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
+                <span><i onClick={divClick2} className="fa fa-pencil-square-o" aria-hidden="true"></i></span>
               </div>
-           {/* <div><b>Cavalo: </b>{i.PLACA_CAVALO}</div>
-              <div><b>1° Carreta: </b>{i.PLACA_CARRETA}</div>
-              <div><b>2° Carreta: </b>{i.PLACA_CARRETA2 || "não registrado"}</div>
-              <div><b>3° Carreta: </b>{i.PLACA_CARRETA3 || "não registrado"}</div>*/}
-                            <div className={style.line}>
+
+              <div className={style.line}>
                 <b className={style.title}>1° Carreta: </b>{mostaInput3 &&
                   <>
                     <input onChange={(e) => { setPlaca1(e.target.value.toUpperCase()) }} placeholder="Placa 1" className={style.inputline} type="text" />
-                    <button onClick={validaPlaca1} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput3(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
-                  </> || i.PLACA_CARRETA}<span><i onClick={divClick3} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
+                    <button onClick={validaPlaca1} className={style.buttontline}><i className="fa fa-check" aria-hidden="true"></i></button>
+                    <button className={style.buttontlinecancel} onClick={() => setMostaInput3(false)}><i className="fa fa-times" aria-hidden="true"></i></button>
+                  </> || i.PLACA_CARRETA}<span><i onClick={divClick3} className="fa fa-pencil-square-o" aria-hidden="true"></i></span>
               </div>
-
-
 
               <div className={style.line}>
                 <b>2° Carreta: </b>{mostaInput4 &&
                   <>
                     <input onChange={(e) => { setPlaca2(e.target.value.toUpperCase()) }} placeholder="Placa 2" className={style.inputline} type="text" />
-                    <button onClick={validaplaca2} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput4(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
-                  </> || i.PLACA_CARRETA2 || "não registrado"}<span><i onClick={divClick4} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
+                    <button onClick={validaplaca2} className={style.buttontline}><i className="fa fa-check" aria-hidden="true"></i></button>
+                    <button className={style.buttontlinecancel} onClick={() => setMostaInput4(false)}><i className="fa fa-times" aria-hidden="true"></i></button>
+                  </> || i.PLACA_CARRETA2 || "não registrado"}<span><i onClick={divClick4} className="fa fa-pencil-square-o" aria-hidden="true"></i></span>
               </div>
-
 
               <div className={style.line}>
                 <b>3° Carreta: </b>{mostaInput5 &&
                   <>
                     <input placeholder="Placa 3" className={style.inputline} type="text" onChange={(e) => { setPlaca3(e.target.value.toUpperCase()) }} />
-                    <button onClick={validaplaca3} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput5(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
-                  </> || i.PLACA_CARRETA3 || "não registrado"}<span><i onClick={divClick5} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
+                    <button onClick={validaplaca3} className={style.buttontline}><i className="fa fa-check" aria-hidden="true"></i></button>
+                    <button className={style.buttontlinecancel} onClick={() => setMostaInput5(false)}><i className="fa fa-times" aria-hidden="true"></i></button>
+                  </> || i.PLACA_CARRETA3 || "não registrado"}<span><i onClick={divClick5} className="fa fa-pencil-square-o" aria-hidden="true"></i></span>
               </div>
-                   <div className={style.line}> 
+              <div className={style.line}>
                 <b>Tipo do veículo: </b>{mostaInput7 &&
                   <>
                     <select className={style.inputline} onChange={(e) => { setTipoveiculo(e.target.value) }}>
-                      <option disabled selected>Selecione uma opção</option>
+                      <option disabled defaultValue>Selecione uma opção</option>
                       {tipoveiculos?.map((val) => {
                         return (
-                          <option value={val.COD_TIPO}>{val.DESC_TIPO_VEICULO}</option>
+                          <option value={val.COD_TIPO} key={val.COD_TIPO}>{val.DESC_TIPO_VEICULO}</option>
                         )
                       })}
                     </select>
 
-                    <button onClick={validaVeiculo} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput7(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
+                    <button onClick={validaVeiculo} className={style.buttontline}><i className="fa fa-check" aria-hidden="true"></i></button>
+                    <button className={style.buttontlinecancel} onClick={() => setMostaInput7(false)}><i className="fa fa-times" aria-hidden="true"></i></button>
 
-                  </> || i.DESC_TIPO_VEICULO || "não registrado"}<span><i onClick={divClick7} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
+                  </> || i.DESC_TIPO_VEICULO || "não registrado"}<span><i onClick={divClick7} className="fa fa-pencil-square-o" aria-hidden="true"></i></span>
 
-              </div>   
-               <div className={style.line}>
+              </div>
+              <div className={style.line}>
                 <b>1º Pesagem (tara): </b>{mostaInput6 &&
                   <><div>
                     <input onChange={(e) => { setTara(e.target.value) }} placeholder="Peso da TARA" className={style.inputline} type="text" />
                     <input onChange={(e) => { setDataTara(e.target.value) }} placeholder="Peso da TARA" className={style.inputlinedate} type="datetime-local" /></div>
-                    <button onClick={validaTara} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
+                    <button onClick={validaTara} className={style.buttontline}><i className="fa fa-check" aria-hidden="true"></i></button>
 
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput6(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
-                  </> || `${i.PESO_TARA} KG`} <span><i onClick={divClick6} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
+                    <button className={style.buttontlinecancel} onClick={() => setMostaInput6(false)}><i className="fa fa-times" aria-hidden="true"></i></button>
+                  </> || `${i.PESO_TARA} KG`} <span><i onClick={divClick6} className="fa fa-pencil-square-o" aria-hidden="true"></i></span>
               </div>
-            
-              {/* <div className={style.line}> 
-    
 
-    {mostaInput8 && allowedUsers.includes(usuario) ? ( // Verifica se o usuário está na lista permitida e se `mostaInput8` está true
-    
-    <>
-        <select className={style.inputline} onChange={(e) => { setDocumento(e.target.value) }}>
-          <option disabled selected>Selecione uma opção</option>
-          {pedidos?.map((val) => (
-            <option value={val.ID_PEDIDO}>{val.NR_PEDIDO}</option>
-          ))}
-        </select>
-       
-        <button onClick={validaDoc} className={style.buttontline}><i className="fa fa-check" aria-hidden="true"></i></button>
-        <button className={style.buttontlinecancel} onClick={() => setMostaInput8(false)}><i className="fa fa-times" aria-hidden="true"></i></button>
-      </>
-    ) : (  <div><b>Pedido MIC: </b>{i.PEDIDO_MIC}-{i.NR_PEDIDO}</div>)}
-   {allowedUsers.includes(usuario) && ( // Exibe o botão de edição apenas para usuários permitidos
-      <span><i onClick={divClick8} className="fa fa-pencil-square-o" aria-hidden="true"></i></span>
-    )}
-  </div> */}
-      <div className={style.line}> 
+              <div className={style.line}>
                 <b>Pedido MIC: </b>{mostaInput8 &&
                   <>
                     <select className={style.inputline} onChange={(e) => { setPedido(e.target.value) }}>
-                      <option disabled selected>Selecione uma opção</option>
+                      <option disabled defaultValue>Selecione uma opção</option>
                       {pedidos?.map((val) => {
                         return (
-                          <option value={val.NR_PEDIDO}>{val.NR_PEDIDO}</option>
+                          <option value={val.NR_PEDIDO} key={val.NR_PEDIDO}>{val.NR_PEDIDO}</option>
                         )
                       })}
                     </select>
 
-                    <button onClick={validaDoc} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput8(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
+                    <button onClick={validaDoc} className={style.buttontline}><i className="fa fa-check" aria-hidden="true"></i></button>
+                    <button className={style.buttontlinecancel} onClick={() => setMostaInput8(false)}><i className="fa fa-times" aria-hidden="true"></i></button>
 
-                  </> || i.PEDIDO_MIC || "não registrado"}<span><i onClick={divClick8} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
+                  </> || i.PEDIDO_MIC || "não registrado"}<span><i onClick={divClick8} className="fa fa-pencil-square-o" aria-hidden="true"></i></span>
 
               </div>
 
               <div><b>N° DI/BL: </b>{i.TIPO_DOC}-{i.NUMERO_DOC}</div>
-              <div className={style.line}> 
+              <div className={style.line}>
                 <b>Transportadora: </b>{mostaInput9 &&
                   <>
                     <select className={style.inputline} onChange={(e) => { setTransportadora(e.target.value) }}>
-                      <option disabled selected>Selecione uma opção</option>
+                      <option disabled defaultValue>Selecione uma opção</option>
                       {transportadoras?.map((val) => {
                         return (
-                          <option value={val.COD_TRANSP}>{val.NOME_TRANSP}</option>
+                          <option value={val.COD_TRANSP} key={val.COD_TRANSP}>{val.NOME_TRANSP}</option>
                         )
                       })}
                     </select>
 
-                    <button onClick={validaTransp} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput9(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
+                    <button onClick={validaTransp} className={style.buttontline}><i className="fa fa-check" aria-hidden="true"></i></button>
+                    <button className={style.buttontlinecancel} onClick={() => setMostaInput9(false)}><i className="fa fa-times" aria-hidden="true"></i></button>
 
-                  </> || i.NOME_TRANSP || "não registrado"}<span><i onClick={divClick9} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
+                  </> || i.NOME_TRANSP || "não registrado"}<span><i onClick={divClick9} className="fa fa-pencil-square-o" aria-hidden="true"></i></span>
 
               </div>
               <div><b>Destino:</b></div>
-           {/*   <div className={style.line}>
-                <b>ID: </b>{i.ID_CARREGAMENTO}
-               </div>
 
-              <div className={style.line}>
-                <b>Motorista: </b>{i.NOME_MOTORISTA}
-               </div>
-
-             
-
-              <div className={style.line}> 
-                <b>Tipo do veículo: </b>{mostaInput7 &&
-                  <>
-                    <select className={style.inputline} onChange={(e) => { setTipoveiculo(e.target.value) }}>
-                      <option disabled selected>Selecione uma opção</option>
-                      {tipoveiculos?.map((val) => {
-                        return (
-                          <option value={val.COD_TIPO}>{val.DESC_TIPO_VEICULO}</option>
-                        )
-                      })}
-                    </select>
-
-                    <button onClick={validaVeiculo} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput7(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
-
-                  </> || i.DESC_TIPO_VEICULO || "não registrado"}<span><i onClick={divClick7} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
-
-              </div>
-
-              <div className={style.line}>
-                <b>1º Pesagem (tara): </b>{mostaInput6 &&
-                  <><div>
-                    <input onChange={(e) => { setTara(e.target.value) }} placeholder="Peso da TARA" className={style.inputline} type="text" />
-                    <input onChange={(e) => { setDataTara(e.target.value) }} placeholder="Peso da TARA" className={style.inputlinedate} type="datetime-local" /></div>
-                    <button onClick={validaTara} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput6(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
-                  </> || `${i.PESO_TARA} KG`} <span><i onClick={divClick6} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
-              </div>
-             
-              <div className={style.line}> 
-                <b>Pedido MIC: </b>{mostaInput8 &&
-                  <>
-                    <select className={style.inputline} onChange={(e) => { setDocumento(e.target.value) }}>
-                      <option disabled selected>Selecione uma opção</option>
-                      {pedidos?.map((val) => {
-                        return (
-                          <option value={val.ID_PEDIDO}>{val.NR_PEDIDO}</option>
-                        )
-                      })}
-                    </select>
-
-                    <button onClick={validaDoc} className={style.buttontline}><i class="fa fa-check" aria-hidden="true"></i></button>
-                    <button className={style.buttontlinecancel} onClick={() => setMostaInput8(false)}><i class="fa fa-times" aria-hidden="true"></i></button>
-
-                  </> || i.PEDIDO_MIC || "não registrado"}<span><i onClick={divClick8} class="fa fa-pencil-square-o" aria-hidden="true"></i></span>
-
-              </div>
-
-
-              <div className={style.line}>
-                <b>N° DI/BL: </b>{i.TIPO_DOC}-{i.NUMERO_DOC} 
-              </div>*/}
             </div>
-                    </div>
+          </div>
           <div className={modal.flex}>
             <div className={modal.inputbox_pesagem}>
               2º Pesagem
-              <input type="number" onChange={(e) => { setPeso2(e.target.value) }} placeholder={getVeiculoAtual().PESO_CARREGADO} disabled={getVeiculoAtual().STATUS_CARREG == 3}/>
+              <input type="number" onChange={(e) => { setPeso2(e.target.value) }} placeholder={getVeiculoAtual().PESO_CARREGADO} disabled={getVeiculoAtual().STATUS_CARREG == 3} />
             </div>
             <div className={modal.inputbox_ticket}>
               Ticket
@@ -957,7 +900,7 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
             </div>
             <div className={modal.inputbox}>
               Data
-              <input type={getVeiculoAtual().STATUS_CARREG == 3 ? "text" : "datetime-local"} onChange={(e) => { setData(e.target.value)  }} placeholder={datetimeLocal(getVeiculoAtual().DATA_CARREGAMENTO)} disabled={getVeiculoAtual().STATUS_CARREG == 3} />
+              <input type={getVeiculoAtual().STATUS_CARREG == 3 ? "text" : "datetime-local"} onChange={(e) => { setData(e.target.value) }} placeholder={datetimeLocal(getVeiculoAtual().DATA_CARREGAMENTO)} disabled={getVeiculoAtual().STATUS_CARREG == 3} />
             </div>
           </div>
           <div className={modal.flex}>
@@ -967,13 +910,14 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
             </div>
           </div>
           <div className={modal.flex}>
-           
             <div className={style.navio}><i className="fa fa-ship icon"></i>&nbsp;&nbsp;&nbsp;{dadosDash.NOME_NAVIO || "--"}</div>
             <button className={style.finalizar} onClick={validaDados2} disabled={getVeiculoAtual().STATUS_CARREG == 3}>REGISTRAR</button>
             <button className={style.finalizar} onClick={divClick5} disabled={getVeiculoAtual().STATUS_CARREG != 3}>INTEGRAR</button>
           </div>
         </div>
       </Pesagem>
+
+
       <Paralisacao open={openB} onClose={FecharParalisacao} fullWidth>
         <div className={modal.modal}>
           <div className={modal.nav}>
@@ -984,7 +928,6 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
             <div className={modal.periodo}>
               {dadosDash.DEN_PERIODO || "--/--"}
               <div className={modal.data}>
-                {/* 02/01/2023 */}
                 {moment(dadosDash.INI_PERIODO).format("DD/MM/YYYY") || "--/--"}
               </div>
             </div>
@@ -996,10 +939,10 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
           <div className={modal.selectbox}>
             <label>Motivo:</label>
             <select onChange={(e) => { setMotivo(e.target.value) }}>
-              <option disabled selected>Selecione uma opção</option>
+              <option disabled defaultValue>Selecione uma opção</option>
               {motivos?.map((val) => {
                 return (
-                  <option value={val.COD_MOTIVO}>{val.DESC_MOTIVO} </option>
+                  <option value={val.COD_MOTIVO} key={val.COD_MOTIVO}>{val.DESC_MOTIVO} </option>
                 )
               })}
             </select>
@@ -1007,10 +950,10 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
           <div className={modal.selectbox}>
             <label>Complemento:</label>
             <select onChange={(e) => { setComplemento(e.target.value) }}>
-              <option disabled selected>Selecione uma opção</option>
+              <option disabled defaultValue>Selecione uma opção</option>
               {complementos?.map((val) => {
                 return (
-                  <option value={val.COD_COMPL}>{val.DESC_COMPL}</option>
+                  <option value={val.COD_COMPL} key={val.COD_COMPL}>{val.DESC_COMPL}</option>
                 )
               })}
             </select>
@@ -1021,13 +964,13 @@ const [periodoStatus, setPeriodoStatus] = useState(null); // null = desconhecido
               <textarea rows="4" onChange={(e) => setObs(e.target.value)}></textarea>
             </div>
           </div>
-          
+
           <div className={modal.flex}>
             <div className={style.navio}><i className="fa fa-ship icon"></i>&nbsp;&nbsp;&nbsp;{dadosDash.NOME_NAVIO || "--"}</div>
             <button className={style.finalizar} onClick={validaDados1}>REGISTRAR PARALISAÇÃO</button>
           </div>
         </div>
-      </Paralisacao>      
+      </Paralisacao>
       <Confirm open={openC} onClose={FecharConfirm} fullWidth>
         <div className={confirm.modal}>
           <div className={confirm.nav}>

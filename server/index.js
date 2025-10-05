@@ -2172,6 +2172,7 @@ app.get(`${API_PREFIX}/dashboard/veiculos/:id`, async (req, res) => {
       CA.PEDIDO_MIC,
       CG.TIPO_DOC,
       CG.NUMERO_DOC,
+      CG.EMITIR_NF,
       CA.COD_TRANSP,
       TP.NOME_TRANSP,
       COALESCE(CA.STATUS_NOTA_MIC, 1) AS STATUS_NOTA_MIC,
@@ -2877,6 +2878,75 @@ app.put(`${API_PREFIX}/segundapesagem`, async (req, res) => {
     });
   } catch (err) {
     console.error("[PUT /segundapesagem][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      error: "Erro interno ao registrar a segunda pesagem.",
+      detail: err?.sqlMessage || err?.message || String(err)
+    });
+  }
+});
+
+// === SEGUNDA PESAGEM ===
+app.put(`${API_PREFIX}/segundapesagemcomnf`, async (req, res) => {
+  try {
+    const {
+      id,
+      peso2,             // PESO_CARREGADO
+      data,              // DATA_CARREGAMENTO (datetime)
+      usuario,           // USUARIO_CARREG
+      ticket             // TICKET (opcional)
+    } = req.body || {};
+
+    const carregamentoId = Number(id);
+    const pesoCarregado = Number(peso2);
+
+    // validações básicas
+    if (!Number.isFinite(carregamentoId) || carregamentoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'id' inválido." });
+    }
+    if (!Number.isFinite(pesoCarregado)) {
+      return res.status(400).json({ ok: false, error: "Parâmetro 'peso2' inválido." });
+    }
+    if (!data) {
+      return res.status(400).json({ ok: false, error: "Campo 'data' é obrigatório." });
+    }
+    if (!usuario) {
+      return res.status(400).json({ ok: false, error: "Campo 'usuario' é obrigatório." });
+    }
+
+    // STATUS_CARREG = 2 (em segunda pesagem / carregado)
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET PESO_CARREGADO   = ?,
+             DATA_CARREGAMENTO = ?,
+             USUARIO_CARREG    = ?,
+             STATUS_CARREG     = 3,
+             STATUS_NOTA_MIC   = 2,
+             TICKET            = ?
+       WHERE ID_CARREGAMENTO  = ?
+       LIMIT 1
+    `;
+
+    const [result] = await db.query(sql, [
+      pesoCarregado,
+      data,
+      usuario,
+      ticket ?? null,
+      carregamentoId
+    ]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Segunda pesagem Com NF cadastrada com sucesso.",
+      id: carregamentoId,
+      affectedRows: result.affectedRows
+    });
+  } catch (err) {
+    console.error("[PUT /segundapesagemcomnf][ERR]", err);
     return res.status(500).json({
       ok: false,
       error: "Erro interno ao registrar a segunda pesagem.",
