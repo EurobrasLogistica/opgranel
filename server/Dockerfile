@@ -5,19 +5,21 @@ WORKDIR /app
 
 ENV TZ=America/Sao_Paulo \
     PUPPETEER_SKIP_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    NODE_ENV=production
 
-# copia apenas manifestos primeiro (se houver package-lock, ele vai junto)
+# 1) Copia manifestos para aproveitar cache
 COPY package*.json ./
 
-# usa UID 0 só para instalar e ajustar permissão; evita o nome 'root'
+# 2) Usa root só para instalar deps e ajustar permissão
 USER 0
-RUN npm install --omit=dev && chown -R pptruser:pptruser /app
+# npm ci = instala conforme package-lock.json
+RUN npm ci --omit=dev && chown -R pptruser:pptruser /app
 
-# volta a rodar como o usuário padrão da imagem
+# 3) Volta para o usuário padrão da imagem
 USER pptruser
 
-# copia o restante do código já com owner correto
+# 4) Copia o restante do código
 COPY --chown=pptruser:pptruser . .
 
 EXPOSE 3009
