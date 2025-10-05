@@ -4955,64 +4955,66 @@ app.post('/entregarnotamic/:id', async (req, res) => {
   res.status(200).send();
 })
 
-app.post('/baixarnota', async (req, res) => {
-  console.log(req.body)
-
-  const idCarregamento = req.body.idCarregamento
-
-  let db_result = await new Promise((resolve, reject) => db.query(`
-        SELECT 
-            NA.NOME_NAVIO, OPER.RAP
-        FROM 
-            CARREGAMENTO CARREG
-            JOIN OPERACAO OPER
-                ON CARREG.COD_OPERACAO = OPER.COD_OPERACAO
-            JOIN NAVIO NA
-                ON OPER.COD_NAVIO = NA.COD_NAVIO
-        WHERE 
-            CARREG.ID_CARREGAMENTO = ?
-        `, idCarregamento, (err, result) => {
-    if (err)
-      reject(err)
-
-    resolve(result)
-  }
-  ));
-
-  console.log(db_result)
-
-  const nomeNavio = db_result[0].NOME_NAVIO
-  const codRAP = db_result[0].RAP
-
-  const networkPath = path.join(
-    __dirname,
-    "Files",
-    "Notas_Fiscais",
-    `${nomeNavio}-${codRAP}`,
-    `Nota Fiscal ${idCarregamento}.pdf`
-  );
-  console.log(networkPath);
-  var file_data = {}
-
+// --- Baixar Nota Fiscal (PDF) ---
+app.post(`${API_PREFIX}/baixarnota`, async (req, res) => {
   try {
-    var filepath = `${networkPath}`;
-
-    file_data = {
-      'status': 'gerado',
-      'filename': file,
-      'pdf': fs.readFileSync(filepath, { encoding: 'base64' })
+    const { idCarregamento } = req.body || {};
+    if (!idCarregamento) {
+      return res.status(400).json({ error: 'idCarregamento é obrigatório' });
     }
 
-    res.status(200).send(file_data);
-  }
-  catch (err) {
-    file_data = {
-      'status': 'erro',
-      'mensagem': err
+    // Busca RAP (e nome do navio para fallback)
+    const [rows] = await db.query(
+      `SELECT OPER.RAP, NA.NOME_NAVIO
+         FROM CARREGAMENTO CARREG
+         JOIN OPERACAO OPER ON CARREG.COD_OPERACAO = OPER.COD_OPERACAO
+         JOIN NAVIO    NA   ON OPER.COD_NAVIO     = NA.COD_NAVIO
+        WHERE CARREG.ID_CARREGAMENTO = ?
+        LIMIT 1`,
+      [idCarregamento]
+    );
+
+    if (!rows?.length) {
+      return res.status(404).json({ error: 'Carregamento não encontrado' });
     }
-    res.status(400).send(file_data);
+
+    const rap = String(rows[0].RAP);
+    const nomeNavio = String(rows[0].NOME_NAVIO || '');
+
+    const filename = `Nota Fiscal ${idCarregamento}.pdf`;
+
+    // Caminho novo (atual): NF_DIR/<RAP>/
+    const pathNovo = path.join(NF_DIR, rap, filename);
+    // Fallback para padrão antigo: NF_DIR/<NOME_NAVIO>-<RAP>/
+    const pathAntigo = path.join(NF_DIR, `${nomeNavio}-${rap}`, filename);
+
+    let pdfPath = null;
+    if (fs.existsSync(pathNovo)) {
+      pdfPath = pathNovo;
+    } else if (fs.existsSync(pathAntigo)) {
+      pdfPath = pathAntigo;
+    }
+
+    if (!pdfPath) {
+      return res.status(404).json({ error: 'PDF não encontrado no servidor' });
+    }
+
+    const buf = fs.readFileSync(pdfPath);
+    const dataUrl = `data:application/pdf;base64,${buf.toString('base64')}`;
+
+    return res.json({
+      status: 'gerado',
+      filename,
+      pdf: dataUrl, // <- o frontend faz split(',') e atob a partir daqui
+    });
+  } catch (err) {
+    console.error('[POST /baixarnota] erro:', err?.message || err);
+    return res.status(500).json({
+      status: 'erro',
+      mensagem: err?.message || 'Falha ao localizar o PDF',
+    });
   }
-})
+});
 
 //RODAR API
 app.listen(3009, () => { console.log("Servidor rodando na porta 3009...") });
