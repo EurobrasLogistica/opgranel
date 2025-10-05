@@ -1326,7 +1326,7 @@ app.get(`${API_PREFIX}/periodo/busca/:id`, (req, res) => {
         (SELECT 
             CASE WHEN OP.DAT_FIM_PERIODO IS NULL THEN 1 ELSE 0 END
          FROM PERIODO_OPERACAO OP
-         WHERE OP.COD_OPERACAO = ?
+         WHERE OP.COD_OPERACAO = 108
          ORDER BY OP.DAT_INI_PERIODO DESC, OP.SEQ_PERIODO_OP DESC
          LIMIT 1),
     0) AS EXISTE;
