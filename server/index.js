@@ -3907,36 +3907,82 @@ app.post('/operacao/documentos/:id', (req, res) => {
 });
 
 
-// DESTINOS
-app.get('/destino', async (_req, res) => {
+// CRIAR UM DESTINO
+app.post(`${API_PREFIX}/destino/criar`, async (req, res) => {
   try {
-    const [rows] = await db.query(
-      'SELECT COD_DESTINO, NOME_DESTINO FROM DESTINO ORDER BY NOME_DESTINO;'
+    const nome = (req.body?.nome || "").trim();
+
+    if (!nome) {
+      return res.status(400).json({ ok: false, error: "O campo 'nome' é obrigatório." });
+    }
+
+    // Opcional: impedir duplicados (case-insensitive)
+    const [existe] = await db.query(
+      `SELECT COD_DESTINO FROM DESTINO WHERE UPPER(NOME_DESTINO) = UPPER(?) LIMIT 1`,
+      [nome]
     );
-    res.json(rows);
+    if (Array.isArray(existe) && existe.length > 0) {
+      return res.status(409).json({ ok: false, error: "Já existe um destino com esse nome." });
+    }
+
+    const [result] = await db.query(
+      `INSERT INTO DESTINO (NOME_DESTINO) VALUES (?)`,
+      [nome]
+    );
+
+    return res.status(201).json({
+      ok: true,
+      id: result?.insertId,
+      message: "Destino adicionado com sucesso",
+    });
   } catch (err) {
-    console.error('[GET /destino][ERR]', err);
-    res.status(500).json({ ok: false, message: err.message });
+    console.error("[/destino/criar][ERR]", err);
+    // ER_DUP_ENTRY (caso haja índice único no banco)
+    if (err?.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ ok: false, error: "Destino já cadastrado." });
+    }
+    return res.status(500).json({
+      ok: false,
+      error: "Erro interno ao criar destino.",
+      detail: err?.sqlMessage || err?.message || String(err),
+    });
   }
 });
 
 
+
 // BUSCAR PEDIDOS POR OPERAÇÃO
-app.get('/buscar/pedidos/:id', async (req, res) => {
+app.get(`${API_PREFIX}/buscar/pedidos/:id`, async (req, res) => {
   try {
     const id = Number(req.params.id);
+
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro :id inválido." });
+    }
+
     const [rows] = await db.query(
-      `SELECT ID_PEDIDO, NR_PEDIDO, COD_OPERACAO
-         FROM PEDIDO
-        WHERE COD_OPERACAO = ?
-        ORDER BY NR_PEDIDO`,
+      `
+      SELECT
+        ID_PEDIDO,
+        NR_PEDIDO,
+        COD_OPERACAO
+      FROM PEDIDO
+      WHERE COD_OPERACAO = ?
+      ORDER BY NR_PEDIDO
+      `,
       [id]
     );
-    res.set('Cache-Control', 'no-store');
-    res.json(rows);
+
+    // compat: sempre retorna array (vazio quando não há registros)
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json(Array.isArray(rows) ? rows : []);
   } catch (err) {
-    console.error('[GET /buscar/pedidos/:id][ERR]', err);
-    res.status(500).json({ ok: false, message: err.message });
+    console.error("[GET /buscar/pedidos/:id][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      error: "Erro interno ao buscar pedidos.",
+      detail: err?.sqlMessage || err?.message || String(err),
+    });
   }
 });
 
