@@ -3,7 +3,6 @@ const session = require('express-session');
 const cors = require('cors');
 const app = express();
 const path = require('path');
-const fs = require('fs');
 const xml2js = require('xml2js');
 const { Base64 } = require('js-base64');
 const fs = require('fs');
