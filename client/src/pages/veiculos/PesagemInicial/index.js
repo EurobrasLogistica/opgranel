@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SnackbarProvider, useSnackbar } from "notistack";
+import Axios from "axios";
 
-import { api } from "../../../api"; // usa baseURL do .env
 import Navbar from "../../../components/Navbar";
 import Brackground from "../../../components/Background";
 import Container from "../../../components/Container";
@@ -13,9 +13,25 @@ import SubmitButton from "../../../components/Button";
 import style from "./PesagemInicial.module.css";
 import confirm from "./Confirm.module.css";
 
+/** =========================
+ *  BASE DA API (flexível)
+ *  Prioridades:
+ *  - REACT_APP_SERVER
+ *  - hostname === localhost ? http://localhost:3009 : https://opgranel.eurobraslogistica.com.br/api
+ *  ========================= */
+const API_BASE =
+  process.env.REACT_APP_SERVER ||
+  (window.location.hostname === "localhost"
+    ? "http://localhost:3009"
+    : "https://opgranel.eurobraslogistica.com.br/api");
+
+// Configura Axios globalmente
+Axios.defaults.baseURL = API_BASE;
+Axios.defaults.headers.common["Content-Type"] = "application/json; charset=utf-8";
+
 const PesagemInicial = () => {
   const navigate = useNavigate();
-  const { nome, cpf, cnh, id } = useParams();
+  const { nome, cpf, id } = useParams();
 
   // ----- estado -----
   const [operacoesList, setOperacoesList] = useState([]);
@@ -43,15 +59,19 @@ const PesagemInicial = () => {
   const [tipoveiculo, setTipoveiculo] = useState("");
   const [tipoveiculos, setTipoveiculos] = useState([]);
   const [disabled, setDisabled] = useState(false);
+  const [hideButton, setHideButton] = useState(false);
 
   // modal confirmação (saldo baixo)
   const [openConfirm, setOpenConfirm] = useState(false);
+
+  // botão submit
+  const [submitting, setSubmitting] = useState(false);
 
   // token seguro
   const rawToken = localStorage.getItem("user_token");
   let usuario = null;
   try {
-    usuario = rawToken ? JSON.parse(rawToken)?.id ?? null : null;
+    usuario = rawToken ? (JSON.parse(rawToken)?.id ?? null) : null;
   } catch {
     usuario = null;
   }
@@ -61,10 +81,10 @@ const PesagemInicial = () => {
 
   // ----- efeitos -----
   useEffect(() => {
-     getTipoveiculo();
-     getOperacoes();
-     getTransp();
-     getDestino();
+    getTipoveiculo();
+    getOperacoes();
+    getTransp();
+    getDestino();
     if (cpf) BuscarPlacas(cpf);
   }, [cpf]);
 
@@ -91,7 +111,7 @@ const PesagemInicial = () => {
   // ----- API calls -----
   const BuscarPlacas = async (cpfVal) => {
     try {
-      const { data } = await api.get(`/pesageminicial/historico/${cpfVal}`);
+      const { data } = await Axios.get(`/pesageminicial/historico/${cpfVal}`);
       if (Array.isArray(data) && data.length > 0) {
         const {
           PLACA_CAVALO,
@@ -113,7 +133,7 @@ const PesagemInicial = () => {
 
   const getOperacoes = async () => {
     try {
-      const { data } = await api.get("/operacao");
+      const { data } = await Axios.get("/operacao");
       setOperacoesList(data || []);
     } catch (e) {
       console.error("[getOperacoes][ERR]", e);
@@ -124,7 +144,7 @@ const PesagemInicial = () => {
     try {
       setNavio(codOper);
       setDoc(""); // reset doc selecionado
-      const { data } = await api.get(`/carga/busca/${codOper}`);
+      const { data } = await Axios.get(`/carga/busca/${codOper}`);
       setDocs(data || []);
       getPedido(codOper);
     } catch (e) {
@@ -134,7 +154,7 @@ const PesagemInicial = () => {
 
   const getPedido = async (codOper) => {
     try {
-      const { data } = await api.get(`/buscar/pedidos/${codOper}`);
+      const { data } = await Axios.get(`/buscar/pedidos/${codOper}`);
       setPedidos(data || []);
     } catch (e) {
       console.error("[getPedido][ERR]", e);
@@ -143,7 +163,7 @@ const PesagemInicial = () => {
 
   const getTransp = async () => {
     try {
-      const { data } = await api.get("/transportadora");
+      const { data } = await Axios.get("/transportadora");
       setTransportadoras(data || []);
     } catch (e) {
       console.error("[getTransp][ERR]", e);
@@ -152,7 +172,7 @@ const PesagemInicial = () => {
 
   const getDestino = async () => {
     try {
-      const { data } = await api.get("/destino");
+      const { data } = await Axios.get("/destino");
       setDestinos(data || []);
     } catch (e) {
       console.error("[getDestino][ERR]", e);
@@ -161,7 +181,7 @@ const PesagemInicial = () => {
 
   const getTipoveiculo = async () => {
     try {
-      const { data } = await api.get("/tipoveiculo");
+      const { data } = await Axios.get("/tipoveiculo");
       setTipoveiculos(data || []);
     } catch (e) {
       console.error("[getTipoveiculo][ERR]", e);
@@ -174,15 +194,6 @@ const PesagemInicial = () => {
     selectedDoc && typeof selectedDoc.SALDO === "number"
       ? (selectedDoc.SALDO / 1000).toFixed(2)
       : null;
-
-  const tentarCadastrar = () => {
-    // Se saldo <= 150.000 kg (150 t), abrir confirmação
-    if (selectedDoc && Number(selectedDoc.SALDO) <= 150000) {
-      setOpenConfirm(true);
-      return;
-    }
-    validaDados(); // segue direto
-  };
 
   const validaDados = () => {
     if (!doc || !destino || !placacavalo || !data || !placa1 || !transportadora || !tipopesagem) {
@@ -210,6 +221,8 @@ const PesagemInicial = () => {
 
   const addPesagem = async () => {
     try {
+      setSubmitting(true);
+
       const payload = {
         COD_CARGA: doc,
         COD_OPERACAO: navio,
@@ -221,7 +234,7 @@ const PesagemInicial = () => {
         TIPO_VEICULO: tipoveiculo,
         COD_TRANSP: transportadora,
         COD_DESTINO: destino,
-        PESO_TARA: tara || 0,
+        PESO_TARA: disabled ? 1000 : (tara || 0),
         DATA_TARA: data,
         USUARIO_TARA: usuario,
         STATUS_CARREG: "1",
@@ -231,20 +244,45 @@ const PesagemInicial = () => {
         TIPO_PESAGEM: tipopesagem,
       };
 
-      const { data: resp } = await api.post("/pesagem/primeirapesagem", payload);
-      if (resp?.sqlMessage) {
-        showAlert(resp.sqlMessage, "error");
-      } else {
-        showAlert("Pesagem cadastrada com sucesso!", "success");
+      const { data: resp } = await Axios.post("/pesagem/primeirapesagem", payload);
+
+      if (resp?.ok) {
+        // Mostra mensagem com ID e aguarda 3s para navegar
+        showAlert(`Pesagem cadastrada com sucesso! ID: ${resp.id}`, "success");
         setOpenConfirm(false);
-        setTimeout(() => navigate("/veiculos/BuscarMotorista"), 20);
+        setTimeout(() => navigate("/veiculos/BuscarMotorista"), 3000);
+      } else if (resp?.error) {
+        showAlert(resp.error, "error");
+      } else {
+        showAlert("Não foi possível confirmar o cadastro da pesagem.", "error");
       }
     } catch (err) {
       console.error("[addPesagem][ERR]", err);
-      showAlert("Erro ao cadastrar pesagem.", "error");
+      const backendMsg =
+        (err && err.response && (err.response.data?.message || err.response.data?.error)) ||
+        "Erro ao cadastrar pesagem.";
+      showAlert(backendMsg, "error");
       setOpenConfirm(false);
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const tentarCadastrar = () => {
+    if (submitting) return; // evita duplo clique
+
+    // esconde o botão por 4s imediatamente
+    setHideButton(true);
+    setTimeout(() => setHideButton(false), 4000);
+
+    // Se saldo <= 150 t, abrir confirmação
+    if (selectedDoc && Number(selectedDoc.SALDO) <= 150000) {
+      setOpenConfirm(true);
+      return;
+    }
+    validaDados(); // segue direto
+  };
+
 
   return (
     <>
@@ -261,55 +299,48 @@ const PesagemInicial = () => {
 
           <div className={style.align}>
             <div className="columns">
-              {/* Coluna 1: Info motorista + tipo pesagem + navio + tara */}
+              {/* Coluna 1 */}
               <div className="column is-4">
                 <div className={style.box}>
                   <div className="card">
                     <div className="card-content">
                       <div className={style.cabecario}>INFORMAÇÕES DO MOTORISTA</div>
                       <div className="content">
-                        <div>
-                          <strong className={style.name}>Motorista:</strong> {nome}
-                        </div>
-                        <div>
-                          <strong className={style.name}>CPF:</strong> {cpf}
-                        </div>
-
+                        <div><strong className={style.name}>Motorista:</strong> {nome}</div>
+                        <div><strong className={style.name}>CPF:</strong> {cpf}</div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-<div className={style.radioGroup}>
-  <label className={style.radioOption}>
-    <input
-      type="radio"
-      name="tipoPesagem"
-      value="C"
-      onChange={(e) => validaTipo(e.target.value)}
-    />
-    <span className={style.customRadio}></span>
-    Pesagem COMPLETA
-  </label>
+                <div className={style.radioGroup}>
+                  <label className={style.radioOption}>
+                    <input
+                      type="radio"
+                      name="tipoPesagem"
+                      value="C"
+                      onChange={(e) => validaTipo(e.target.value)}
+                    />
+                    <span className={style.customRadio}></span>
+                    Pesagem COMPLETA
+                  </label>
 
-  <label className={style.radioOption}>
-    <input
-      type="radio"
-      name="tipoPesagem"
-      value="M"
-      onChange={(e) => validaTipo(e.target.value)}
-    />
-    <span className={style.customRadio}></span>
-    Pesagem MOEGA
-  </label>
-</div>
+                  <label className={style.radioOption}>
+                    <input
+                      type="radio"
+                      name="tipoPesagem"
+                      value="M"
+                      onChange={(e) => validaTipo(e.target.value)}
+                    />
+                    <span className={style.customRadio}></span>
+                    Pesagem MOEGA
+                  </label>
+                </div>
 
                 <div className={style.form_control}>
                   <label>Selecione o navio (operação):</label>
                   <select onChange={(e) => getCargas(e.target.value)} defaultValue="">
-                    <option value="" disabled>
-                      Selecione uma opção
-                    </option>
+                    <option value="" disabled>Selecione uma opção</option>
                     {operacoesList
                       ?.filter((op) => op.STATUS_OPERACAO !== "FECHADA")
                       .map((val) => (
@@ -342,14 +373,12 @@ const PesagemInicial = () => {
                 )}
               </div>
 
-              {/* Coluna 2: destino, placas, tipo veículo e transp */}
+              {/* Coluna 2 */}
               <div className="column is-3">
                 <div className={style.form_control}>
                   <label>Destino da carga:</label>
                   <select onChange={(e) => setDestino(e.target.value)} defaultValue="">
-                    <option value="" disabled>
-                      Selecione uma opção
-                    </option>
+                    <option value="" disabled>Selecione uma opção</option>
                     {destinos?.map((val) => (
                       <option key={val.COD_DESTINO} value={val.COD_DESTINO}>
                         {val.NOME_DESTINO}
@@ -405,9 +434,7 @@ const PesagemInicial = () => {
                 <div className={style.form_control}>
                   <label>Tipo de veículo:</label>
                   <select onChange={(e) => setTipoveiculo(e.target.value)} defaultValue="">
-                    <option value="" disabled>
-                      Selecione uma opção
-                    </option>
+                    <option value="" disabled>Selecione uma opção</option>
                     {tipoveiculos?.map((val) => (
                       <option key={val.COD_TIPO} value={val.COD_TIPO}>
                         {val.DESC_TIPO_VEICULO}
@@ -419,9 +446,7 @@ const PesagemInicial = () => {
                 <div className={style.form_control}>
                   <label>Transportadora:</label>
                   <select onChange={(e) => setTransportadora(e.target.value)} defaultValue="">
-                    <option value="" disabled>
-                      Selecione uma opção
-                    </option>
+                    <option value="" disabled>Selecione uma opção</option>
                     {transportadoras?.map((val) => (
                       <option key={val.COD_TRANSP} value={val.COD_TRANSP}>
                         {val.NOME_TRANSP}
@@ -431,14 +456,12 @@ const PesagemInicial = () => {
                 </div>
               </div>
 
-              {/* Coluna 3: documento, pedido e data */}
+              {/* Coluna 3 */}
               <div className="column is-4">
                 <div className={style.form_control}>
                   <label>Código da operação (DI ou BL):</label>
                   <select onChange={(e) => setDoc(e.target.value)} value={doc || ""}>
-                    <option value="" disabled>
-                      Selecione uma opção
-                    </option>
+                    <option value="" disabled>Selecione uma opção</option>
                     {docs?.map((val) => (
                       <option key={val.COD_CARGA} value={val.COD_CARGA}>
                         {val.TIPO} - {val.NUMERO}
@@ -450,9 +473,7 @@ const PesagemInicial = () => {
                 <div className={style.form_control}>
                   <label>Número do Pedido:</label>
                   <select onChange={(e) => setPedidoMic(e.target.value)} defaultValue="">
-                    <option value="" disabled>
-                      Selecione uma opção
-                    </option>
+                    <option value="" disabled>Selecione uma opção</option>
                     {pedidos?.map((val) => (
                       <option key={val.NR_PEDIDO} value={val.NR_PEDIDO}>
                         {val.NR_PEDIDO}
@@ -471,8 +492,15 @@ const PesagemInicial = () => {
           </div>
 
           <div className={style.button}>
-            <SubmitButton text={"Cadastrar"} onClick={tentarCadastrar} />
+            {!hideButton && (
+              <SubmitButton
+                text={submitting ? "Enviando..." : "Cadastrar"}
+                onClick={tentarCadastrar}
+                disabled={submitting}
+              />
+            )}
           </div>
+
         </div>
       </Container>
 
@@ -513,7 +541,7 @@ export default function IntegrationNotistack() {
     <SnackbarProvider
       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       maxSnack={3}
-      autoHideDuration={2500}
+      autoHideDuration={3000}
     >
       <PesagemInicial />
     </SnackbarProvider>

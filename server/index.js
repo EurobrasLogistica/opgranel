@@ -108,6 +108,73 @@ app.use((req, _res, next) => {
   next();
 });
 
+// Primeira pesagem — retorna JSON com mensagem de sucesso
+app.post(`${API_PREFIX}/pesagem/primeirapesagem`, async (req, res) => {
+  try {
+    const {
+      COD_CARGA,
+      COD_OPERACAO,
+      PLACA_CAVALO,
+      COD_MOTORISTA,
+      PLACA_CARRETA,
+      PLACA_CARRETA2,
+      PLACA_CARRETA3,
+      TIPO_VEICULO,
+      COD_TRANSP,
+      COD_DESTINO,
+      PESO_TARA,
+      DATA_TARA,
+      USUARIO_TARA,
+      STATUS_CARREG,
+      USUARIO,
+      DATA_CADASTRO,
+      NR_PEDIDO,
+      TIPO_PESAGEM,
+    } = req.body || {};
+
+    // validação mínima
+    if (!COD_CARGA || !COD_OPERACAO || !PLACA_CAVALO || !COD_MOTORISTA || !COD_DESTINO || !DATA_TARA) {
+      return res.status(400).json({ ok: false, error: "Campos obrigatórios ausentes." });
+    }
+
+    const sql = `
+      INSERT INTO CARREGAMENTO (
+        COD_CARGA, COD_OPERACAO, PLACA_CAVALO, COD_MOTORISTA,
+        PLACA_CARRETA, PLACA_CARRETA2, PLACA_CARRETA3, TIPO_VEICULO,
+        COD_TRANSP, COD_DESTINO, PESO_TARA, DATA_TARA, USUARIO_TARA,
+        STATUS_CARREG, USUARIO, DATA_CADASTRO, PEDIDO_MIC, TIPO_PESAGEM
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `;
+
+    const params = [
+      COD_CARGA, COD_OPERACAO, PLACA_CAVALO, COD_MOTORISTA,
+      PLACA_CARRETA, PLACA_CARRETA2, PLACA_CARRETA3, TIPO_VEICULO,
+      COD_TRANSP, COD_DESTINO, PESO_TARA, DATA_TARA, USUARIO_TARA,
+      STATUS_CARREG, USUARIO, DATA_CADASTRO, NR_PEDIDO, TIPO_PESAGEM
+    ];
+
+    // >>>> AQUI: usa o pool correto (db)
+    const [result] = await db.query(sql, params);
+
+    console.log("Pesagem inserida. ID:", result?.insertId);
+
+    // sucesso conclusivo
+    return res.status(201).json({
+      ok: true,
+      id: result?.insertId,
+      message: "Pesagem cadastrada com sucesso",
+    });
+  } catch (err) {
+    console.error("[/pesagem/primeirapesagem][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      error: "Erro interno ao registrar a primeira pesagem.",
+      detail: err?.sqlMessage || err?.message || String(err),
+    });
+  }
+});
+
+
 // =================== ROTAS ===================
 
 // TRANSPORTADORA
@@ -1326,7 +1393,7 @@ app.get(`${API_PREFIX}/periodo/busca/:id`, (req, res) => {
         (SELECT 
             CASE WHEN OP.DAT_FIM_PERIODO IS NULL THEN 1 ELSE 0 END
          FROM PERIODO_OPERACAO OP
-         WHERE OP.COD_OPERACAO = 108
+         WHERE OP.COD_OPERACAO = ?
          ORDER BY OP.DAT_INI_PERIODO DESC, OP.SEQ_PERIODO_OP DESC
          LIMIT 1),
     0) AS EXISTE;
@@ -1446,8 +1513,7 @@ app.get(`${API_PREFIX}/periodo/dashboard/:id`, async (req, res) => {
       JOIN BERCO BE          ON BE.COD_BERCO       = OP.COD_BERCO
       JOIN EQUIPAMENTO MO    ON MO.COD_EQUIPAMENTO = OP.COD_MOEGA
     WHERE
-      OP.DAT_FIM_PERIODO IS NULL
-      AND OP.COD_OPERACAO = ?
+      OP.COD_OPERACAO = ?
     GROUP BY
       OP.SEQ_PERIODO_OP,
       OP.COD_OPERACAO,
@@ -2668,57 +2734,74 @@ app.get(`${API_PREFIX}/impressao/busca/:idCarregamento`, (req, res) => {
     )
 })
 
-app.get(`${API_PREFIX}/ultimapesagem/busca/:id`, (req, res) => {
-    const { id } = req.params
-
-    db.query(`
-    SELECT 
-        FC_PERIODO_CARREGAMENTO(CAR.DATA_TARA) AS PERIODO_TARA,
-        CAR.ID_CARREGAMENTO,
-        MO.NOME_MOTORISTA,
-        CAR.PLACA_CAVALO,
-        CAR.PESO_TARA,
-        CAR.DATA_TARA,
-        CAR.PLACA_CARRETA,
-        CAR.PLACA_CARRETA2,
-        CAR.PLACA_CARRETA3,
-        CAR.PEDIDO_MIC,
-        CAR.TICKET,
-        TV.DESC_TIPO_VEICULO AS TIPO_VEICULO,
-        CG.TIPO_DOC, 
-        CG.NUMERO_DOC,
-        CAR.COD_DESTINO,
-        CAR.PESO_CARREGADO,
-        CAR.DATA_CARREGAMENTO,
-        FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) AS PERIODO_CARREGAMENTO,
-        COALESCE(CAR.STATUS_NOTA_MIC, 1) AS STATUS_NOTA_MIC,
-        CAR.DATA_BRUTO,
-        CAR.OBS_NOTA,
-        CAR.STATUS_CARREG,
-        CAR.TICKET
-    FROM 
-        CARREGAMENTO CAR
-        JOIN MOTORISTA MO
-            ON MO.COD_MOTORISTA = CAR.COD_MOTORISTA
-        JOIN TIPO_VEICULO TV
-            ON TV.COD_TIPO = CAR.TIPO_VEICULO
-        JOIN CARGA CG
-            ON CG.COD_CARGA = CAR.COD_CARGA
-            AND CG.COD_OPERACAO = CAR.COD_OPERACAO
-    WHERE 
-        CAR.COD_OPERACAO = ?
-        AND ((CAR.STATUS_CARREG = 2
-        OR (CAR.STATUS_CARREG = 3 AND CAR.PESO_TARA != 1000 AND COALESCE(CAR.STATUS_NOTA_MIC, 1) != 6)))
-`, id, (err, result) => {
-        if (err) {
-            res.send(err)
-            console.log(err)
-        } else {
-            res.send(result)
-        }
+// exemplo com mysql2/promise (pool)
+app.get(`${API_PREFIX}/ultimapesagem/busca/:id`, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ error: "Parâmetro :id inválido" });
     }
-    )
-})
+
+    const sql = `
+      SELECT 
+          -- Collate opcional para evitar conflitos quando a função retornar texto
+          FC_PERIODO_CARREGAMENTO(CAR.DATA_TARA) COLLATE utf8mb4_unicode_ci       AS PERIODO_TARA,
+          CAR.ID_CARREGAMENTO,
+          MO.NOME_MOTORISTA,
+          CAR.PLACA_CAVALO,
+          CAR.PESO_TARA,
+          CAR.DATA_TARA,
+          CAR.PLACA_CARRETA,
+          CAR.PLACA_CARRETA2,
+          CAR.PLACA_CARRETA3,
+          CAR.PEDIDO_MIC,
+          CAR.TICKET,
+          TV.DESC_TIPO_VEICULO AS TIPO_VEICULO,
+          CG.TIPO_DOC, 
+          CG.NUMERO_DOC,
+          CAR.COD_DESTINO,
+          CAR.PESO_CARREGADO,
+          CAR.DATA_CARREGAMENTO,
+          FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) COLLATE utf8mb4_unicode_ci AS PERIODO_CARREGAMENTO,
+          COALESCE(CAR.STATUS_NOTA_MIC, 1) AS STATUS_NOTA_MIC,
+          CAR.DATA_BRUTO,
+          CAR.OBS_NOTA,
+          CAR.STATUS_CARREG
+      FROM CARREGAMENTO CAR
+      JOIN MOTORISTA   MO ON MO.COD_MOTORISTA = CAR.COD_MOTORISTA
+      JOIN TIPO_VEICULO TV ON TV.COD_TIPO     = CAR.TIPO_VEICULO
+      JOIN CARGA       CG ON CG.COD_CARGA     = CAR.COD_CARGA
+                          AND CG.COD_OPERACAO = CAR.COD_OPERACAO
+      WHERE 
+          CAR.COD_OPERACAO = ?
+          AND (
+            CAR.STATUS_CARREG = 2
+            OR (
+              CAR.STATUS_CARREG = 3
+              AND CAR.PESO_TARA <> 1000
+              AND COALESCE(CAR.STATUS_NOTA_MIC, 1) <> 6
+            )
+          )
+      ORDER BY COALESCE(CAR.DATA_BRUTO, CAR.DATA_CARREGAMENTO, CAR.DATA_TARA) DESC
+      LIMIT 200;
+    `;
+
+    const [rows] = await pool.execute(sql, [id]);
+
+    if (!rows || rows.length === 0) {
+      return res.status(204).send(); // sem conteúdo
+    }
+
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error("Erro em /ultimapesagem/busca/:id", err);
+    return res.status(500).json({
+      error: "Erro interno ao buscar última pesagem",
+      detail: err?.sqlMessage || err?.message || String(err),
+    });
+  }
+});
+
 
 app.put(`${API_PREFIX}/segundapesagem`, (req, res) => {
     const id = req.body.id
@@ -2962,73 +3045,124 @@ DATA_CARREGAMENTO
     });
 });
 
-
-
 app.post(`${API_PREFIX}/periodo/documentos/:id`, (req, res) => {
-    const id = req.params.id;
-    const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
+  const id = Number(req.params.id);
+  const rawPeriodo = (req.body && req.body.data) || ""; // ex.: '01/07/2023 01h00/07h00'
+  const periodo = String(rawPeriodo).trim();
 
-    db.query(`
-    SELECT CA2.PERIODO,
-                   DOCUMENTO AS DOC_CARGA,
-       COUNT(CA2.ID_CARREGAMENTO) AS QTDE_AUTOS_CARGA,
-       SUM(CA2.PESO_LIQUIDO) AS PESO_LIQUIDO_CARGA
-  FROM (SELECT CONCAT(CG.TIPO_DOC, " ", CG.NUMERO_DOC) AS DOCUMENTO,
-		CAR.ID_CARREGAMENTO,
-        FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) AS PERIODO,
-        CAR.PESO_BRUTO - CAR.PESO_TARA AS PESO_LIQUIDO
-          FROM CARREGAMENTO CAR
-               JOIN CARGA CG
-              ON CG.COD_OPERACAO = CAR.COD_OPERACAO AND CG.COD_CARGA = CAR.COD_CARGA
-         WHERE CAR.STATUS_CARREG = 3
-           AND CAR.PESO_BRUTO > 0
-           AND CAR.COD_OPERACAO = ?
-           AND FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) = ?
-        ORDER BY DATA_CARREGAMENTO) CA2
-  GROUP BY CA2.DOCUMENTO, CA2.PERIODO
+  if (!Number.isFinite(id) || id <= 0) {
+    return res.status(400).json({ error: "Parâmetro :id inválido" });
+  }
+  if (!periodo) {
+    return res.status(400).json({ error: "Campo 'data' (período) é obrigatório" });
+  }
 
-    `, [id, data], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            console.log(id, data);
-            res.send(result)
+  // Use a collation ÚNICA e CONSISTENTE. Aqui, padronizei para utf8mb4_0900_ai_ci (MySQL 8).
+  // Se o seu servidor estiver em utf8mb4_unicode_ci, troque TODAS as ocorrências abaixo por utf8mb4_unicode_ci.
+  const sql = `
+    SELECT
+      CA2.PERIODO,
+      CA2.DOCUMENTO AS DOC_CARGA,
+      COUNT(CA2.ID_CARREGAMENTO) AS QTDE_AUTOS_CARGA,
+      SUM(CA2.PESO_LIQUIDO)      AS PESO_LIQUIDO_CARGA
+    FROM (
+      SELECT
+        -- Normaliza o documento para a MESMA collation do resto
+        (CONCAT(CG.TIPO_DOC, ' ', CG.NUMERO_DOC) COLLATE utf8mb4_0900_ai_ci) AS DOCUMENTO,
+        CAR.ID_CARREGAMENTO,
+        -- Normaliza o período calculado da função
+        FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) COLLATE utf8mb4_0900_ai_ci AS PERIODO,
+        (CAR.PESO_BRUTO - CAR.PESO_TARA) AS PESO_LIQUIDO
+      FROM CARREGAMENTO CAR
+      JOIN CARGA CG
+        ON CG.COD_OPERACAO = CAR.COD_OPERACAO
+       AND CG.COD_CARGA    = CAR.COD_CARGA
+      WHERE CAR.STATUS_CARREG  = 3
+        AND CAR.PESO_BRUTO     > 0
+        AND CAR.COD_OPERACAO   = ?
+        -- >>> AQUI é onde o erro acontece sem normalização <<<
+        AND FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) COLLATE utf8mb4_0900_ai_ci
+            = CONVERT(? USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+      ORDER BY CAR.DATA_CARREGAMENTO
+    ) CA2
+    GROUP BY CA2.DOCUMENTO, CA2.PERIODO
+  `;
 
-        }
-    });
+  db.query(sql, [id, id], (err, rows) => {
+    if (err) {
+      console.error("Erro em /periodo/documentos/:id", err);
+      return res.status(500).json({
+        error: "Erro interno ao buscar documentos por período",
+        detail: err?.sqlMessage || err?.message || String(err),
+      });
+    }
+    return res.status(200).json(Array.isArray(rows) ? rows : []);
+  });
 });
+
+
 
 app.post(`${API_PREFIX}/periodo/autos/:id`, (req, res) => {
-    const id = req.params.id;
-    const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
+  const id = Number(req.params.id);
+  const rawPeriodo = (req.body && req.body.data) || "";
+  const periodo = String(rawPeriodo).trim(); // exemplo: '03/12/2024 01h00/07h00'
 
-    db.query(`
-    SELECT CA2.PERIODO,
-       COUNT(CA2.ID_CARREGAMENTO) AS QTDE_AUTOS,
-       SUM(CA2.PESO_LIQUIDO) AS PESO_LIQUIDO
-  FROM (SELECT CAR.ID_CARREGAMENTO,
-                               FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) AS PERIODO,
-                               CAR.PESO_BRUTO - CAR.PESO_TARA AS PESO_LIQUIDO
-          FROM CARREGAMENTO CAR 
-         WHERE CAR.STATUS_CARREG = 3
-           AND CAR.PESO_CARREGADO > 0
-           AND CAR.COD_OPERACAO = ?
-           AND FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) = ?
-        ORDER BY DATA_CARREGAMENTO) CA2
-  GROUP BY CA2.PERIODO
+  if (!Number.isFinite(id) || id <= 0) {
+    return res.status(400).json({ error: "Parâmetro :id inválido" });
+  }
+  if (!periodo) {
+    return res.status(400).json({ error: "Campo 'data' (período) é obrigatório" });
+  }
 
-    `, [id, data], (err, result) => {
-        if (err) {
-            console.log(err)
-        } else {
-            console.log(id, data);
-            res.send(result)
+  // Se o seu MySQL usa utf8mb4_0900_ai_ci, troque *todas* as ocorrências de utf8mb4_unicode_ci
+  // por utf8mb4_0900_ai_ci abaixo.
+  const sql = `
+    WITH base AS (
+      SELECT
+        CAR.ID_CARREGAMENTO,
+        FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) COLLATE utf8mb4_unicode_ci AS PERIODO,
+        (CAR.PESO_BRUTO - CAR.PESO_TARA) AS PESO_LIQUIDO
+      FROM CARREGAMENTO CAR
+      WHERE CAR.STATUS_CARREG  = 3
+        AND CAR.PESO_CARREGADO > 0
+        AND CAR.COD_OPERACAO   = ?
+        AND FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) COLLATE utf8mb4_unicode_ci
+            = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
+    )
+    SELECT 
+      b.PERIODO,
+      COUNT(b.ID_CARREGAMENTO) AS QTDE_AUTOS,
+      SUM(b.PESO_LIQUIDO)      AS PESO_LIQUIDO
+    FROM base b
+    GROUP BY b.PERIODO
 
-        }
-    });
+    UNION ALL
+
+    SELECT
+      CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci AS PERIODO,
+      0 AS QTDE_AUTOS,
+      0 AS PESO_LIQUIDO
+    FROM DUAL
+    WHERE NOT EXISTS (SELECT 1 FROM base);
+  `;
+
+  // params:
+  // 1) id (numérico)
+  // 2) periodo para filtrar
+  // 3) periodo para a linha fallback zerada
+  db.query(sql, [id, id, id], (err, rows) => {
+    if (err) {
+      console.error("Erro em /periodo/autos/:id", err);
+      return res.status(500).json({
+        error: "Erro interno ao buscar autos por período",
+        detail: err?.sqlMessage || err?.message || String(err),
+      });
+    }
+
+    // Agora sempre retornamos 200. Se não havia dados, vem 1 linha zerada.
+    return res.status(200).json(rows || []);
+  });
 });
-
-
 
 
 
@@ -3276,99 +3410,8 @@ app.get(`${API_PREFIX}/relatorios`, (req, res) => {
     })
 })
 
-//primeira pesagem 
-app.post(`${API_PREFIX}/pesagem/primeirapesagem`, (req, res) => {
-    const COD_CARGA = req.body.COD_CARGA
-    const COD_OPERACAO = req.body.COD_OPERACAO
-    const PLACA_CAVALO = req.body.PLACA_CAVALO
-    const COD_MOTORISTA = req.body.COD_MOTORISTA
-    const PLACA_CARRETA = req.body.PLACA_CARRETA
-    const PLACA_CARRETA2 = req.body.PLACA_CARRETA2
-    const PLACA_CARRETA3 = req.body.PLACA_CARRETA3
-    const TIPO_VEICULO = req.body.TIPO_VEICULO
-    const COD_TRANSP = req.body.COD_TRANSP
-    const COD_DESTINO = req.body.COD_DESTINO
-    const PESO_TARA = req.body.PESO_TARA
-    const DATA_TARA = req.body.DATA_TARA
-    const USUARIO_TARA = req.body.USUARIO_TARA
-    const STATUS_CARREG = req.body.STATUS_CARREG
-    const USUARIO = req.body.USUARIO
-    const DATA_CADASTRO = req.body.DATA_CADASTRO
-    const NR_PEDIDO = req.body.NR_PEDIDO
-    const TIPO_PESAGEM = req.body.TIPO_PESAGEM
 
 
-    db.query(`
-        INSERT INTO CARREGAMENTO (
-            COD_CARGA, 
-            COD_OPERACAO, 
-            PLACA_CAVALO,
-            COD_MOTORISTA, 
-            PLACA_CARRETA, 
-            PLACA_CARRETA2, 
-            PLACA_CARRETA3, 
-            TIPO_VEICULO, 
-            COD_TRANSP, 
-            COD_DESTINO, 
-            PESO_TARA, 
-            DATA_TARA,
-            USUARIO_TARA, 
-            STATUS_CARREG, 
-            USUARIO, 
-            DATA_CADASTRO, 
-            PEDIDO_MIC, 
-            TIPO_PESAGEM
-        ) VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?
-        )`,
-        [
-            COD_CARGA,
-            COD_OPERACAO,
-            PLACA_CAVALO,
-            COD_MOTORISTA,
-            PLACA_CARRETA,
-            PLACA_CARRETA2,
-            PLACA_CARRETA3,
-            TIPO_VEICULO,
-            COD_TRANSP,
-            COD_DESTINO,
-            PESO_TARA,
-            DATA_TARA,
-            USUARIO_TARA,
-            STATUS_CARREG,
-            USUARIO,
-            DATA_CADASTRO,
-            NR_PEDIDO,
-            TIPO_PESAGEM
-        ],
-        (err, result) => {
-            if (err) {
-                res.send(err)
-                console.log(err)
-            } else {
-                res.send("sucesso")
-                console.log('Primeira pesagem cadastrada!');
-            }
-        }
-    )
-})
 
 // Listar navios para relatório
 app.get(`${API_PREFIX}/relatorios/operacoes`, async (_req, res) => {
