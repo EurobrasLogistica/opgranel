@@ -12,9 +12,11 @@ services:
     shm_size: "1gb"
     volumes:
       - ./server/Files/Notas_Fiscais:/app/server/Files/Notas_Fiscais
+      - ./server/logs:/app/logs
     ports:
       - "3009:3009"
     environment:
+      LOG_DIR: /app/logs
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: ogdev

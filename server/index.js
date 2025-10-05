@@ -2,7 +2,8 @@
 const session = require('express-session');
 const cors = require('cors');
 const app = express();
-
+const path = require('path');
+const fs = require('fs');
 const xml2js = require('xml2js');
 const { Base64 } = require('js-base64');
 const fs = require('fs');
@@ -81,6 +82,31 @@ const corsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 204,
 };
+
+// Base dos logs: variável de ambiente ou fallback para ./logs ao lado do index.js
+const LOG_ROOT = process.env.LOG_DIR || path.join(__dirname, 'logs');
+
+// garante a pasta base na inicialização
+fs.mkdirSync(LOG_ROOT, { recursive: true });
+
+// função utilitária
+function ensureDirSync(p) {
+  fs.mkdirSync(p, { recursive: true });
+}
+
+function saveLog(idCarregamento, filename, data) {
+  const dir = path.join(LOG_ROOT, String(idCarregamento));   // ex.: server/logs/19474
+  ensureDirSync(dir);
+
+  const filePath = path.join(dir, `${filename}.txt`);
+  fs.writeFile(filePath, JSON.stringify(data, null, 4), (err) => {
+    if (err) {
+      console.error('Falha ao salvar log:', err);
+      return;
+    }
+    // opcional: console.log('Log salvo em', filePath);
+  });
+}
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // responde preflight de tudo
