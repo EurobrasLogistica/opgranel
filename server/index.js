@@ -1322,11 +1322,14 @@ app.get(`${API_PREFIX}/periodo/busca/:id`, (req, res) => {
   db.query(
     `
     SELECT
-      CASE WHEN OP.DAT_FIM_PERIODO IS NULL THEN 1 ELSE 0 END AS EXISTE
-    FROM PERIODO_OPERACAO OP
-    WHERE OP.COD_OPERACAO = ?
-    ORDER BY OP.DAT_INI_PERIODO DESC, OP.SEQ_PERIODO_OP DESC
-    LIMIT 1
+    COALESCE(
+        (SELECT 
+            CASE WHEN OP.DAT_FIM_PERIODO IS NULL THEN 1 ELSE 0 END
+         FROM PERIODO_OPERACAO OP
+         WHERE OP.COD_OPERACAO = ?
+         ORDER BY OP.DAT_INI_PERIODO DESC, OP.SEQ_PERIODO_OP DESC
+         LIMIT 1),
+    0) AS EXISTE;
     `,
     [id],
     (err, result) => {
@@ -1352,12 +1355,15 @@ app.get(`${API_PREFIX}/portal/periodo/busca/:id`, (req, res) => {
 
   db.query(
     `
-    SELECT
-      CASE WHEN OP.DAT_FIM_PERIODO IS NULL THEN 1 ELSE 0 END AS EXISTE
-    FROM PERIODO_OPERACAO OP
-    WHERE OP.COD_OPERACAO = ?
-    ORDER BY OP.DAT_INI_PERIODO DESC, OP.SEQ_PERIODO_OP DESC
-    LIMIT 1
+     SELECT
+    COALESCE(
+        (SELECT 
+            CASE WHEN OP.DAT_FIM_PERIODO IS NULL THEN 1 ELSE 0 END
+         FROM PERIODO_OPERACAO OP
+         WHERE OP.COD_OPERACAO = ?
+         ORDER BY OP.DAT_INI_PERIODO DESC, OP.SEQ_PERIODO_OP DESC
+         LIMIT 1),
+    0) AS EXISTE;
     `,
     [id],
     (err, result) => {
