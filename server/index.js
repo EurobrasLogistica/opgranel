@@ -2948,26 +2948,38 @@ app.put(`${API_PREFIX}/segundapesagemcomnf`, async (req, res) => {
       return res.status(400).json({ ok: false, error: "Campo 'usuario' é obrigatório." });
     }
 
-    // STATUS_CARREG = 2 (em segunda pesagem / carregado)
+    // STATUS_CARREG = 3 (concluído), STATUS_NOTA_MIC = 2 (processando)
+    // Campos extras:
+    //  - PESO_BRUTO = PESO_CARREGADO + 1000
+    //  - DATA_BRUTO = DATA_CARREGAMENTO
+    //  - USUARIO_BRUTO = USUARIO_CARREG
     const sql = `
       UPDATE CARREGAMENTO
-         SET PESO_CARREGADO   = ?,
-             DATA_CARREGAMENTO = ?,
-             USUARIO_CARREG    = ?,
-             STATUS_CARREG     = 3,
-             STATUS_NOTA_MIC   = 2,
-             TICKET            = ?
-       WHERE ID_CARREGAMENTO  = ?
+         SET PESO_CARREGADO    = ?,
+             DATA_CARREGAMENTO  = ?,
+             USUARIO_CARREG     = ?,
+             STATUS_CARREG      = 3,
+             STATUS_NOTA_MIC    = 2,
+             TICKET             = ?,
+             PESO_BRUTO         = ? + 1000,
+             DATA_BRUTO         = ?,
+             USUARIO_BRUTO      = ?
+       WHERE ID_CARREGAMENTO   = ?
        LIMIT 1
     `;
 
-    const [result] = await db.query(sql, [
+    const params = [
       pesoCarregado,
       data,
       usuario,
       ticket ?? null,
+      pesoCarregado,  // para PESO_BRUTO = ? + 1000
+      data,           // DATA_BRUTO = DATA_CARREGAMENTO
+      usuario,        // USUARIO_BRUTO = USUARIO_CARREG
       carregamentoId
-    ]);
+    ];
+
+    const [result] = await db.query(sql, params);
 
     if (!result.affectedRows) {
       return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
@@ -2988,6 +3000,7 @@ app.put(`${API_PREFIX}/segundapesagemcomnf`, async (req, res) => {
     });
   }
 });
+
 
 
 app.put(`${API_PREFIX}/operacao/concluir/docs`, (req, res) => {
