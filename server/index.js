@@ -83,6 +83,7 @@ const corsOptions = {
 };
 
 // Base dos logs: variável de ambiente ou fallback para ./logs ao lado do index.js
+const LOG_ROOT = process.env.LOG_DIR || path.join(__dirname, 'logs');
 const LOG_DIR = process.env.LOG_DIR || path.join(__dirname, 'logs');
 
 // garante a pasta base na inicialização
