@@ -1316,33 +1316,68 @@ app.post(`${API_PREFIX}/periodo/criar`, async (req, res) => {
 });
 
 
-app.get(`${API_PREFIX}/periodo/busca/:id`, (req, res) => { //verifica se existe operação aberta na op. que for fornecida
-    const id = req.params.id;
+app.get(`${API_PREFIX}/periodo/busca/:id`, (req, res) => {
+  const id = req.params.id;
 
-    db.query(`SELECT COUNT(1) as EXISTE FROM PERIODO_OPERACAO WHERE DAT_FIM_PERIODO IS NULL AND COD_OPERACAO = ?`,
-        id, (err, result) => {
-            if (err) {
-                console.log(err)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
+  db.query(
+    `
+    SELECT
+      CASE WHEN OP.DAT_FIM_PERIODO IS NULL THEN 1 ELSE 0 END AS EXISTE
+    FROM PERIODO_OPERACAO OP
+    WHERE OP.COD_OPERACAO = ?
+    ORDER BY OP.DAT_INI_PERIODO DESC, OP.SEQ_PERIODO_OP DESC
+    LIMIT 1
+    `,
+    [id],
+    (err, result) => {
+      if (err) {
+        console.error('[GET /periodo/busca/:id][ERR]', err);
+        return res
+          .status(500)
+          .json({ ok: false, message: err.sqlMessage || 'Erro ao verificar período.' });
+      }
+      res.set('Cache-Control', 'no-store');
 
-app.get('/portal/periodo/busca/:id', (req, res) => { //verifica se existe operação aberta na op. que for fornecida
-    const id = req.params.id;
+      if (!result || result.length === 0) {
+        return res.send([{ EXISTE: 0 }]); // sem períodos, considera fechado
+      }
 
-    db.query(`SELECT COUNT(1) as EXISTE FROM PERIODO_OPERACAO WHERE DAT_FIM_PERIODO IS NULL AND COD_OPERACAO = ?`,
-        id, (err, result) => {
-            if (err) {
-                console.log(err)
-            } else {
-                res.send(result)
-            }
-        }
-    )
-})
+      return res.send(result); // [{ EXISTE: 1|0 }]
+    }
+  );
+});
+
+app.get(`${API_PREFIX}/portal/periodo/busca/:id`, (req, res) => {
+  const id = req.params.id;
+
+  db.query(
+    `
+    SELECT
+      CASE WHEN OP.DAT_FIM_PERIODO IS NULL THEN 1 ELSE 0 END AS EXISTE
+    FROM PERIODO_OPERACAO OP
+    WHERE OP.COD_OPERACAO = ?
+    ORDER BY OP.DAT_INI_PERIODO DESC, OP.SEQ_PERIODO_OP DESC
+    LIMIT 1
+    `,
+    [id],
+    (err, result) => {
+      if (err) {
+        console.error('[GET /portal/periodo/busca/:id][ERR]', err);
+        return res
+          .status(500)
+          .json({ ok: false, message: err.sqlMessage || 'Erro ao verificar período.' });
+      }
+      res.set('Cache-Control', 'no-store');
+
+      if (!result || result.length === 0) {
+        return res.send([{ EXISTE: 0 }]);
+      }
+
+      return res.send(result); // [{ EXISTE: 1|0 }]
+    }
+  );
+});
+
 
 // GET /periodo/status/:id  -> retorna { cod_operacao, em_andamento }
 app.get(`${API_PREFIX}/periodo/status/:id`, async (req, res) => {
