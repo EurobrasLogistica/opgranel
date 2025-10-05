@@ -4416,447 +4416,464 @@ app.post("/gerarnfe", (req, res) => {
     request.end();
   });
   
-  // MIC SISTEMAS - GERAR NOTA
-  app.post("/gerarnotamic/:id", async (req, res) => {
-    const id = req.params.id;
-  
-    saveLog(id, "gerar_nota_body", req.body);
-  
-    // Buscar CNPJ do cliente e da transportadora
-    const db_result = await new Promise((resolve, reject) =>
-      db.query(
-        `
-        SELECT 
-            T.CNPJ_TRANSP, CLI.CNPJ_CLIENTE 
-        FROM 
-            CARREGAMENTO CARREG
-            JOIN TRANSPORTADORA T ON CARREG.COD_TRANSP = T.COD_TRANSP
-            JOIN CARGA CARG ON CARREG.COD_CARGA = CARG.COD_CARGA
-            JOIN CLIENTE CLI ON CARG.COD_CLIENTE = CLI.COD_CLIENTE
-        WHERE 
-            CARREG.ID_CARREGAMENTO = ?;
-        `,
-        id,
-        (err, result) => {
-          if (err) return reject(err);
-          resolve(result);
-        }
-      )
-    );
-  
-    const usuario = "eurobrascodesp";
-    const senha = "tiquete";
-  
-    const codTiquete = req.body.codTiquete;
-    const placa1 = req.body.placa1;
-    const placa2 = req.body.placa2;
-    const placa3 = req.body.placa3;
-    const placaCavalo = req.body.placaCavalo;
-    const num_DI = req.body.num_DI;
-    const pedido_mic = req.body.pedido_mic;
-    const peso_bruto = req.body.peso_bruto / 1000;
-    const peso_liquido = req.body.peso_liquido / 1000;
-    const tara = req.body.tara;
-    const cnpjEmpresa = db_result[0].CNPJ_CLIENTE;
-    const cnpjTransportadora = db_result[0].CNPJ_TRANSP;
-    const dtTiquete = new Date(req.body.data).toISOString().slice(0, 19);
-  
-    // Buscar nome reduzido do produto e cod_carga
-    const produto_result = await new Promise((resolve, reject) =>
-      db.query(
-        `
-        SELECT P.NOME_REDUZIDO_PRODUTO, C.COD_CARGA
-        FROM CARREGAMENTO CARREG
-        JOIN CARGA C ON CARREG.COD_CARGA = C.COD_CARGA
-        JOIN PRODUTO P ON C.COD_PRODUTO = P.COD_PRODUTO
-        WHERE CARREG.ID_CARREGAMENTO = ?
-        `,
-        id,
-        (err, result) => {
-          if (err) return reject(err);
-          resolve(result);
-        }
-      )
-    );
-  
-    const nomeProduto = produto_result?.[0]?.NOME_REDUZIDO_PRODUTO || null;
-    const codCarga = produto_result?.[0]?.COD_CARGA || null;
-  
-    // Buscar selo do exército se for NAM
-    let nrSeloExercito = "";
-    if (nomeProduto === "NAM") {
-      const selo_result = await new Promise((resolve, reject) =>
-        db.query(
-          `
-          SELECT NR_SELO_EXERCITO
-          FROM SELO_EXERCITO
-          WHERE COD_CARGA = ? AND ID_CARREGAMENTO IS NULL AND NR_SELO_EXERCITO IS NOT NULL
-          ORDER BY ID_SELO_EXERCITO ASC
-          LIMIT 1
-          `,
-          codCarga,
-          (err, result) => {
-            if (err) return reject(err);
-            resolve(result);
-          }
-        )
-      );
-      nrSeloExercito = selo_result?.[0]?.NR_SELO_EXERCITO || "";
-    }
-  
-    const data = `
-    <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:ejb="http://ejb.postos.notafiscal.micsistemas.com.br/">
-      <soap:Header/>
-      <soap:Body>
-        <ejb:tiqueteRecepcao>
-          <tiquete>
-            <autenticacao>
-              <password>${senha}</password>
-              <user>${usuario}</user>
-            </autenticacao>
-            <cdTiquete>${codTiquete}</cdTiquete>
-            <cnhMotorista/>
-            <cnpjEmpresa>${cnpjEmpresa}</cnpjEmpresa>
-            <cnpjTransportadora>${cnpjTransportadora}</cnpjTransportadora>
-            <dtHrTiquete>${dtTiquete}</dtHrTiquete>
-            <idBalanca/>
-            <idCarreta1>${placa1}</idCarreta1>
-            <idCarreta2>${placa2}</idCarreta2>
-            <idCarreta3>${placa3}</idCarreta3>
-            <idCavalo>${placaCavalo}</idCavalo>
-            <idVagao/>
-            <nrDI>${num_DI}</nrDI>
-            <nrPedido>${pedido_mic}</nrPedido>
-            ${nrSeloExercito ? `<nrSeloExercito>${nrSeloExercito}</nrSeloExercito>` : ""}
-            <observacao/>
-            <qtBruto>${peso_bruto}</qtBruto>
-            <qtLiquido>${peso_liquido}</qtLiquido>
-            <qtTara>${tara}</qtTara>
-          </tiquete>
-        </ejb:tiqueteRecepcao>
-      </soap:Body>
-    </soap:Envelope>`;
-  
-    saveLog(id, "gerar_nota_request_xml", data);
-  
-    await axios
-      .post(
-        "http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL",
-        data,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/xml; charset=utf-8",
-            Authorization: "Basic ZXVyb2JyYXNjb2Rlc3A6dGlxdWV0ZQ==",
-            Accept: "application/xml",
-          },
-        }
-      )
-      .then((response) => {
-        const xml_result = response.data;
-        saveLog(id, "gerar_nota_response_xml", xml_result);
-  
-        const result_message = new jsdom.JSDOM(xml_result).window.document
-          .querySelector("return")
-          .textContent.trim();
-  
-        if (result_message.includes("REJEICAO:") || response.status !== 200) {
-          const errorMap = {
-            "REJEICAO: Selo do exercito obrigatorio": "Selo do exército é obrigatório para produto NAM",
-            "REJEICAO: usuario ou senha invalidos": "Falha na autenticação do usuário",
-            "REJEICAO: cdTiquete nao pode estar vazio": "Campo cdTiquete vazio",
-            "REJEICAO: cdCnpjEmpresa nao pode estar vazio": "Campo cnpjEmpresa vazio",
-            "REJEICAO: cdCnpjTransportadora nao pode estar vazio": "Campo cnpjTransportadora vazio",
-            "REJEICAO: dtHrTiquete nao pode estar vazio": "Campo dtHrTiquete vazio",
-            "REJEICAO: nrDi nao pode estar vazio": "Campo nrDI vazio",
-            "REJEICAO: qtTara nao pode estar vazio": "Campo Tara vazio",
-            "REJEICAO: qtBruto nao pode estar vazio": "Campo Peso Bruto vazio",
-            "REJEICAO: qtLiquido nao pode estar vazio": "Campo Peso Líquido vazio",
-            "REJEICAO: cnpjEmpresa nao encontrado": "Empresa não encontrada na base da mic sistemas",
-            "REJEICAO: cnpjTransportadora nao encontrado": "Transportadora não encontrada na base da mic sistemas",
-            "REJEICAO: DI nao encontrada": "DI não encontrada na base da mic sistemas",
-            "REJEICAO: DI nao pertence empresa indicada": "DI não pertence à empresa indicada",
-            "REJEICAO: Pedido nao pertence a DI": "Pedido não pertence a DI",
-            "REJEICAO: Transportadora nao foi cadastrada para o pedido": "Transportadora não foi cadastrada para o pedido",
-            "REJEICAO: Tiquete ja foi cadastrado anteriormente": "O Tiquete já foi cadastrado anteriormente com o mesmo cdTiquete",
-            "REJEICAO: Pesos inválidos": "Bruto diferente de Tara + Liquido",
-            "REJEICAO: Sem identificacao do veiculo": "Caso todos os seguintes campos não estejam preenchidos: idVagao, idCavalo, idCarreta1",
-            "REJEICAO: qtTara deve ter valor positivo": "Campo qtTara deve ser positivo",
-            "REJEICAO: qtBruto deve ter valor positivo": "Campo qtBruto deve ser positivo",
-            "REJEICAO: qtLiquido deve ter valor positivo": "Campo qtLiquido deve ser positivo",
-            "REJEICAO: qtBruto deve ser maior que qtTara": "Campo qtBruto deve ter valor maior que qtTara. ",
-            "REJEICAO: DI nao pertence ao LOCAL de emissao": "DI não pertence ao LOCAL de emissão.",
-            "REJEICAO: Quantidade muito baixa": "Caso qtLiquido seja inferior a 0.2",
-  
-          };
-          const error_message = errorMap[result_message] || result_message;
-          throw new Error(error_message);
-        }
-  
-        // Atualizar status de nota
-        db.query(
-          `UPDATE CARREGAMENTO SET STATUS_NOTA_MIC = 2, OBS_NOTA = 'Nota está sendo processada' WHERE ID_CARREGAMENTO = ?`,
-          id,
-          (err) => {
-            if (err) throw new Error(`Erro ao atualizar BD(${err}).`);
-          }
-        );
-  
-        // Atualizar selo como utilizado
-        if (nrSeloExercito) {
-          db.query(
-            `
-            UPDATE SELO_EXERCITO
-            SET ID_CARREGAMENTO = ?
-            WHERE NR_SELO_EXERCITO = ? AND ID_CARREGAMENTO IS NULL
-            `,
-            [id, nrSeloExercito],
-            (err) => {
-              if (err) console.log("Erro ao atualizar selo:", err);
-            }
-          );
-        }
-  
-        res.status(200).send(result_message);
-      })
-      .catch((error) => {
-        console.log(error.message);
-        saveLog(id, "gerar_nota_response_error", error.message);
-  
-        db.query(
-          `UPDATE CARREGAMENTO SET STATUS_NOTA_MIC = 3, OBS_NOTA = ? WHERE ID_CARREGAMENTO = ?`,
-          [error.message, id],
-          () => res.status(400).send(error.message)
-        );
-      });
-  });
+// ========= MIC SISTEMAS - GERAR NOTA =========
+app.post(`${API_PREFIX}/gerarnotamic/:id`, async (req, res) => {
+  const id = req.params.id;
 
+  // Log de entrada
+  console.log('[gerarnotamic] hit:', { id, origin: req.headers.origin });
+  saveLog(id, 'gerar_nota_body', req.body);
+
+  try {
+    // ===== Validações mínimas do body =====
+    const {
+      codTiquete,
+      placa1 = '',
+      placa2 = '',
+      placa3 = '',
+      placaCavalo = '',
+      num_DI,
+      pedido_mic,
+      peso_bruto,
+      peso_liquido,
+      tara,
+      data: dataTiquete,
+    } = req.body || {};
+
+    const problemas = [];
+    if (!codTiquete) problemas.push('codTiquete obrigatório');
+    if (!num_DI) problemas.push('num_DI obrigatório');
+    if (!pedido_mic) problemas.push('pedido_mic obrigatório');
+    if (peso_bruto == null) problemas.push('peso_bruto obrigatório');
+    if (peso_liquido == null) problemas.push('peso_liquido obrigatório');
+    if (tara == null) problemas.push('tara obrigatório');
+    if (!dataTiquete) problemas.push('data (dtTiquete) obrigatória');
+
+    if (problemas.length) {
+      saveLog(id, 'gerar_nota_validacao', { problemas });
+      return res.status(400).json({ erro: 'Validação', detalhes: problemas });
+    }
+
+    // Conversões numéricas
+    const qtBruto = Number(peso_bruto) / 1000;
+    const qtLiquido = Number(peso_liquido) / 1000;
+    const qtTara = Number(tara);
+    const dtTiquete = new Date(dataTiquete);
+    if (Number.isNaN(qtBruto) || Number.isNaN(qtLiquido) || Number.isNaN(qtTara) || isNaN(dtTiquete.getTime())) {
+      saveLog(id, 'gerar_nota_validacao', { erro: 'Valores numéricos/datas inválidos' });
+      return res.status(400).json({ erro: 'Valores numéricos/datas inválidos' });
+    }
+    const dtTiqueteIso = dtTiquete.toISOString().slice(0, 19);
+
+    // ===== DB: buscar CNPJ cliente e transportadora =====
+    const sqlCnpjs = `
+      SELECT T.CNPJ_TRANSP, CLI.CNPJ_CLIENTE
+      FROM CARREGAMENTO CARREG
+      JOIN TRANSPORTADORA T ON CARREG.COD_TRANSP = T.COD_TRANSP
+      JOIN CARGA CARG ON CARREG.COD_CARGA = CARG.COD_CARGA
+      JOIN CLIENTE CLI ON CARG.COD_CLIENTE = CLI.COD_CLIENTE
+      WHERE CARREG.ID_CARREGAMENTO = ?
+    `;
+    const [cnpjRows] = await db.query(sqlCnpjs, [id]);
+    if (!cnpjRows?.length) {
+      saveLog(id, 'gerar_nota_db_cnpjs_vazio', { id });
+      return res.status(404).json({ erro: 'Carregamento não encontrado para obter CNPJs.' });
+    }
+    const cnpjEmpresa = cnpjRows[0].CNPJ_CLIENTE;
+    const cnpjTransportadora = cnpjRows[0].CNPJ_TRANSP;
+
+    // ===== DB: buscar produto e cod_carga =====
+    const sqlProduto = `
+      SELECT P.NOME_REDUZIDO_PRODUTO, C.COD_CARGA
+      FROM CARREGAMENTO CARREG
+      JOIN CARGA C ON CARREG.COD_CARGA = C.COD_CARGA
+      JOIN PRODUTO P ON C.COD_PRODUTO = P.COD_PRODUTO
+      WHERE CARREG.ID_CARREGAMENTO = ?
+    `;
+    const [produtoRows] = await db.query(sqlProduto, [id]);
+    const nomeProduto = produtoRows?.[0]?.NOME_REDUZIDO_PRODUTO || null;
+    const codCarga = produtoRows?.[0]?.COD_CARGA || null;
+
+    // ===== Selo do Exército (NAM) =====
+    let nrSeloExercito = '';
+    if (nomeProduto === 'NAM' && codCarga != null) {
+      const sqlSelo = `
+        SELECT NR_SELO_EXERCITO
+        FROM SELO_EXERCITO
+        WHERE COD_CARGA = ? AND ID_CARREGAMENTO IS NULL AND NR_SELO_EXERCITO IS NOT NULL
+        ORDER BY ID_SELO_EXERCITO ASC
+        LIMIT 1
+      `;
+      const [seloRows] = await db.query(sqlSelo, [codCarga]);
+      nrSeloExercito = seloRows?.[0]?.NR_SELO_EXERCITO || '';
+    }
+
+    // ===== SOAP XML =====
+    const usuario = 'eurobrascodesp';
+    const senha = 'tiquete';
+    const soapXml = `
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:ejb="http://ejb.postos.notafiscal.micsistemas.com.br/">
+  <soap:Header/>
+  <soap:Body>
+    <ejb:tiqueteRecepcao>
+      <tiquete>
+        <autenticacao>
+          <password>${senha}</password>
+          <user>${usuario}</user>
+        </autenticacao>
+        <cdTiquete>${codTiquete}</cdTiquete>
+        <cnhMotorista/>
+        <cnpjEmpresa>${cnpjEmpresa}</cnpjEmpresa>
+        <cnpjTransportadora>${cnpjTransportadora}</cnpjTransportadora>
+        <dtHrTiquete>${dtTiqueteIso}</dtHrTiquete>
+        <idBalanca/>
+        <idCarreta1>${placa1}</idCarreta1>
+        <idCarreta2>${placa2}</idCarreta2>
+        <idCarreta3>${placa3}</idCarreta3>
+        <idCavalo>${placaCavalo}</idCavalo>
+        <idVagao/>
+        <nrDI>${num_DI}</nrDI>
+        <nrPedido>${pedido_mic}</nrPedido>
+        ${nrSeloExercito ? `<nrSeloExercito>${nrSeloExercito}</nrSeloExercito>` : ''}
+        <observacao/>
+        <qtBruto>${qtBruto}</qtBruto>
+        <qtLiquido>${qtLiquido}</qtLiquido>
+        <qtTara>${qtTara}</qtTara>
+      </tiquete>
+    </ejb:tiqueteRecepcao>
+  </soap:Body>
+</soap:Envelope>`.trim();
+
+    saveLog(id, 'gerar_nota_request_xml', soapXml);
+
+    // ===== Chamada MIC =====
+    const basic = Buffer.from(`${usuario}:${senha}`).toString('base64');
+    const url = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
+
+    const response = await axios.post(url, soapXml, {
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        Authorization: `Basic ${basic}`,
+        Accept: 'application/xml',
+      },
+      timeout: 30000,
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      validateStatus: () => true, // vamos tratar manualmente
+    });
+
+    const xml_result = response.data;
+    saveLog(id, 'gerar_nota_response_xml', xml_result);
+
+    // ===== Extrai mensagem =====
+    let result_message = '';
+    try {
+      const dom = new jsdom.JSDOM(xml_result).window.document;
+      result_message = dom.querySelector('return')?.textContent?.trim() || '';
+    } catch (e) {
+      // fallback simples
+      result_message = String(xml_result).slice(0, 2000);
+    }
+
+    // ===== Trata erros de negócio ou HTTP =====
+    if (response.status !== 200 || /REJEICAO:/i.test(result_message)) {
+      const errorMap = {
+        'REJEICAO: Selo do exercito obrigatorio': 'Selo do exército é obrigatório para produto NAM',
+        'REJEICAO: usuario ou senha invalidos': 'Falha na autenticação do usuário',
+        'REJEICAO: cdTiquete nao pode estar vazio': 'Campo cdTiquete vazio',
+        'REJEICAO: cdCnpjEmpresa nao pode estar vazio': 'Campo cnpjEmpresa vazio',
+        'REJEICAO: cdCnpjTransportadora nao pode estar vazio': 'Campo cnpjTransportadora vazio',
+        'REJEICAO: dtHrTiquete nao pode estar vazio': 'Campo dtHrTiquete vazio',
+        'REJEICAO: nrDi nao pode estar vazio': 'Campo nrDI vazio',
+        'REJEICAO: qtTara nao pode estar vazio': 'Campo Tara vazio',
+        'REJEICAO: qtBruto nao pode estar vazio': 'Campo Peso Bruto vazio',
+        'REJEICAO: qtLiquido nao pode estar vazio': 'Campo Peso Líquido vazio',
+        'REJEICAO: cnpjEmpresa nao encontrado': 'Empresa não encontrada na base da MIC Sistemas',
+        'REJEICAO: cnpjTransportadora nao encontrado': 'Transportadora não encontrada na base da MIC Sistemas',
+        'REJEICAO: DI nao encontrada': 'DI não encontrada na base da MIC Sistemas',
+        'REJEICAO: DI nao pertence empresa indicada': 'DI não pertence à empresa indicada',
+        'REJEICAO: Pedido nao pertence a DI': 'Pedido não pertence a DI',
+        'REJEICAO: Transportadora nao foi cadastrada para o pedido': 'Transportadora não foi cadastrada para o pedido',
+        'REJEICAO: Tiquete ja foi cadastrado anteriormente': 'O Tiquete já foi cadastrado anteriormente com o mesmo cdTiquete',
+        'REJEICAO: Pesos inválidos': 'Bruto diferente de Tara + Líquido',
+        'REJEICAO: Sem identificacao do veiculo': 'Sem identificação do veículo (idVagao, idCavalo, idCarreta1)',
+        'REJEICAO: qtTara deve ter valor positivo': 'qtTara deve ser positivo',
+        'REJEICAO: qtBruto deve ter valor positivo': 'qtBruto deve ser positivo',
+        'REJEICAO: qtLiquido deve ter valor positivo': 'qtLiquido deve ser positivo',
+        'REJEICAO: qtBruto deve ser maior que qtTara': 'qtBruto deve ser maior que qtTara',
+        'REJEICAO: DI nao pertence ao LOCAL de emissao': 'DI não pertence ao local de emissão',
+        'REJEICAO: Quantidade muito baixa': 'qtLiquido inferior a 0.2',
+      };
+
+      const key = Object.keys(errorMap).find(k => result_message.includes(k));
+      const pretty = key ? errorMap[key] : (result_message || `HTTP ${response.status}`);
+      saveLog(id, 'gerar_nota_response_error', pretty);
+
+      // Atualiza status BD (falha)
+      await db.query(
+        'UPDATE CARREGAMENTO SET STATUS_NOTA_MIC = 3, OBS_NOTA = ? WHERE ID_CARREGAMENTO = ?',
+        [pretty, id]
+      );
+
+      return res.status(400).send(pretty);
+    }
+
+    // ===== Sucesso: atualiza status =====
+    await db.query(
+      "UPDATE CARREGAMENTO SET STATUS_NOTA_MIC = 2, OBS_NOTA = 'Nota está sendo processada' WHERE ID_CARREGAMENTO = ?",
+      [id]
+    );
+
+    // Se usou selo, marca como utilizado
+    if (nrSeloExercito) {
+      await db.query(
+        'UPDATE SELO_EXERCITO SET ID_CARREGAMENTO = ? WHERE NR_SELO_EXERCITO = ? AND ID_CARREGAMENTO IS NULL',
+        [id, nrSeloExercito]
+      );
+    }
+
+    return res.status(200).send(result_message || 'OK');
+  } catch (err) {
+    console.error('[gerarnotamic] erro:', err?.message || err);
+    saveLog(id, 'gerar_nota_catch_error', err?.message || String(err));
+
+    try {
+      await db.query(
+        'UPDATE CARREGAMENTO SET STATUS_NOTA_MIC = 3, OBS_NOTA = ? WHERE ID_CARREGAMENTO = ?',
+        [err?.message || 'Erro inesperado', id]
+      );
+    } catch (e2) {
+      console.error('[gerarnotamic] erro ao atualizar BD (catch):', e2?.message || e2);
+    }
+
+    return res.status(500).send(err?.message || 'Erro interno');
+  }
+});
 
 
 
 // MIC SISTEMAS - CONSULTAR NOTA
 // app.post('/consultarnotamic/:id', async (req, res) => {
 // EXECUTA A CADA MINUTO
-cron.schedule("*/1 * * * *", async () => {
-    const db_result = await new Promise((resolve, reject) =>
-      db.query(
-        `
-        SELECT 
-          CARREG.TICKET, 
-          CARG.NUMERO_DOC, 
-          CARREG.ID_CARREGAMENTO, 
-          CARREG.OBS_NOTA, 
-          NA.NOME_NAVIO, 
-          OPER.RAP
-        FROM 
-          CARREGAMENTO CARREG
-          JOIN OPERACAO OPER ON CARREG.COD_OPERACAO = OPER.COD_OPERACAO
-          JOIN NAVIO NA ON OPER.COD_NAVIO = NA.COD_NAVIO
-          JOIN CARGA CARG ON CARREG.COD_CARGA = CARG.COD_CARGA
-        WHERE 
-          CARREG.STATUS_NOTA_MIC IN (2, 5)
-        ORDER BY CARREG.ID_CARREGAMENTO
-        `,
-        (err, result) => {
-          if (err) reject(err);
-          resolve(result);
-        }
-      )
-    );
-  
-    if (!db_result || db_result.length === 0) return;
-  
-    const usuario = "eurobrascodesp";
-    const senha = "tiquete";
-    const url = "http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL";
+cron.schedule('*/1 * * * *', async () => {
+  console.log('[cron] consulta MIC iniciada');
+
+  try {
+    const sqlPendentes = `
+      SELECT 
+        CARREG.TICKET, 
+        CARG.NUMERO_DOC, 
+        CARREG.ID_CARREGAMENTO, 
+        CARREG.OBS_NOTA, 
+        NA.NOME_NAVIO, 
+        OPER.RAP
+      FROM CARREGAMENTO CARREG
+      JOIN OPERACAO  OPER ON CARREG.COD_OPERACAO = OPER.COD_OPERACAO
+      JOIN NAVIO     NA   ON OPER.COD_NAVIO     = NA.COD_NAVIO
+      JOIN CARGA     CARG ON CARREG.COD_CARGA   = CARG.COD_CARGA
+      WHERE CARREG.STATUS_NOTA_MIC IN (2, 5)
+      ORDER BY CARREG.ID_CARREGAMENTO
+    `;
+    const [rows] = await db.query(sqlPendentes);
+    if (!rows?.length) {
+      console.log('[cron] nada a processar');
+      return;
+    }
+
+    const usuario = 'eurobrascodesp';
+    const senha   = 'tiquete';
+    const basic   = Buffer.from(`${usuario}:${senha}`).toString('base64');
+    const url     = 'http://webservice.hom.micsistemas.com.br/NFECentralEAR-NFECentral/TiqueteImpl?WSDL';
     const headers = {
-      "Content-Type": "text/xml; charset=utf-8",
-      Authorization: "Basic ZXVyb2JyYXNjb2Rlc3A6dGlxdWV0ZQ==",
-      Accept: "application/xml",
+      'Content-Type': 'text/xml; charset=utf-8',
+      Authorization: `Basic ${basic}`,
+      Accept: 'application/xml',
     };
-  
-    for (const carregamento of db_result) {
+
+    for (const carreg of rows) {
       let hasContent = true;
-      const codTiquete = carregamento.TICKET;
-      const num_DI = carregamento.NUMERO_DOC;
-      const idCarregamento = carregamento.ID_CARREGAMENTO;
-      const obsNota = carregamento.OBS_NOTA;
-      const codRAP = carregamento.RAP;
-  
-      const produto_result = await new Promise((resolve, reject) =>
-        db.query(
-          `
-          SELECT P.NOME_REDUZIDO_PRODUTO
-          FROM CARREGAMENTO CARREG
-          JOIN CARGA C ON CARREG.COD_CARGA = C.COD_CARGA
-          JOIN PRODUTO P ON C.COD_PRODUTO = P.COD_PRODUTO
-          WHERE CARREG.ID_CARREGAMENTO = ?
-          `,
-          idCarregamento,
-          (err, result) => {
-            if (err) return reject(err);
-            resolve(result);
-          }
-        )
+
+      const idCarregamento = carreg.ID_CARREGAMENTO;
+      const codTiquete     = carreg.TICKET;
+      const num_DI         = carreg.NUMERO_DOC;
+      const obsNota        = carreg.OBS_NOTA;
+      const codRAP         = carreg.RAP;
+
+      // produto (para checar NAM)
+      const [prodRows] = await db.query(
+        `SELECT P.NOME_REDUZIDO_PRODUTO
+           FROM CARREGAMENTO CARREG
+           JOIN CARGA C ON CARREG.COD_CARGA = C.COD_CARGA
+           JOIN PRODUTO P ON C.COD_PRODUTO = P.COD_PRODUTO
+          WHERE CARREG.ID_CARREGAMENTO = ?`,
+        [idCarregamento]
       );
-  
-      const nomeProduto = produto_result?.[0]?.NOME_REDUZIDO_PRODUTO || "";
-      if (nomeProduto === "NAM") {
-        saveLog(idCarregamento, "consultar_nota_contexto", "Produto NAM - exige selo do exército");
+      const nomeProduto = prodRows?.[0]?.NOME_REDUZIDO_PRODUTO || '';
+      if (nomeProduto === 'NAM') {
+        saveLog(idCarregamento, 'consultar_nota_contexto', 'Produto NAM - exige selo do exército');
       }
-  
-      const data = `
-      <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:ejb="http://ejb.postos.notafiscal.micsistemas.com.br/">
-        <soap:Header/>
-        <soap:Body>
-          <ejb:tiqueteConsultaV2>
-            <tiqueteConsultaV2>
-              <autenticacao>
-                <password>${senha}</password>
-                <user>${usuario}</user>
-              </autenticacao>
-              <cdTiquete>${codTiquete}</cdTiquete>
-              <nrDI>${num_DI}</nrDI>
-            </tiqueteConsultaV2>
-          </ejb:tiqueteConsultaV2>
-        </soap:Body>
-      </soap:Envelope>`;
-  
-      saveLog(idCarregamento, "consultar_nota_request", data);
-  
+
+      // SOAP request
+      const soap = `
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:ejb="http://ejb.postos.notafiscal.micsistemas.com.br/">
+  <soap:Header/>
+  <soap:Body>
+    <ejb:tiqueteConsultaV2>
+      <tiqueteConsultaV2>
+        <autenticacao>
+          <password>${senha}</password>
+          <user>${usuario}</user>
+        </autenticacao>
+        <cdTiquete>${codTiquete}</cdTiquete>
+        <nrDI>${num_DI}</nrDI>
+      </tiqueteConsultaV2>
+    </ejb:tiqueteConsultaV2>
+  </soap:Body>
+</soap:Envelope>`.trim();
+
+      saveLog(idCarregamento, 'consultar_nota_request', soap);
+
       try {
-        const response = await axios.post(url, data, { headers });
-        const xml_result = response.data;
-        saveLog(idCarregamento, "consultar_nota_response", xml_result);
-  
-        const result_message = new jsdom.JSDOM(xml_result).window.document
-          .querySelector("mensagem")
-          .textContent.trim();
-  
-        const waiting =
-          result_message ===
-          "REJEICAO: NF referente ao tiquete ainda nao foi emitida ou autorizada";
-  
-        if ((!waiting && result_message.includes("REJEICAO:")) || response.status !== 200) {
-          throw new Error(result_message);
+        const response = await axios.post(url, soap, {
+          headers,
+          timeout: 30000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          validateStatus: () => true,
+        });
+
+        const xml = response.data;
+        saveLog(idCarregamento, 'consultar_nota_response', xml);
+
+        // extrai <mensagem>
+        let mensagem = '';
+        try {
+          const doc = new jsdom.JSDOM(xml).window.document;
+          mensagem = doc.querySelector('mensagem')?.textContent?.trim() || '';
+        } catch (_) {
+          mensagem = String(xml).slice(0, 2000);
         }
-  
-        if (waiting && obsNota !== "Nota está sendo processada") {
-          db.query(
-            `
-            UPDATE CARREGAMENTO
-            SET STATUS_NOTA_MIC = 2, OBS_NOTA = 'Nota está sendo processada'
-            WHERE ID_CARREGAMENTO = ?
-          `,
-            idCarregamento
+
+        const waiting = mensagem === 'REJEICAO: NF referente ao tiquete ainda nao foi emitida ou autorizada';
+
+        // erro HTTP ou rejeição (exceto o "aguardando")
+        if ((!waiting && /REJEICAO:/i.test(mensagem)) || response.status !== 200) {
+          throw new Error(mensagem || `HTTP ${response.status}`);
+        }
+
+        // ainda processando
+        if (waiting && obsNota !== 'Nota está sendo processada') {
+          await db.query(
+            `UPDATE CARREGAMENTO
+                SET STATUS_NOTA_MIC = 2, OBS_NOTA = 'Nota está sendo processada'
+              WHERE ID_CARREGAMENTO = ?`,
+            [idCarregamento]
           );
+          continue; // próxima iteração
         }
-  
+
+        // sucesso: baixar PDF/XML
         if (!waiting) {
-          const mic_document = new jsdom.JSDOM(xml_result).window.document;
-          const dir = `${API_PREFIX}/app/Files/Notas_Fiscais/${codRAP}`;
-          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  
-          if (mic_document.querySelector("pdf")) {
-            const pdf_b64 = mic_document.querySelector("pdf").textContent.trim();
-            if (pdf_b64.length === 0) hasContent = false;
-  
-            const pdf = js_base64.Base64.atob(pdf_b64);
-            fs.writeFileSync(`${dir}/Nota Fiscal ${idCarregamento}.pdf`, pdf, "binary");
+          const doc = new jsdom.JSDOM(xml).window.document;
+
+          const dir = path.join(NF_DIR, String(codRAP));
+          fs.mkdirSync(dir, { recursive: true });
+
+          const pdfNode = doc.querySelector('pdf');
+          if (pdfNode) {
+            const b64 = pdfNode.textContent?.trim() || '';
+            if (b64.length) {
+              const buf = Buffer.from(Base64.atob(b64), 'binary');
+              fs.writeFileSync(path.join(dir, `Nota Fiscal ${idCarregamento}.pdf`), buf);
+            } else {
+              hasContent = false;
+            }
           }
-  
-          if (mic_document.querySelector("xml")) {
-            const xml_b64 = mic_document.querySelector("xml").textContent.trim();
-            if (xml_b64.length === 0) hasContent = false;
-  
-            const xml = js_base64.Base64.atob(xml_b64);
-            fs.writeFileSync(`${dir}/Nota Fiscal ${idCarregamento}.xml`, xml, "binary");
+
+          const xmlNode = doc.querySelector('xml');
+          if (xmlNode) {
+            const b64 = xmlNode.textContent?.trim() || '';
+            if (b64.length) {
+              const buf = Buffer.from(Base64.atob(b64), 'binary');
+              fs.writeFileSync(path.join(dir, `Nota Fiscal ${idCarregamento}.xml`), buf);
+            } else {
+              hasContent = false;
+            }
           }
-  
-          if (nomeProduto === "NAM") {
-            const codCarga_result = await new Promise((resolve, reject) =>
-              db.query(
-                `SELECT COD_CARGA FROM CARREGAMENTO WHERE ID_CARREGAMENTO = ?`,
-                idCarregamento,
-                (err, result) => {
-                  if (err) return reject(err);
-                  resolve(result);
-                }
-              )
+
+          // Se produto NAM, vincular selo (se ainda não fez)
+          if (nomeProduto === 'NAM') {
+            const [cg] = await db.query(
+              'SELECT COD_CARGA FROM CARREGAMENTO WHERE ID_CARREGAMENTO = ?',
+              [idCarregamento]
             );
-  
-            const codCarga = codCarga_result?.[0]?.COD_CARGA;
+            const codCarga = cg?.[0]?.COD_CARGA;
             if (codCarga) {
-              const selo_result = await new Promise((resolve, reject) =>
-                db.query(
-                  `
-                  SELECT NR_SELO_EXERCITO
-                  FROM SELO_EXERCITO
+              const [selo] = await db.query(
+                `SELECT NR_SELO_EXERCITO
+                   FROM SELO_EXERCITO
                   WHERE COD_CARGA = ? AND ID_CARREGAMENTO IS NULL
-                  ORDER BY ID_SELO_EXERCITO ASC
-                  LIMIT 1
-                  `,
-                  codCarga,
-                  (err, result) => {
-                    if (err) return reject(err);
-                    resolve(result);
-                  }
-                )
+               ORDER BY ID_SELO_EXERCITO ASC
+                  LIMIT 1`,
+                [codCarga]
               );
-  
-              const nrSeloExercito = selo_result?.[0]?.NR_SELO_EXERCITO;
-              if (nrSeloExercito) {
-                db.query(
-                  `
-                  UPDATE SELO_EXERCITO 
-                  SET ID_CARREGAMENTO = ? 
-                  WHERE NR_SELO_EXERCITO = ? AND ID_CARREGAMENTO IS NULL
-                  `,
-                  [idCarregamento, nrSeloExercito],
-                  (err) => {
-                    if (err) console.log("Erro ao atualizar selo na consulta:", err);
-                    else console.log(`Selo ${nrSeloExercito} vinculado ao carregamento ${idCarregamento}`);
-                  }
-                );
+              const nrSelo = selo?.[0]?.NR_SELO_EXERCITO;
+              if (nrSelo) {
+                try {
+                  await db.query(
+                    `UPDATE SELO_EXERCITO
+                        SET ID_CARREGAMENTO = ?
+                      WHERE NR_SELO_EXERCITO = ? AND ID_CARREGAMENTO IS NULL`,
+                    [idCarregamento, nrSelo]
+                  );
+                  console.log(`[cron] selo ${nrSelo} vinculado ao carregamento ${idCarregamento}`);
+                } catch (e) {
+                  console.log('[cron] erro ao atualizar selo na consulta:', e.message);
+                }
               }
             }
           }
-  
+
+          // Atualiza status quando baixou algo
           if (hasContent) {
-            db.query(
-              `
-              UPDATE CARREGAMENTO
-              SET STATUS_NOTA_MIC = 4, OBS_NOTA = 'Nota gerada com sucesso'
-              WHERE ID_CARREGAMENTO = ?
-            `,
-              idCarregamento
+            await db.query(
+              `UPDATE CARREGAMENTO
+                  SET STATUS_NOTA_MIC = 4, OBS_NOTA = 'Nota gerada com sucesso'
+                WHERE ID_CARREGAMENTO = ?`,
+              [idCarregamento]
             );
           }
         }
-      } catch (error) {
-        saveLog(idCarregamento, "consultar_nota_response_error", error.message);
-        if (error.response?.data?.includes("Unmarshalling Error:"))
-          error.message = "Faltam parametros na requisição";
-  
-        saveLog(idCarregamento, "consultar_nota_response_error_pre_db", error.message);
-  
+      } catch (err) {
+        const msg = err?.message || String(err);
+        saveLog(idCarregamento, 'consultar_nota_response_error', msg);
+
+        // mensagem amigável para erro de parse
+        const pretty = /Unmarshalling Error:/i.test(err?.response?.data || '')
+          ? 'Faltam parametros na requisição'
+          : msg;
+
+        saveLog(idCarregamento, 'consultar_nota_response_error_pre_db', pretty);
+
         if (hasContent) {
-          db.query(
-            `
-            UPDATE CARREGAMENTO
-            SET STATUS_NOTA_MIC = 5, OBS_NOTA = ?
-            WHERE ID_CARREGAMENTO = ?
-          `,
-            [error.message, idCarregamento]
+          await db.query(
+            `UPDATE CARREGAMENTO
+                SET STATUS_NOTA_MIC = 5, OBS_NOTA = ?
+              WHERE ID_CARREGAMENTO = ?`,
+            [pretty, idCarregamento]
           );
         }
-  
-        saveLog(idCarregamento, "consultar_nota_response_error_pos_db", error.message);
+
+        saveLog(idCarregamento, 'consultar_nota_response_error_pos_db', pretty);
       }
     }
-  
-    console.log("Consulta MIC finalizada");
-  });
+
+    console.log('[cron] consulta MIC finalizada');
+  } catch (outer) {
+    console.error('[cron] erro geral:', outer?.message || outer);
+  }
+});
+
 
 // MIC SISTEMAS - ENTREGAR NOTA
 app.post('/entregarnotamic/:id', async (req, res) => {
