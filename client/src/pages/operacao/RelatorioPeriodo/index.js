@@ -69,7 +69,7 @@ const RelatorioPeriodo = () => {
   const generateTicketPDF = (row) => {
     try {
       const doc = new jsPDF({ unit: "mm", format: [60, 40] });
-      const W = 60, H = 40, M = 3;
+      const W = 40, H = 60, M = 3;
 
       const linha = (y) => doc.line(M, y, W - M, y);
 
@@ -355,13 +355,13 @@ const RelatorioPeriodo = () => {
                   ))}
                 </select>
 
-                <div className={style.submit_button}>
+                {/*<div className={style.submit_button}>
                   <SubmitButton text={"Buscar"} onClick={() => getOperacoes()} />
                 </div>
 
                 <div className={style.periodo}>
                   <div className={style.data}>{relatorios || "--"}</div>
-                </div>
+                </div>*/}
               </div>
             </div>
 
