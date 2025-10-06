@@ -88,7 +88,7 @@ const generateTicketPDF = (row) => {
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
     const M = 3;
-    const GAP = 1.5;
+    const GAP = 2;
     const LINE_H = 3.0;
 
     const linha = (y) => doc.line(M, y, W - M, y);
@@ -137,7 +137,7 @@ const generateTicketPDF = (row) => {
     add("Placa Cavalo:", row.PLACA_CAVALO);
     add("Peso Carregado:", formatKg(row.PESO_CARREGADO));
     add("Navio:", (dadosDash?.NOME_NAVIO || "--"));
-    add("DI:", (row.DOCUMENTO || "--"));
+    add((row.DOCUMENTO || "--"));
 
     doc.save(`ticket_${row.ID_CARREGAMENTO}.pdf`);
   } catch (e) {
