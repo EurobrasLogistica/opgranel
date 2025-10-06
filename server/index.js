@@ -3108,11 +3108,8 @@ app.get(`${API_PREFIX}/carga/busca/:id`, async (req, res) => {
 
 app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
   try {
-    const idParam = Number(req.params.id);
-    const { data, cod_operacao } = req.body || {};
-
-    // prioriza o :id; se inválido, usa cod_operacao do body (compat)
-    const operacaoId = Number.isFinite(idParam) && idParam > 0 ? idParam : Number(cod_operacao);
+    const operacaoId = Number(req.params.id);
+    const { data } = req.body || {};
 
     if (!data || !Number.isFinite(operacaoId) || operacaoId <= 0) {
       return res.status(400).json({ ok: false, error: "Informe 'data' e um id/cod_operacao válido." });
@@ -3143,14 +3140,14 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
       WHERE CAR.STATUS_CARREG = 3
         AND CAR.PESO_BRUTO > 0
         AND CAR.COD_OPERACAO = ?
-        AND FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) = ?
+        AND FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) = REPLACE(?, '⁰', '0')
       ORDER BY CAR.DATA_CARREGAMENTO
     `;
 
     const [rows] = await db.query(sql, [operacaoId, data]);
     return res.json(rows);
   } catch (err) {
-    console.error('[POST /periodo/carregamentos/:id] erro:', err?.message || err);
+    console.error('[POST /periodo/carregamentos/:id] erro:', err?.sqlMessage || err?.message || err);
     return res.status(500).json({ ok: false, error: 'Erro interno ao consultar carregamentos.' });
   }
 });
