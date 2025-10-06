@@ -1,5 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from "react";
-import { SnackbarProvider, useSnackbar } from "notistack";
+﻿import React, { useEffect, useState, useCallback, useMemo } from "react"; import { SnackbarProvider, useSnackbar } from "notistack";
 import { useNavigate, useParams } from "react-router-dom";
 import Axios from "axios";
 import jsPDF from "jspdf";
@@ -66,9 +65,20 @@ const RelatorioPeriodo = () => {
 
   const showAlert = (txt, variant) => enqueueSnackbar(txt, { variant });
 
+  // totais a partir de 'operacoes'
+  const totalAutos = operacoes?.length || 0;
+
+  const totalPesoLiquidoKg = useMemo(() => {
+    try {
+      return (operacoes || []).reduce((acc, v) => acc + safeNumber(v.PESO_LIQUIDO), 0);
+    } catch {
+      return 0;
+    }
+  }, [operacoes]);
+
   const generateTicketPDF = (row) => {
     try {
-      const doc = new jsPDF({ unit: "mm", format: [60, 40] });
+      const doc = new jsPDF({ unit: "mm", format: [40, 60] });
       const W = 40, H = 60, M = 3;
 
       const linha = (y) => doc.line(M, y, W - M, y);
@@ -376,7 +386,7 @@ const RelatorioPeriodo = () => {
                     {autos.length > 0 ? (
                       autos.map((val, idx) => (
                         <div key={idx} className={style.total}>
-                          {safeNumber(val.QTDE_AUTOS)} Autos
+                          {totalAutos} Autos
                         </div>
                       ))
                     ) : (
@@ -392,19 +402,12 @@ const RelatorioPeriodo = () => {
                     <center>
                       <i className="fa fa-weight-hanging icon"></i> Peso Líquido
                     </center>
-                    {autos.length > 0 ? (
-                      autos.map((val, idx) => (
-                        <div key={idx} className={style.total}>
-                          {(safeNumber(val.PESO_LIQUIDO) / 1000).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 3,
-                          })}{" "}
-                          Tons
-                        </div>
-                      ))
-                    ) : (
-                      <div className={style.total}>0,00 Tons</div>
-                    )}
+                    <div className={style.total}>
+                      {(totalPesoLiquidoKg / 1000).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 3,
+                      })} Tons
+                    </div>
                   </div>
                 </div>
               </span>
