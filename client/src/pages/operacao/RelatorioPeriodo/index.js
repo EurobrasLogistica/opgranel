@@ -134,33 +134,32 @@ const RelatorioPeriodo = () => {
     [id, relatorios]
   );
 
-  // Principal: garante chamada de /periodo/carregamentos SEM bloquear pelos cards
-  const getOperacoes = useCallback(
-    async (period = relatorios) => {
-      if (!id) {
-        showAlert("Selecione uma operação/navio primeiro.", "warning");
-        return;
-      }
-      try {
-        // Dispara as 3 em paralelo; a principal (carregamentos) não é bloqueada
-        const [carregamentosRes] = await Promise.all([
-          Axios.post(`/periodo/carregamentos`, {
-            data: period,
-            cod_operacao: id,
-          }),
-          getAutos(period).catch(() => { }),
-          getDocumentos(period).catch(() => { }),
-        ]);
+// Principal: garante chamada de /periodo/carregamentos/:id SEM bloquear pelos cards
+const getOperacoes = useCallback(
+  async (period = relatorios) => {
+    if (!id) return showAlert("Selecione uma operação/navio primeiro.", "warning");
+    if (!period) return showAlert("Selecione um período.", "warning");
 
-        setOperacoes(Array.isArray(carregamentosRes?.data) ? carregamentosRes.data : []);
-      } catch (err) {
-        setOperacoes([]);
-        console.error("Erro ao buscar carregamentos:", err);
-        showAlert("Não foi possível carregar os carregamentos do período.", "error");
-      }
-    },
-    [id, relatorios, getAutos, getDocumentos, showAlert]
-  );
+    try {
+      const [carregamentosRes] = await Promise.all([
+        Axios.post(`/periodo/carregamentos/${id}`, {
+          data: period,
+          // opcional: cod_operacao: id,
+        }),
+        getAutos(period).catch(() => {}),
+        getDocumentos(period).catch(() => {}),
+      ]);
+
+      setOperacoes(Array.isArray(carregamentosRes?.data) ? carregamentosRes.data : []);
+    } catch (err) {
+      setOperacoes([]);
+      console.error("Erro ao buscar carregamentos:", err);
+      showAlert("Não foi possível carregar os carregamentos do período.", "error");
+    }
+  },
+  [id, relatorios, getAutos, getDocumentos, showAlert]
+);
+
 
   // efeito inicial
   useEffect(() => {

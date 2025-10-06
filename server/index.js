@@ -3106,13 +3106,16 @@ app.get(`${API_PREFIX}/carga/busca/:id`, async (req, res) => {
 });
 
 
-app.post(`${API_PREFIX}/periodo/carregamentos`, async (req, res) => {
+app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
   try {
+    const idParam = Number(req.params.id);
     const { data, cod_operacao } = req.body || {};
-    const operacaoId = Number(cod_operacao);
+
+    // prioriza o :id; se inválido, usa cod_operacao do body (compat)
+    const operacaoId = Number.isFinite(idParam) && idParam > 0 ? idParam : Number(cod_operacao);
 
     if (!data || !Number.isFinite(operacaoId) || operacaoId <= 0) {
-      return res.status(400).json({ ok: false, error: "Informe 'data' e 'cod_operacao' válidos." });
+      return res.status(400).json({ ok: false, error: "Informe 'data' e um id/cod_operacao válido." });
     }
 
     const sql = `
@@ -3147,10 +3150,11 @@ app.post(`${API_PREFIX}/periodo/carregamentos`, async (req, res) => {
     const [rows] = await db.query(sql, [operacaoId, data]);
     return res.json(rows);
   } catch (err) {
-    console.error('[POST /periodo/carregamentos] erro:', err?.message || err);
+    console.error('[POST /periodo/carregamentos/:id] erro:', err?.message || err);
     return res.status(500).json({ ok: false, error: 'Erro interno ao consultar carregamentos.' });
   }
 });
+
 
 
 app.post(`${API_PREFIX}/portal/relatorios/:id`, (req, res) => {
