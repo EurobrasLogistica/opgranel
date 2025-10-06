@@ -78,8 +78,8 @@ const RelatorioPeriodo = () => {
 
 const generateTicketPDF = (row) => {
   try {
-    const doc = new jsPDF({ unit: "mm", format: [40, 50] });
-    const W = 40, H = 50, M = 3;
+    const doc = new jsPDF({ unit: "mm", format: [60, 50] });
+    const W = 60, H = 50, M = 3;
     const GAP = 1.5;         // espaço entre rótulo e valor
     const LINE_H = 3.8;      // altura da linha
 
