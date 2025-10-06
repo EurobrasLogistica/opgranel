@@ -74,7 +74,7 @@ const RelatorioPeriodo = () => {
     try {
       const response = await Axios.get(`/periodos/gerais/${id}`);
       setPeriodoLista(response.data || []);
-    } catch {}
+    } catch { }
   }, [id]);
 
   const DadosDashboard = useCallback(async () => {
@@ -95,35 +95,41 @@ const RelatorioPeriodo = () => {
     }
   }, [id]);
 
-  const getAutos = useCallback(async () => {
+  // === alterações nas funções ===
+  const getAutos = useCallback(async (period = relatorios) => {
     if (!id) return;
     try {
-      const r = await Axios.post(`/periodo/autos/${id}`, { data: relatorios });
+      const r = await Axios.post(`/periodo/autos/${id}`, { data: period, cod_operacao: id });
       setAutos(r.data || []);
     } catch { setAutos([]); }
   }, [id, relatorios]);
 
-  const getDocumentos = useCallback(async () => {
+  const getDocumentos = useCallback(async (period = relatorios) => {
     if (!id) return;
     try {
-      const r = await Axios.post(`/periodo/documentos/${id}`, { data: relatorios });
+      const r = await Axios.post(`/periodo/documentos/${id}`, { data: period, cod_operacao: id });
       setDocumentos(r.data || []);
     } catch { setDocumentos([]); }
   }, [id, relatorios]);
 
-  const getOperacoes = useCallback(async () => {
+  const getOperacoes = useCallback(async (period = relatorios) => {
     if (!id) {
       showAlert("Selecione uma operação/navio primeiro.", "warning");
       return;
     }
     try {
-      await Promise.all([getAutos(), getDocumentos()]);
-      const response = await Axios.post(`/periodo/carregamentos/${id}`, { data: relatorios });
+      // atualiza cards com o mesmo período
+      await Promise.all([getAutos(period), getDocumentos(period)]);
+      const response = await Axios.post(`/periodo/carregamentos/${id}`, {
+        data: period,
+        cod_operacao: id,
+      });
       setOperacoes(Array.isArray(response.data) ? response.data : []);
     } catch {
       setOperacoes([]);
     }
   }, [id, relatorios, getAutos, getDocumentos, showAlert]);
+
 
   // efeito inicial
   useEffect(() => {
@@ -149,8 +155,8 @@ const RelatorioPeriodo = () => {
       String(safeNumber(val.PERCENTUAL)),
     ]);
     wsData.unshift([
-      "ID","Nome","Placa (Cavalo)","1° Peso (Tara)","2° Peso (Moega)","3° Peso (Bruto)",
-      "Peso Liquido","DI/BL","(Liquido - Moega)","(%)",
+      "ID", "Nome", "Placa (Cavalo)", "1° Peso (Tara)", "2° Peso (Moega)", "3° Peso (Bruto)",
+      "Peso Liquido", "DI/BL", "(Liquido - Moega)", "(%)",
     ]);
     const worksheet = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(workbook, worksheet, "Relatorio_Periodo");
@@ -232,9 +238,14 @@ const RelatorioPeriodo = () => {
             <div>
               <div className={style.form_control}>
                 <label>Selecione um período:</label>
+                // === alteração no select para disparar assim que escolher ===
                 <select
                   value={relatorios || ""}
-                  onChange={(e) => setRelatorios(e.target.value)}
+                  onChange={(e) => {
+                    const period = e.target.value;
+                    setRelatorios(period);
+                    getOperacoes(period); // dispara imediatamente com a data e o COD_OPERACAO (via id)
+                  }}
                 >
                   <option value="" disabled>Selecione uma opção</option>
                   {periodoLista?.map((val, idx) => (
@@ -242,8 +253,9 @@ const RelatorioPeriodo = () => {
                   ))}
                 </select>
 
+
                 <div className={style.submit_button}>
-                  <SubmitButton text={"Buscar"} onClick={getOperacoes} />
+                  <SubmitButton text={"Buscar"} onClick={() => getOperacoes()} />
                 </div>
 
                 <div className={style.periodo}>
