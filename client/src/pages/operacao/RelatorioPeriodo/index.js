@@ -51,21 +51,27 @@ const RelatorioPeriodo = () => {
     try {
       const r = await Axios.get("/equipamentos");
       setEquipamentos(r.data || []);
-    } catch { setEquipamentos([]); }
+    } catch {
+      setEquipamentos([]);
+    }
   }, []);
 
   const getBercos = useCallback(async () => {
     try {
       const r = await Axios.get("/bercos");
       setBercos(r.data || []);
-    } catch { setBercos([]); }
+    } catch {
+      setBercos([]);
+    }
   }, []);
 
   const getPeriodos = useCallback(async () => {
     try {
       const r = await Axios.get("/periodos/horarios");
       setPeriodoLista(r.data || []);
-    } catch { setPeriodoLista([]); }
+    } catch {
+      setPeriodoLista([]);
+    }
   }, []);
 
   // dependem de id
@@ -74,7 +80,7 @@ const RelatorioPeriodo = () => {
     try {
       const response = await Axios.get(`/periodos/gerais/${id}`);
       setPeriodoLista(response.data || []);
-    } catch { }
+    } catch {}
   }, [id]);
 
   const DadosDashboard = useCallback(async () => {
@@ -95,41 +101,66 @@ const RelatorioPeriodo = () => {
     }
   }, [id]);
 
-  // === alterações nas funções ===
-  const getAutos = useCallback(async (period = relatorios) => {
-    if (!id) return;
-    try {
-      const r = await Axios.post(`/periodo/autos/${id}`, { data: period, cod_operacao: id });
-      setAutos(r.data || []);
-    } catch { setAutos([]); }
-  }, [id, relatorios]);
+  // === funções com período explícito ===
+  const getAutos = useCallback(
+    async (period = relatorios) => {
+      if (!id) return;
+      try {
+        const r = await Axios.post(`/periodo/autos/${id}`, {
+          data: period,
+          cod_operacao: id,
+        });
+        setAutos(r.data || []);
+      } catch {
+        setAutos([]);
+      }
+    },
+    [id, relatorios]
+  );
 
-  const getDocumentos = useCallback(async (period = relatorios) => {
-    if (!id) return;
-    try {
-      const r = await Axios.post(`/periodo/documentos/${id}`, { data: period, cod_operacao: id });
-      setDocumentos(r.data || []);
-    } catch { setDocumentos([]); }
-  }, [id, relatorios]);
+  const getDocumentos = useCallback(
+    async (period = relatorios) => {
+      if (!id) return;
+      try {
+        const r = await Axios.post(`/periodo/documentos/${id}`, {
+          data: period,
+          cod_operacao: id,
+        });
+        setDocumentos(r.data || []);
+      } catch {
+        setDocumentos([]);
+      }
+    },
+    [id, relatorios]
+  );
 
-  const getOperacoes = useCallback(async (period = relatorios) => {
-    if (!id) {
-      showAlert("Selecione uma operação/navio primeiro.", "warning");
-      return;
-    }
-    try {
-      // atualiza cards com o mesmo período
-      await Promise.all([getAutos(period), getDocumentos(period)]);
-      const response = await Axios.post(`/periodo/carregamentos/${id}`, {
-        data: period,
-        cod_operacao: id,
-      });
-      setOperacoes(Array.isArray(response.data) ? response.data : []);
-    } catch {
-      setOperacoes([]);
-    }
-  }, [id, relatorios, getAutos, getDocumentos, showAlert]);
+  // Principal: garante chamada de /periodo/carregamentos SEM bloquear pelos cards
+  const getOperacoes = useCallback(
+    async (period = relatorios) => {
+      if (!id) {
+        showAlert("Selecione uma operação/navio primeiro.", "warning");
+        return;
+      }
+      try {
+        // Dispara as 3 em paralelo; a principal (carregamentos) não é bloqueada
+        const [carregamentosRes] = await Promise.all([
+          Axios.post(`/periodo/carregamentos/${id}`, {
+            data: period,
+            cod_operacao: id,
+          }),
+          getAutos(period).catch(() => {}),
+          getDocumentos(period).catch(() => {}),
+        ]);
 
+        setOperacoes(Array.isArray(carregamentosRes?.data) ? carregamentosRes.data : []);
+      } catch (err) {
+        setOperacoes([]);
+        console.error("Erro ao buscar carregamentos:", err);
+        showAlert("Não foi possível carregar os carregamentos do período.", "error");
+      }
+    },
+    [id, relatorios, getAutos, getDocumentos, showAlert]
+  );
 
   // efeito inicial
   useEffect(() => {
@@ -155,8 +186,16 @@ const RelatorioPeriodo = () => {
       String(safeNumber(val.PERCENTUAL)),
     ]);
     wsData.unshift([
-      "ID", "Nome", "Placa (Cavalo)", "1° Peso (Tara)", "2° Peso (Moega)", "3° Peso (Bruto)",
-      "Peso Liquido", "DI/BL", "(Liquido - Moega)", "(%)",
+      "ID",
+      "Nome",
+      "Placa (Cavalo)",
+      "1° Peso (Tara)",
+      "2° Peso (Moega)",
+      "3° Peso (Bruto)",
+      "Peso Liquido",
+      "DI/BL",
+      "(Liquido - Moega)",
+      "(%)",
     ]);
     const worksheet = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(workbook, worksheet, "Relatorio_Periodo");
@@ -238,7 +277,6 @@ const RelatorioPeriodo = () => {
             <div>
               <div className={style.form_control}>
                 <label>Selecione um período:</label>
-                // === alteração no select para disparar assim que escolher ===
                 <select
                   value={relatorios || ""}
                   onChange={(e) => {
@@ -247,12 +285,15 @@ const RelatorioPeriodo = () => {
                     getOperacoes(period); // dispara imediatamente com a data e o COD_OPERACAO (via id)
                   }}
                 >
-                  <option value="" disabled>Selecione uma opção</option>
+                  <option value="" disabled>
+                    Selecione uma opção
+                  </option>
                   {periodoLista?.map((val, idx) => (
-                    <option key={idx} value={val.PERIODO}>{val.PERIODO}</option>
+                    <option key={idx} value={val.PERIODO}>
+                      {val.PERIODO}
+                    </option>
                   ))}
                 </select>
-
 
                 <div className={style.submit_button}>
                   <SubmitButton text={"Buscar"} onClick={() => getOperacoes()} />
@@ -269,7 +310,9 @@ const RelatorioPeriodo = () => {
               <span className={style.cardinfo}>
                 <div className={style.box}>
                   <div className="content">
-                    <center><i className="fa fa-truck icon"></i> Carregados</center>
+                    <center>
+                      <i className="fa fa-truck icon"></i> Carregados
+                    </center>
                     {autos.length > 0 ? (
                       autos.map((val, idx) => (
                         <div key={idx} className={style.total}>
@@ -286,14 +329,17 @@ const RelatorioPeriodo = () => {
               <span className={style.cardinfo}>
                 <div className={style.box}>
                   <div className="content">
-                    <center><i className="fa fa-weight-hanging icon"></i> Peso Líquido</center>
+                    <center>
+                      <i className="fa fa-weight-hanging icon"></i> Peso Líquido
+                    </center>
                     {autos.length > 0 ? (
                       autos.map((val, idx) => (
                         <div key={idx} className={style.total}>
                           {(safeNumber(val.PESO_LIQUIDO) / 1000).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 3,
-                          })} Tons
+                          })}{" "}
+                          Tons
                         </div>
                       ))
                     ) : (
@@ -306,7 +352,9 @@ const RelatorioPeriodo = () => {
               <span className={style.cardinfo_Doc}>
                 <div className={style.box}>
                   <div className="content">
-                    <center><i className="fa fa-file-text icon"></i> Total de Peso por DI / BL</center>
+                    <center>
+                      <i className="fa fa-file-text icon"></i> Total de Peso por DI / BL
+                    </center>
                     {documentos.length > 0 ? (
                       documentos.map((val, idx) => (
                         <div key={idx} className={style.totalDoc}>
@@ -342,17 +390,39 @@ const RelatorioPeriodo = () => {
           <table className="table">
             <thead>
               <tr>
-                <th><abbr title="Id">ID </abbr></th>
-                <th><abbr title="Nome">Nome </abbr></th>
-                <th><abbr title="Placa do Cavalo">Placa (Cavalo)</abbr></th>
-                <th><abbr title="Tara">1° Peso (Tara)</abbr></th>
-                <th><abbr title="SegundoPeso">2° Peso (Moega)</abbr></th>
-                <th><abbr title="TerceiroPeso">3° Peso (Bruto)</abbr></th>
-                <th><abbr title="PesoLiquido">Peso Liquido </abbr></th>
-                <th><abbr title="Documento">DI/BL </abbr></th>
-                <th><abbr title="Diferenca">(Liquido - Moega)</abbr></th>
-                <th><abbr title="DiferencaPerc">(%)</abbr></th>
-                <th><abbr title="Nota">Nota Fiscal</abbr></th>
+                <th>
+                  <abbr title="Id">ID </abbr>
+                </th>
+                <th>
+                  <abbr title="Nome">Nome </abbr>
+                </th>
+                <th>
+                  <abbr title="Placa do Cavalo">Placa (Cavalo)</abbr>
+                </th>
+                <th>
+                  <abbr title="Tara">1° Peso (Tara)</abbr>
+                </th>
+                <th>
+                  <abbr title="SegundoPeso">2° Peso (Moega)</abbr>
+                </th>
+                <th>
+                  <abbr title="TerceiroPeso">3° Peso (Bruto)</abbr>
+                </th>
+                <th>
+                  <abbr title="PesoLiquido">Peso Liquido </abbr>
+                </th>
+                <th>
+                  <abbr title="Documento">DI/BL </abbr>
+                </th>
+                <th>
+                  <abbr title="Diferenca">(Liquido - Moega)</abbr>
+                </th>
+                <th>
+                  <abbr title="DiferencaPerc">(%)</abbr>
+                </th>
+                <th>
+                  <abbr title="Nota">Nota Fiscal</abbr>
+                </th>
               </tr>
             </thead>
 
@@ -379,30 +449,41 @@ const RelatorioPeriodo = () => {
                     <th>{val.ID_CARREGAMENTO}</th>
                     <th>{val.NOME_MOTORISTA}</th>
                     <th>{val.PLACA_CAVALO}</th>
-                    <th>{safeNumber(val.PESO_TARA).toLocaleString(undefined, { maximumFractionDigits: 2 })}</th>
-                    <th>{safeNumber(val.PESO_CARREGADO).toLocaleString(undefined, { maximumFractionDigits: 2 })}</th>
-                    <th>{safeNumber(val.PESO_BRUTO).toLocaleString(undefined, { maximumFractionDigits: 2 })}</th>
-                    <th>{safeNumber(val.PESO_LIQUIDO).toLocaleString(undefined, { maximumFractionDigits: 2 })}</th>
+                    <th>
+                      {safeNumber(val.PESO_TARA).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </th>
+                    <th>
+                      {safeNumber(val.PESO_CARREGADO).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </th>
+                    <th>
+                      {safeNumber(val.PESO_BRUTO).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </th>
+                    <th>
+                      {safeNumber(val.PESO_LIQUIDO).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </th>
                     <th>{val.DOCUMENTO}</th>
-                    <th>{safeNumber(val.DIFERENCA).toLocaleString(undefined, { maximumFractionDigits: 2 })} kg</th>
+                    <th>
+                      {safeNumber(val.DIFERENCA).toLocaleString(undefined, { maximumFractionDigits: 2 })} kg
+                    </th>
                     <th>{String(safeNumber(val.PERCENTUAL))} %</th>
                     <th
                       className={
-                        notaHabilitada(val?.STATUS_NOTA_MIC)
-                          ? style.nota_download
-                          : style.nota_download_empty
+                        notaHabilitada(val?.STATUS_NOTA_MIC) ? style.nota_download : style.nota_download_empty
                       }
                     >
                       <i
                         onClick={() => {
-                          if (notaHabilitada(val?.STATUS_NOTA_MIC))
-                            downloadNota(val.ID_CARREGAMENTO);
+                          if (notaHabilitada(val?.STATUS_NOTA_MIC)) downloadNota(val.ID_CARREGAMENTO);
                         }}
-                        style={
-                          notaHabilitada(val?.STATUS_NOTA_MIC)
-                            ? {}
-                            : { color: "#bcbcbc", cursor: "not-allowed" }
-                        }
+                        style={notaHabilitada(val?.STATUS_NOTA_MIC) ? {} : { color: "#bcbcbc", cursor: "not-allowed" }}
                         className="fa fa-file-pdf icon"
                       />
                     </th>
@@ -442,11 +523,7 @@ const RelatorioPeriodo = () => {
 
 export default function IntegrationNotistack() {
   return (
-    <SnackbarProvider
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      maxSnack={3}
-      autoHideDuration={2500}
-    >
+    <SnackbarProvider anchorOrigin={{ vertical: "bottom", horizontal: "right" }} maxSnack={3} autoHideDuration={2500}>
       <RelatorioPeriodo />
     </SnackbarProvider>
   );

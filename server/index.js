@@ -3106,54 +3106,68 @@ app.get(`${API_PREFIX}/carga/busca/:id`, async (req, res) => {
 });
 
 
-app.post(`${API_PREFIX}/periodo/carregamentos/:id`, (req, res) => {
-  const id = req.params.id;
-  const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
+// helper: valida exatamente "DD/MM/YYYY HHh⁰⁰/HHh⁰⁰"
+function isPeriodoSuperscriptFormat(s) {
+  if (!s) return false;
+  // U+2070 = '⁰'
+  const ZERO_SUP = '\u2070';
+  const re = new RegExp(
+    String.raw`^(\d{2}\/\d{2}\/\d{4})\s+(\d{1,2})h${ZERO_SUP}${ZERO_SUP}\/(\d{1,2})h${ZERO_SUP}${ZERO_SUP}$`
+  );
+  return re.test(String(s).trim());
+}
 
-  db.query(`
-    SELECT 
-    CAR.ID_CARREGAMENTO,
-MO.NOME_MOTORISTA,
-CAR.ID_CARREGAMENTO,
-CAR.PLACA_CAVALO,
-CAR.PESO_TARA,
-CAR.PESO_CARREGADO,
-FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) AS PERIODO_CARREGAMENTO,
-CAR.PESO_BRUTO,
-CAR.DATA_BRUTO,
-CONCAT(CG.TIPO_DOC, " ", CG.NUMERO_DOC ) AS DOCUMENTO,
-FC_PERIODO_CARREGAMENTO(CAR.DATA_BRUTO) AS PERIODO_BRUTO,
-(CAR.PESO_BRUTO - CAR.PESO_TARA) AS PESO_LIQUIDO,
-(CAR.PESO_BRUTO - CAR.PESO_TARA - CAR.PESO_CARREGADO) AS DIFERENCA,
-ROUND((((CAR.PESO_BRUTO - CAR.PESO_TARA - CAR.PESO_CARREGADO) / CAR.PESO_CARREGADO) * 100), 2) AS PERCENTUAL,
-CAR.STATUS_CARREG,
-COALESCE(CAR.STATUS_NOTA_MIC, 1) as STATUS_NOTA_MIC
-FROM CARREGAMENTO CAR 
-JOIN MOTORISTA MO 
- ON MO.COD_MOTORISTA = CAR.COD_MOTORISTA
-JOIN TIPO_VEICULO TV 
- ON TV.COD_TIPO = CAR.TIPO_VEICULO
-JOIN CARGA CG
- ON CG.COD_OPERACAO = CAR.COD_OPERACAO
-AND CG.COD_CARGA = CAR.COD_CARGA 
-WHERE 
-CAR.STATUS_CARREG = 3 
-AND CAR.PESO_BRUTO > 0 
-AND CAR.COD_OPERACAO = ?
-AND FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) = ? 
-ORDER BY 
-DATA_CARREGAMENTO
+app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
+  try {
+    const operacaoId = Number(req.params.id);
+    const periodo = String(req.body?.data ?? '').trim(); // ex.: "10/05/2023 13h⁰⁰/19h⁰⁰"
 
-    `, [id, data], (err, result) => {
-    if (err) {
-      console.log(err)
-    } else {
-      console.log(id, data);
-      res.send(result)
-
+    if (!Number.isFinite(operacaoId) || operacaoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro ':id' inválido." });
     }
-  });
+    if (!isPeriodoSuperscriptFormat(periodo)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Formato inválido. Use exatamente: 'DD/MM/YYYY 13h⁰⁰/19h⁰⁰' (com sobrescrito '⁰')."
+      });
+    }
+
+    const sql = `
+      SELECT
+        CAR.ID_CARREGAMENTO,
+        MO.NOME_MOTORISTA,
+        CAR.PLACA_CAVALO,
+        CAR.PESO_TARA,
+        CAR.PESO_CARREGADO,
+        FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) AS PERIODO_CARREGAMENTO,
+        CAR.PESO_BRUTO,
+        CAR.DATA_BRUTO,
+        CONCAT(CG.TIPO_DOC, ' ', CG.NUMERO_DOC) AS DOCUMENTO,
+        FC_PERIODO_CARREGAMENTO(CAR.DATA_BRUTO) AS PERIODO_BRUTO,
+        (CAR.PESO_BRUTO - CAR.PESO_TARA) AS PESO_LIQUIDO,
+        (CAR.PESO_BRUTO - CAR.PESO_TARA - CAR.PESO_CARREGADO) AS DIFERENCA,
+        ROUND((((CAR.PESO_BRUTO - CAR.PESO_TARA - CAR.PESO_CARREGADO) / NULLIF(CAR.PESO_CARREGADO,0)) * 100), 2) AS PERCENTUAL,
+        CAR.STATUS_CARREG,
+        COALESCE(CAR.STATUS_NOTA_MIC, 1) AS STATUS_NOTA_MIC
+      FROM CARREGAMENTO CAR
+      JOIN MOTORISTA MO  ON MO.COD_MOTORISTA = CAR.COD_MOTORISTA
+      JOIN TIPO_VEICULO TV ON TV.COD_TIPO = CAR.TIPO_VEICULO
+      JOIN CARGA CG ON CG.COD_OPERACAO = CAR.COD_OPERACAO AND CG.COD_CARGA = CAR.COD_CARGA
+      WHERE CAR.STATUS_CARREG = 3
+        AND CAR.PESO_BRUTO > 0
+        AND CAR.COD_OPERACAO = ?
+        AND FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) = ?
+      ORDER BY CAR.DATA_CARREGAMENTO
+    `;
+
+    const [rows] = await db.query(sql, [operacaoId, periodo]);
+    return res.json(rows);
+  } catch (err) {
+    console.error('[POST /periodo/carregamentos/:id] erro:', err?.message || err);
+    return res.status(500).json({ ok: false, error: 'Erro interno ao consultar carregamentos.' });
+  }
 });
+
 
 app.post(`${API_PREFIX}/portal/relatorios/:id`, (req, res) => {
   const id = req.params.id;
