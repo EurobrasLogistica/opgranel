@@ -78,8 +78,8 @@ const RelatorioPeriodo = () => {
 
   const generateTicketPDF = (row) => {
     try {
-      const doc = new jsPDF({ unit: "mm", format: [40, 60] });
-      const W = 40, H = 60, M = 3;
+      const doc = new jsPDF({ unit: "mm", format: [80, 60] });
+      const W = 80, H = 60, M = 1;
 
       const linha = (y) => doc.line(M, y, W - M, y);
 
