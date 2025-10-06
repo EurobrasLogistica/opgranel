@@ -80,7 +80,7 @@ const RelatorioPeriodo = () => {
     try {
       const response = await Axios.get(`/periodos/gerais/${id}`);
       setPeriodoLista(response.data || []);
-    } catch { }
+    } catch {}
   }, [id]);
 
   const DadosDashboard = useCallback(async () => {
@@ -101,7 +101,8 @@ const RelatorioPeriodo = () => {
     }
   }, [id]);
 
-  // === funções com período explícito ===
+  // === getAutos / getDocumentos COMENTADOS ===
+  /*
   const getAutos = useCallback(
     async (period = relatorios) => {
       if (!id) return;
@@ -133,33 +134,30 @@ const RelatorioPeriodo = () => {
     },
     [id, relatorios]
   );
+  */
 
-// Principal: garante chamada de /periodo/carregamentos/:id SEM bloquear pelos cards
-const getOperacoes = useCallback(
-  async (period = relatorios) => {
-    if (!id) return showAlert("Selecione uma operação/navio primeiro.", "warning");
-    if (!period) return showAlert("Selecione um período.", "warning");
+  // Principal: chama APENAS /periodo/carregamentos/:id
+  const getOperacoes = useCallback(
+    async (period = relatorios) => {
+      if (!id) return showAlert("Selecione uma operação/navio primeiro.", "warning");
+      if (!period) return showAlert("Selecione um período.", "warning");
 
-    try {
-      const [carregamentosRes] = await Promise.all([
-        Axios.post(`/periodo/carregamentos/${id}`, {
+      try {
+        const carregamentosRes = await Axios.post(`/periodo/carregamentos/${id}`, {
           data: period,
-          // opcional: cod_operacao: id,
-        }),
-        getAutos(period).catch(() => {}),
-        getDocumentos(period).catch(() => {}),
-      ]);
-
-      setOperacoes(Array.isArray(carregamentosRes?.data) ? carregamentosRes.data : []);
-    } catch (err) {
-      setOperacoes([]);
-      console.error("Erro ao buscar carregamentos:", err);
-      showAlert("Não foi possível carregar os carregamentos do período.", "error");
-    }
-  },
-  [id, relatorios, getAutos, getDocumentos, showAlert]
-);
-
+        });
+        setOperacoes(Array.isArray(carregamentosRes?.data) ? carregamentosRes.data : []);
+        // opcional: zera cards se não estiver usando as rotas
+        setAutos([]);
+        setDocumentos([]);
+      } catch (err) {
+        setOperacoes([]);
+        console.error("Erro ao buscar carregamentos:", err);
+        showAlert("Não foi possível carregar os carregamentos do período.", "error");
+      }
+    },
+    [id, relatorios, showAlert]
+  );
 
   // efeito inicial
   useEffect(() => {
@@ -266,7 +264,6 @@ const getOperacoes = useCallback(
               Selecione um navio
             </div>
             <div className={style.active}>Relatório por Período</div>
-            {/* Agora aparece sempre (com id), mesmo sem resultados */}
             <div onClick={() => navigate(`/relatorios/operacao/${id}`)} style={{ cursor: "pointer" }}>
               Relatório por Operação
             </div>
@@ -281,7 +278,7 @@ const getOperacoes = useCallback(
                   onChange={(e) => {
                     const period = e.target.value;
                     setRelatorios(period);
-                    getOperacoes(period); // dispara imediatamente com a data e o COD_OPERACAO (via id)
+                    getOperacoes(period); // dispara imediatamente com a data (via id na URL)
                   }}
                 >
                   <option value="" disabled>
@@ -304,7 +301,7 @@ const getOperacoes = useCallback(
               </div>
             </div>
 
-            {/* Cards agora aparecem mesmo sem dados */}
+            {/* Cards (ficarão zerados, pois autos/documentos foram comentados) */}
             <div className={style.cards}>
               <span className={style.cardinfo}>
                 <div className={style.box}>
@@ -444,36 +441,18 @@ const getOperacoes = useCallback(
                   );
                 })
                 .map((val, idx) => (
-                  <tr key={idx}>
-                    <th>{val.ID_CARREGAMENTO}</th>
-                    <th>{val.NOME_MOTORISTA}</th>
-                    <th>{val.PLACA_CAVALO}</th>
-                    <th>
-                      {safeNumber(val.PESO_TARA).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
-                    </th>
-                    <th>
-                      {safeNumber(val.PESO_CARREGADO).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
-                    </th>
-                    <th>
-                      {safeNumber(val.PESO_BRUTO).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
-                    </th>
-                    <th>
-                      {safeNumber(val.PESO_LIQUIDO).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
-                    </th>
-                    <th>{val.DOCUMENTO}</th>
-                    <th>
-                      {safeNumber(val.DIFERENCA).toLocaleString(undefined, { maximumFractionDigits: 2 })} kg
-                    </th>
-                    <th>{String(safeNumber(val.PERCENTUAL))} %</th>
-                    <th
+                  <tr key={val.ID_CARREGAMENTO ?? idx}>
+                    <td>{val.ID_CARREGAMENTO}</td>
+                    <td>{val.NOME_MOTORISTA}</td>
+                    <td>{val.PLACA_CAVALO}</td>
+                    <td>{safeNumber(val.PESO_TARA).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                    <td>{safeNumber(val.PESO_CARREGADO).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                    <td>{safeNumber(val.PESO_BRUTO).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                    <td>{safeNumber(val.PESO_LIQUIDO).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                    <td>{val.DOCUMENTO}</td>
+                    <td>{safeNumber(val.DIFERENCA).toLocaleString(undefined, { maximumFractionDigits: 2 })} kg</td>
+                    <td>{String(safeNumber(val.PERCENTUAL))} %</td>
+                    <td
                       className={
                         notaHabilitada(val?.STATUS_NOTA_MIC) ? style.nota_download : style.nota_download_empty
                       }
@@ -485,7 +464,7 @@ const getOperacoes = useCallback(
                         style={notaHabilitada(val?.STATUS_NOTA_MIC) ? {} : { color: "#bcbcbc", cursor: "not-allowed" }}
                         className="fa fa-file-pdf icon"
                       />
-                    </th>
+                    </td>
                   </tr>
                 ))}
 
