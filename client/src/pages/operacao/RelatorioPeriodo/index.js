@@ -76,47 +76,67 @@ const RelatorioPeriodo = () => {
     }
   }, [operacoes]);
 
-  const generateTicketPDF = (row) => {
-    try {
-      const doc = new jsPDF({ unit: "mm", format: [40, 50] });
-      const W = 40, H = 50, M = 3;
+const generateTicketPDF = (row) => {
+  try {
+    const doc = new jsPDF({ unit: "mm", format: [40, 50] });
+    const W = 40, H = 50, M = 3;
+    const GAP = 1.5;         // espaço entre rótulo e valor
+    const LINE_H = 3.8;      // altura da linha
 
-      const linha = (y) => doc.line(M, y, W - M, y);
+    const linha = (y) => doc.line(M, y, W - M, y);
 
-      doc.setLineWidth(0.3);
-      linha(M + 5.5);
+    doc.setLineWidth(0.3);
+    linha(M + 5.5);
 
+    // Cabeçalho: "Ticket n°: <ID>" com valor colado ao label
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    const headerLabel = "Ticket n°:";
+    const headerY = M + 2.8;
+    doc.text(headerLabel, M, headerY);
+
+    const headerValueX = M + doc.getTextWidth(headerLabel) + GAP;
+    doc.setFont("helvetica", "normal");
+    doc.text(String(row.ID_CARREGAMENTO ?? "--"), headerValueX, headerY);
+
+    linha(M + 7.5);
+
+    let y = M + 11;
+
+    const add = (label, value) => {
+      // rótulo
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("Ticket n°:", M, M + 2);
+      doc.setFontSize(9);
+      doc.text(label, M, y);
+
+      // valor começa logo depois do rótulo
+      const valueX = M + doc.getTextWidth(label) + GAP;
+      const maxWidth = W - valueX - M; // largura disponível até a margem direita
+
       doc.setFont("helvetica", "normal");
-      doc.text(String(row.ID_CARREGAMENTO ?? "--"), W - M, M + 2, { align: "left" });
+      const txt = String(value ?? "--");
 
-      linha(M + 7.5);
+      // quebra em múltiplas linhas se passar do espaço disponível
+      const wrapped = doc.splitTextToSize(txt, Math.max(10, maxWidth));
+      doc.text(wrapped, valueX, y);
 
-      let y = M + 11;
-      const add = (label, value) => {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.text(label, M, y);
-        doc.setFont("helvetica", "normal");
-        doc.text(String(value ?? "--"), W - M, y, { align: "left" });
-        y += 3;
-      };
+      // avança Y considerando quantas linhas foram usadas
+      const lines = Array.isArray(wrapped) ? wrapped.length : 1;
+      y += LINE_H * lines;
+    };
 
-      add("Data/Hora:", formatDateBR(row.DATA_CARREGAMENTO));
-      add("Placa Cavalo:", row.PLACA_CAVALO);
-      add("Peso Carregado:", formatKg(row.PESO_CARREGADO));
-      add("Navio:", dadosDash?.NOME_NAVIO || "--");
-      add("DI:", row.DOCUMENTO || "--");
+    add("Data/Hora:", formatDateBR(row.DATA_CARREGAMENTO));
+    add("Placa Cavalo:", row.PLACA_CAVALO);
+    add("Peso Carregado:", formatKg(row.PESO_CARREGADO));
+    add("Navio:", (dadosDash?.NOME_NAVIO || "--"));
+    add("DI:", (row.DOCUMENTO || "--"));
 
-
-      doc.save(`ticket_${row.ID_CARREGAMENTO}.pdf`);
-    } catch (e) {
-      console.error(e);
-      showAlert("Não foi possível gerar o ticket.", "error");
-    }
-  };
+    doc.save(`ticket_${row.ID_CARREGAMENTO}.pdf`);
+  } catch (e) {
+    console.error(e);
+    showAlert("Não foi possível gerar o ticket.", "error");
+  }
+};
 
 
   // não dependem de id
