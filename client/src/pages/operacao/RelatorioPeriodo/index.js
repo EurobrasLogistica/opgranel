@@ -76,75 +76,75 @@ const RelatorioPeriodo = () => {
     }
   }, [operacoes]);
 
-const generateTicketPDF = (row) => {
-  try {
-    const doc = new jsPDF({
-      orientation: "landscape",       // força horizontal
-      unit: "mm",
-      format: [40, 60],               // com landscape, vira 60(larg) x 40(alt)
-      compress: true,
-    });
+  const generateTicketPDF = (row) => {
+    try {
+      const doc = new jsPDF({
+        orientation: "landscape",       // força horizontal
+        unit: "mm",
+        format: [40, 60],               // com landscape, vira 60(larg) x 40(alt)
+        compress: true,
+      });
 
-    const W = doc.internal.pageSize.getWidth();
-    const H = doc.internal.pageSize.getHeight();
-    const M = 3;
-    const GAP = 2;
-    const LINE_H = 3.0;
+      const W = doc.internal.pageSize.getWidth();
+      const H = doc.internal.pageSize.getHeight();
+      const M = 3;
+      const GAP = 2;
+      const LINE_H = 4.0;
 
-    const linha = (y) => doc.line(M, y, W - M, y);
+      const linha = (y) => doc.line(M, y, W - M, y);
 
-    doc.setLineWidth(0.3);
-    linha(M + 5.5);
+      doc.setLineWidth(0.3);
+      linha(M + 5.5);
 
-    // Cabeçalho: "Ticket n°: <ID>" com valor colado ao label
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    const headerLabel = "Ticket n°:";
-    const headerY = M + 2.8;
-    doc.text(headerLabel, M, headerY);
-
-    const headerValueX = M + doc.getTextWidth(headerLabel) + GAP;
-    doc.setFont("helvetica", "normal");
-    doc.text(String(row.ID_CARREGAMENTO ?? "--"), headerValueX, headerY);
-
-    linha(M + 7.5);
-
-    let y = M + 11;
-
-    const add = (label, value) => {
-      // rótulo
+      // Cabeçalho: "Ticket n°: <ID>" com valor colado ao label
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text(label, M, y);
+      doc.setFontSize(10);
+      const headerLabel = "Ticket n°:";
+      const headerY = M + 2.8;
+      doc.text(headerLabel, M, headerY);
 
-      // valor começa logo depois do rótulo
-      const valueX = M + doc.getTextWidth(label) + GAP;
-      const maxWidth = W - valueX - M; // largura disponível até a margem direita
-
+      const headerValueX = M + doc.getTextWidth(headerLabel) + GAP;
       doc.setFont("helvetica", "normal");
-      const txt = String(value ?? "--");
+      doc.text(String(row.ID_CARREGAMENTO ?? "--"), headerValueX, headerY);
 
-      // quebra em múltiplas linhas se passar do espaço disponível
-      const wrapped = doc.splitTextToSize(txt, Math.max(10, maxWidth));
-      doc.text(wrapped, valueX, y);
+      linha(M + 7.5);
 
-      // avança Y considerando quantas linhas foram usadas
-      const lines = Array.isArray(wrapped) ? wrapped.length : 1;
-      y += LINE_H * lines;
-    };
+      let y = M + 11;
 
-    add("Data/Hora:", formatDateBR(row.DATA_CARREGAMENTO));
-    add("Placa Cavalo:", row.PLACA_CAVALO);
-    add("Peso Carregado:", formatKg(row.PESO_CARREGADO));
-    add("Navio:", (dadosDash?.NOME_NAVIO || "--"));
-    add((row.DOCUMENTO || "--"));
+      const add = (label, value) => {
+        // rótulo
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.text(label, M, y);
 
-    doc.save(`ticket_${row.ID_CARREGAMENTO}.pdf`);
-  } catch (e) {
-    console.error(e);
-    showAlert("Não foi possível gerar o ticket.", "error");
-  }
-};
+        // valor começa logo depois do rótulo
+        const valueX = M + doc.getTextWidth(label) + GAP;
+        const maxWidth = W - valueX - M; // largura disponível até a margem direita
+
+        doc.setFont("helvetica", "normal");
+        const txt = String(value ?? "--");
+
+        // quebra em múltiplas linhas se passar do espaço disponível
+        const wrapped = doc.splitTextToSize(txt, Math.max(10, maxWidth));
+        doc.text(wrapped, valueX, y);
+
+        // avança Y considerando quantas linhas foram usadas
+        const lines = Array.isArray(wrapped) ? wrapped.length : 1;
+        y += LINE_H * lines;
+      };
+
+      add("Data/Hora:", formatDateBR(row.DATA_CARREGAMENTO));
+      add("Placa Cavalo:", row.PLACA_CAVALO);
+      add("Peso Carregado:", formatKg(row.PESO_CARREGADO));
+      add("Navio:", (dadosDash?.NOME_NAVIO || "--"));
+      add((row.DOCUMENTO));
+
+      doc.save(`ticket_${row.ID_CARREGAMENTO}.pdf`);
+    } catch (e) {
+      console.error(e);
+      showAlert("Não foi possível gerar o ticket.", "error");
+    }
+  };
 
 
   // não dependem de id
@@ -410,15 +410,9 @@ const generateTicketPDF = (row) => {
                     <center>
                       <i className="fa fa-truck icon"></i> Carregados
                     </center>
-                    {autos.length > 0 ? (
-                      autos.map((val, idx) => (
-                        <div key={idx} className={style.total}>
-                          {totalAutos} Autos
-                        </div>
-                      ))
-                    ) : (
-                      <div className={style.total}>0 Autos</div>
-                    )}
+                    <div className={style.total}>
+                      {totalAutos} Autos
+                    </div>
                   </div>
                 </div>
               </span>
