@@ -80,7 +80,7 @@ const RelatorioPeriodo = () => {
     try {
       const response = await Axios.get(`/periodos/gerais/${id}`);
       setPeriodoLista(response.data || []);
-    } catch {}
+    } catch { }
   }, [id]);
 
   const DadosDashboard = useCallback(async () => {
@@ -144,12 +144,12 @@ const RelatorioPeriodo = () => {
       try {
         // Dispara as 3 em paralelo; a principal (carregamentos) não é bloqueada
         const [carregamentosRes] = await Promise.all([
-          Axios.post(`/periodo/carregamentos/${id}`, {
+          Axios.post(`/periodo/carregamentos`, {
             data: period,
             cod_operacao: id,
           }),
-          getAutos(period).catch(() => {}),
-          getDocumentos(period).catch(() => {}),
+          getAutos(period).catch(() => { }),
+          getDocumentos(period).catch(() => { }),
         ]);
 
         setOperacoes(Array.isArray(carregamentosRes?.data) ? carregamentosRes.data : []);
