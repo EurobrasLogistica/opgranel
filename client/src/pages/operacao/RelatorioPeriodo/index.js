@@ -78,8 +78,8 @@ const RelatorioPeriodo = () => {
 
   const generateTicketPDF = (row) => {
     try {
-      const doc = new jsPDF({ unit: "mm", format: [80, 60] });
-      const W = 80, H = 60, M = 1;
+      const doc = new jsPDF({ unit: "mm", format: [60, 40] });
+      const W = 60, H = 40, M = 3;
 
       const linha = (y) => doc.line(M, y, W - M, y);
 
@@ -110,7 +110,6 @@ const RelatorioPeriodo = () => {
       add("Navio:", dadosDash?.NOME_NAVIO || "--");
       add("DI:", row.DOCUMENTO || "--");
 
-      linha(H - M - 2.5);
 
       doc.save(`ticket_${row.ID_CARREGAMENTO}.pdf`);
     } catch (e) {
