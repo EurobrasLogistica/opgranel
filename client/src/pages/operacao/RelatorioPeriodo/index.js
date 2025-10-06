@@ -88,7 +88,7 @@ const generateTicketPDF = (row) => {
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
     const M = 3;
-    const GAP = 1.0;
+    const GAP = 1.5;
     const LINE_H = 3.0;
 
     const linha = (y) => doc.line(M, y, W - M, y);
