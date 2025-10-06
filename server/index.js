@@ -4431,10 +4431,19 @@ app.post("/gerarnfe", (req, res) => {
 
 function formatPlaca(v) {
   if (!v) return '';
+  // normaliza: maiúsculas e remove tudo que não é A-Z ou 0-9
   const s = String(v).toUpperCase().replace(/[^A-Z0-9]/g, '');
-  // Somente formata quando for 3 letras + 4 dígitos (ex.: AAA1111 -> AAA 1111)
-  const m = s.match(/^([A-Z]{3})(\d{4})$/);
-  return m ? `${m[1]} ${m[2]}` : s; // mantém como está caso não seja nesse padrão
+
+  // Padrão antigo: AAA1111 -> AAA 1111
+  const mAntigo = s.match(/^([A-Z]{3})(\d{4})$/);
+  if (mAntigo) return `${mAntigo[1]} ${mAntigo[2]}`;
+
+  // Padrão Mercosul: ABC1D23 -> ABC 1D23
+  const mMercosul = s.match(/^([A-Z]{3})(\d)([A-Z])(\d{2})$/);
+  if (mMercosul) return `${mMercosul[1]} ${mMercosul[2]}${mMercosul[3]}${mMercosul[4]}`;
+
+  // Caso não bata nenhum padrão, retorna normalizado sem inserir espaço
+  return s;
 }
 
 
