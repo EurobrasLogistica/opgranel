@@ -3144,14 +3144,13 @@ app.post(`${API_PREFIX}/periodo/carregamentos`, async (req, res) => {
       ORDER BY CAR.DATA_CARREGAMENTO
     `;
 
-    const [rows] = await db.query(sql, [operacaoId, data]); // <- usa a string recebida como está
+    const [rows] = await db.query(sql, [operacaoId, data]);
     return res.json(rows);
   } catch (err) {
     console.error('[POST /periodo/carregamentos] erro:', err?.message || err);
     return res.status(500).json({ ok: false, error: 'Erro interno ao consultar carregamentos.' });
   }
 });
-
 
 
 app.post(`${API_PREFIX}/portal/relatorios/:id`, (req, res) => {
