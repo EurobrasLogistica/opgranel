@@ -2,6 +2,7 @@
 import { SnackbarProvider, useSnackbar } from "notistack";
 import { useNavigate, useParams } from "react-router-dom";
 import Axios from "axios";
+import jsPDF from "jspdf";
 
 import Brackground from "../../../components/Background";
 import Container from "../../../components/Container";
@@ -22,6 +23,25 @@ Axios.defaults.baseURL = API_BASE;
 Axios.defaults.headers.common["Content-Type"] = "application/json; charset=utf-8";
 
 const safeNumber = (n, def = 0) => (Number.isFinite(Number(n)) ? Number(n) : def);
+
+const pad2 = (n) => String(n).padStart(2, "0");
+
+const formatDateBR = (dateInput) => {
+  if (!dateInput) return "--/--/-- --:--";
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return "--/--/-- --:--";
+  const dd = pad2(d.getDate());
+  const mm = pad2(d.getMonth() + 1);
+  const yy = String(d.getFullYear()).slice(-2);
+  const hh = pad2(d.getHours());
+  const min = pad2(d.getMinutes());
+  return `${dd}/${mm}/${yy} ${hh}:${min}`;
+};
+
+const formatKg = (val) => {
+  const n = Number(val) || 0;
+  return `${Math.round(n).toLocaleString("pt-BR")} Kg`;
+};
 
 const RelatorioPeriodo = () => {
   const { id } = useParams();
@@ -45,6 +65,50 @@ const RelatorioPeriodo = () => {
   const [bercos, setBercos] = useState([]);
 
   const showAlert = (txt, variant) => enqueueSnackbar(txt, { variant });
+
+  const generateTicketPDF = (row) => {
+    try {
+      const doc = new jsPDF({ unit: "mm", format: [60, 40] });
+      const W = 60, H = 40, M = 3;
+
+      const linha = (y) => doc.line(M, y, W - M, y);
+
+      doc.setLineWidth(0.3);
+      linha(M + 5.5);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("Ticket n°:", M, M + 4.2);
+      doc.setFont("helvetica", "normal");
+      doc.text(String(row.ID_CARREGAMENTO ?? "--"), W - M, M + 4.2, { align: "right" });
+
+      linha(M + 7.5);
+
+      let y = M + 12;
+      const add = (label, value) => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.text(label, M, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(String(value ?? "--"), W - M, y, { align: "right" });
+        y += 5;
+      };
+
+      add("Data/Hora:", formatDateBR(row.DATA_CARREGAMENTO));
+      add("Placa Cavalo:", row.PLACA_CAVALO);
+      add("Peso Carregado:", formatKg(row.PESO_CARREGADO));
+      add("Navio:", dadosDash?.NOME_NAVIO || "--");
+      add("DI:", row.DOCUMENTO || "--");
+
+      linha(H - M - 2.5);
+
+      doc.save(`ticket_${row.ID_CARREGAMENTO}.pdf`);
+    } catch (e) {
+      console.error(e);
+      showAlert("Não foi possível gerar o ticket.", "error");
+    }
+  };
+
 
   // não dependem de id
   const getEquipamentos = useCallback(async () => {
@@ -80,7 +144,7 @@ const RelatorioPeriodo = () => {
     try {
       const response = await Axios.get(`/periodos/gerais/${id}`);
       setPeriodoLista(response.data || []);
-    } catch {}
+    } catch { }
   }, [id]);
 
   const DadosDashboard = useCallback(async () => {
@@ -417,6 +481,9 @@ const RelatorioPeriodo = () => {
                   <abbr title="DiferencaPerc">(%)</abbr>
                 </th>
                 <th>
+                  <abbr title="Ticket">Ticket</abbr>
+                </th>
+                <th>
                   <abbr title="Nota">Nota Fiscal</abbr>
                 </th>
               </tr>
@@ -452,6 +519,14 @@ const RelatorioPeriodo = () => {
                     <td>{val.DOCUMENTO}</td>
                     <td>{safeNumber(val.DIFERENCA).toLocaleString(undefined, { maximumFractionDigits: 2 })} kg</td>
                     <td>{String(safeNumber(val.PERCENTUAL))} %</td>
+                    <td className={style.nota_download}>
+                      <i
+                        onClick={() => generateTicketPDF(val)}
+                        className="fa fa-ticket-alt icon"
+                        style={{ cursor: "pointer" }}
+                        title="Gerar ticket (60x40mm)"
+                      />
+                    </td>
                     <td
                       className={
                         notaHabilitada(val?.STATUS_NOTA_MIC) ? style.nota_download : style.nota_download_empty

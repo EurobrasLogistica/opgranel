@@ -3122,6 +3122,7 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
         CAR.PLACA_CAVALO,
         CAR.PESO_TARA,
         CAR.PESO_CARREGADO,
+        CAR.DATA_CARREGAMENTO,
         FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) AS PERIODO_CARREGAMENTO,
         CAR.PESO_BRUTO,
         CAR.DATA_BRUTO,
