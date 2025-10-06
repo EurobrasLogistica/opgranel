@@ -78,8 +78,8 @@ const RelatorioPeriodo = () => {
 
   const generateTicketPDF = (row) => {
     try {
-      const doc = new jsPDF({ unit: "mm", format: [60, 40] });
-      const W = 60, H = 40, M = 3;
+      const doc = new jsPDF({ unit: "mm", format: [40, 50] });
+      const W = 40, H = 50, M = 3;
 
       const linha = (y) => doc.line(M, y, W - M, y);
 
@@ -90,17 +90,17 @@ const RelatorioPeriodo = () => {
       doc.setFontSize(10);
       doc.text("Ticket n°:", M, M + 2);
       doc.setFont("helvetica", "normal");
-      doc.text(String(row.ID_CARREGAMENTO ?? "--"), W - M, M + 2, { align: "right" });
+      doc.text(String(row.ID_CARREGAMENTO ?? "--"), W - M, M + 2, { align: "left" });
 
       linha(M + 7.5);
 
-      let y = M + 9;
+      let y = M + 11;
       const add = (label, value) => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.text(label, M, y);
         doc.setFont("helvetica", "normal");
-        doc.text(String(value ?? "--"), W - M, y, { align: "right" });
+        doc.text(String(value ?? "--"), W - M, y, { align: "left" });
         y += 3;
       };
 
