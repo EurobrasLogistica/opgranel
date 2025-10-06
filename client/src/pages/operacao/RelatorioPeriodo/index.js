@@ -88,20 +88,20 @@ const RelatorioPeriodo = () => {
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
-      doc.text("Ticket n°:", M, M + 4.2);
+      doc.text("Ticket n°:", M, M + 2);
       doc.setFont("helvetica", "normal");
-      doc.text(String(row.ID_CARREGAMENTO ?? "--"), W - M, M + 4.2, { align: "right" });
+      doc.text(String(row.ID_CARREGAMENTO ?? "--"), W - M, M + 2, { align: "right" });
 
       linha(M + 7.5);
 
-      let y = M + 12;
+      let y = M + 9;
       const add = (label, value) => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.text(label, M, y);
         doc.setFont("helvetica", "normal");
         doc.text(String(value ?? "--"), W - M, y, { align: "right" });
-        y += 5;
+        y += 3;
       };
 
       add("Data/Hora:", formatDateBR(row.DATA_CARREGAMENTO));
