@@ -3112,7 +3112,7 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
     const { data } = req.body || {};
 
     if (!data || !Number.isFinite(operacaoId) || operacaoId <= 0) {
-      return res.status(400).json({ ok: false, error: "Informe 'data' e um id/cod_operacao válido." });
+      return res.status(400).json({ ok: false, error: "Informe 'data' e um id válido." });
     }
 
     const sql = `
@@ -3140,7 +3140,8 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
       WHERE CAR.STATUS_CARREG = 3
         AND CAR.PESO_BRUTO > 0
         AND CAR.COD_OPERACAO = ?
-        AND FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO) = REPLACE(?, '⁰', '0')
+        AND (REPLACE(FC_PERIODO_CARREGAMENTO(CAR.DATA_CARREGAMENTO), '⁰', '0') COLLATE utf8mb4_unicode_ci)
+            = (REPLACE(?, '⁰', '0') COLLATE utf8mb4_unicode_ci)
       ORDER BY CAR.DATA_CARREGAMENTO
     `;
 
@@ -3151,6 +3152,7 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
     return res.status(500).json({ ok: false, error: 'Erro interno ao consultar carregamentos.' });
   }
 });
+
 
 
 
