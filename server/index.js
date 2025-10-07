@@ -4025,59 +4025,78 @@ ORDER BY COD_OPERACAO, COMPLEMENTO;
   });
 });
 
-//Relatorio Por Operação 
-app.get('/operacao/gerais/:id', (req, res) => {
-  const id = req.params.id;
+// Relatório por Operação - dados gerais da operação
+app.get(`${API_PREFIX}/operacao/gerais/:id`, async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  db.query(`   
-    SELECT O.COD_OPERACAO,
-    O.COD_NAVIO,
-    CONCAT(N.NOME_NAVIO, " (", O.RAP, ")") AS NAVIO
-    FROM operacaogranel.OPERACAO O
-    INNER JOIN operacaogranel.NAVIO N
-    ON N.COD_NAVIO = O.COD_NAVIO
-    WHERE O.COD_OPERACAO = ?;        
-    `, id, (err, result) => {
-    if (err) {
-      console.log(err)
-    } else {
-      res.send(result)
+    if (!id) {
+      return res.status(400).json({ ok: false, message: 'Parâmetro :id é obrigatório.' });
     }
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        O.COD_OPERACAO,
+        O.COD_NAVIO,
+        CONCAT(N.NOME_NAVIO, " (", O.RAP, ")") AS NAVIO
+      FROM operacaogranel.OPERACAO O
+      INNER JOIN operacaogranel.NAVIO N
+        ON N.COD_NAVIO = O.COD_NAVIO
+      WHERE O.COD_OPERACAO = ?;
+      `,
+      [id]
+    );
+
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[GET /operacao/gerais/:id][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message });
   }
-  )
-})
-
-app.post('/operacao/autos/:id', (req, res) => {
-  const id = req.params.id;
-  const { data } = req.body;  //DD/MM/YYYY 13h⁰⁰/19h⁰⁰ formato que deve ser passado a data e periodo '10/05/2023 13h⁰⁰/19h⁰⁰'
-
-  db.query(`
-      SELECT CAR.COD_OPERACAO,
-	   COUNT(CAR.ID_CARREGAMENTO) AS QTDE_AUTOS,
-       SUM(DISTINCT CG.QTDE_MANIFESTADA) AS MANIFESTADO,
-	   SUM(CAR.PESO_BRUTO - CAR.PESO_TARA) AS PESO_LIQUIDO,
-       IFNULL((SELECT SUM(CG.QTDE_MANIFESTADA)
-		 	     FROM CARGA CG
-			    WHERE CG.COD_OPERACAO = CAR.COD_OPERACAO
-			  ), 0) - SUM(CAR.PESO_BRUTO - CAR.PESO_TARA) AS SALDO,
-       SUM(CAR.PESO_CARREGADO) AS PESO_MOEGA
-  FROM CARREGAMENTO CAR 
-  JOIN CARGA CG
-   ON CG.COD_CARGA = CAR.COD_CARGA
- WHERE CAR.STATUS_CARREG = 3
-   AND CAR.PESO_BRUTO > 0
-   AND CAR.COD_OPERACAO = ?
- GROUP BY CAR.COD_OPERACAO
-    `, [id, data], (err, result) => {
-    if (err) {
-      console.log(err)
-    } else {
-      console.log(id, data);
-      res.send(result)
-
-    }
-  });
 });
+
+
+// Relatório por Operação - agregados de autos (contagem, manifestado, saldo etc.)
+app.post(`${API_PREFIX}/operacao/autos/:id`, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data } = req.body || {}; // formato esperado: 'DD/MM/YYYY 13h⁰⁰/19h⁰⁰' (não usado no SQL atual)
+
+    if (!id) {
+      return res.status(400).json({ ok: false, message: 'Parâmetro :id é obrigatório.' });
+    }
+
+    const [rows] = await db.query(
+      `
+      SELECT CAR.COD_OPERACAO,
+             COUNT(CAR.ID_CARREGAMENTO) AS QTDE_AUTOS,
+             SUM(DISTINCT CG.QTDE_MANIFESTADA) AS MANIFESTADO,
+             SUM(CAR.PESO_BRUTO - CAR.PESO_TARA) AS PESO_LIQUIDO,
+             IFNULL((SELECT SUM(CG.QTDE_MANIFESTADA)
+                      FROM CARGA CG
+                     WHERE CG.COD_OPERACAO = CAR.COD_OPERACAO
+                    ), 0) - SUM(CAR.PESO_BRUTO - CAR.PESO_TARA) AS SALDO,
+             SUM(CAR.PESO_CARREGADO) AS PESO_MOEGA
+        FROM CARREGAMENTO CAR 
+        JOIN CARGA CG
+          ON CG.COD_CARGA = CAR.COD_CARGA
+       WHERE CAR.STATUS_CARREG = 3
+         AND CAR.PESO_BRUTO > 0
+         AND CAR.COD_OPERACAO = ?
+       GROUP BY CAR.COD_OPERACAO
+      `,
+      [id] // 'data' não é usado no SQL atual
+    );
+
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('[POST /operacao/autos/:id][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
 
 // Rota para obter o conteúdo do arquivo de motivação baseado no ID
 app.get('/motivacao/conteudo/:id', async (req, res) => {
