@@ -395,10 +395,17 @@ app.delete(`${API_PREFIX}/carga/delete/:id`, async (req, res) => {
   }
 });
 
-// CARGAS PRO GRÁFICO
+
+// Gráfico - consultar por operação (DI/BL x cargas)
 app.get(`${API_PREFIX}/grafico/:id`, async (req, res) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
+
+    // validação simples
+    if (!id) {
+      return res.status(400).json({ ok: false, message: 'Parâmetro :id é obrigatório.' });
+    }
+
     const [rows] = await db.query(
       `
       SELECT CA.COD_OPERACAO,
@@ -423,12 +430,15 @@ app.get(`${API_PREFIX}/grafico/:id`, async (req, res) => {
       `,
       [id]
     );
-    res.json(rows);
+
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, message: err.message });
+    console.error('[GET /grafico/:id][ERR]', err);
+    return res.status(500).json({ ok: false, message: err.message });
   }
 });
+
 
 // PORÃO PRO GRÁFICO
 app.get(`${API_PREFIX}/grafico/porao/:id`, async (req, res) => {
