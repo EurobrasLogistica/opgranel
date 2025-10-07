@@ -166,6 +166,26 @@ const RelatorioPeriodo = () => {
     }
   }, []);
 
+  const documentosResumo = useMemo(() => {
+    const map = new Map();
+
+    (operacoes || []).forEach((v) => {
+      const doc = (v.DOCUMENTO && String(v.DOCUMENTO).trim()) || "—";
+      if (!map.has(doc)) {
+        map.set(doc, { DOC_CARGA: doc, PESO_LIQUIDO_CARGA: 0, QTDE_AUTOS_CARGA: 0 });
+      }
+      const item = map.get(doc);
+      item.PESO_LIQUIDO_CARGA += safeNumber(v.PESO_LIQUIDO);
+      item.QTDE_AUTOS_CARGA += 1;
+    });
+
+    // opcional: ordenar por maior peso
+    return Array.from(map.values()).sort(
+      (a, b) => b.PESO_LIQUIDO_CARGA - a.PESO_LIQUIDO_CARGA
+    );
+  }, [operacoes]);
+
+
   const getPeriodos = useCallback(async () => {
     try {
       const r = await Axios.get("/periodos/horarios");
@@ -439,8 +459,9 @@ const RelatorioPeriodo = () => {
                     <center>
                       <i className="fa fa-file-text icon"></i> Total de Peso por DI / BL
                     </center>
-                    {documentos.length > 0 ? (
-                      documentos.map((val, idx) => (
+
+                    {documentosResumo.length > 0 ? (
+                      documentosResumo.map((val, idx) => (
                         <div key={idx} className={style.totalDoc}>
                           <strong>{val.DOC_CARGA}</strong> |{" "}
                           {(safeNumber(val.PESO_LIQUIDO_CARGA) / 1000).toLocaleString(undefined, {
@@ -456,6 +477,7 @@ const RelatorioPeriodo = () => {
                   </div>
                 </div>
               </span>
+
             </div>
           </div>
 
