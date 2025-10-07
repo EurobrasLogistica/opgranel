@@ -408,25 +408,77 @@ app.get(`${API_PREFIX}/grafico/:id`, async (req, res) => {
 
     const [rows] = await db.query(
       `
-      SELECT CA.COD_OPERACAO,
-             CA.TIPO_DOC,    
-             CA.NUMERO_DOC,
-             CL.NOME_REDUZIDO,
-             SUM(DISTINCT CA.QTDE_MANIFESTADA) AS MANIFESTADO,
-             SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS PESO_CARREGADO,
-             SUM(CR.PESO_CARREGADO) AS PESO_MOEGA,
-             SUM(DISTINCT CA.QTDE_MANIFESTADA) - SUM(CR.PESO_BRUTO - CR.PESO_TARA) AS SALDO,
-             ROUND(((SUM(CR.PESO_BRUTO - CR.PESO_TARA) / SUM(DISTINCT CA.QTDE_MANIFESTADA)) * 100),2) AS PERC
-        FROM CARGA CA
-        JOIN CARREGAMENTO CR
-          ON CR.COD_OPERACAO = CA.COD_OPERACAO
-         AND CR.COD_CARGA = CA.COD_CARGA
-        JOIN CLIENTE CL 
-          ON CL.COD_CLIENTE = CA.COD_CLIENTE
-       WHERE CA.COD_OPERACAO = ?
-         AND CR.PESO_CARREGADO > 0
-         AND CR.STATUS_CARREG = 3
-       GROUP BY CA.COD_OPERACAO, CA.TIPO_DOC, CA.NUMERO_DOC, CA.COD_CARGA, CL.NOME_REDUZIDO
+SELECT
+  CA.COD_OPERACAO,
+  CA.TIPO_DOC,
+  CA.NUMERO_DOC,
+  CL.NOME_REDUZIDO,
+
+  -- Manifestado por documento/carga (mantém DISTINCT, como estava)
+  SUM(DISTINCT CA.QTDE_MANIFESTADA) AS MANIFESTADO,
+
+  -- Soma apenas quando há dados válidos, mas preserva linhas sem CR
+  SUM(
+    CASE
+      WHEN CR.STATUS_CARREG = 3
+       AND COALESCE(CR.PESO_BRUTO,0) > 0
+       AND COALESCE(CR.PESO_TARA,0)  > 0
+      THEN (CR.PESO_BRUTO - CR.PESO_TARA)
+      ELSE 0
+    END
+  ) AS PESO_CARREGADO,
+
+  SUM(
+    CASE
+      WHEN CR.STATUS_CARREG = 3
+       AND COALESCE(CR.PESO_CARREGADO,0) > 0
+      THEN CR.PESO_CARREGADO
+      ELSE 0
+    END
+  ) AS PESO_MOEGA,
+
+  -- Saldo = Manifestado - Peso Carregado
+  SUM(DISTINCT CA.QTDE_MANIFESTADA) -
+  SUM(
+    CASE
+      WHEN CR.STATUS_CARREG = 3
+       AND COALESCE(CR.PESO_BRUTO,0) > 0
+       AND COALESCE(CR.PESO_TARA,0)  > 0
+      THEN (CR.PESO_BRUTO - CR.PESO_TARA)
+      ELSE 0
+    END
+  ) AS SALDO,
+
+  -- % = Peso Carregado / Manifestado * 100 (evita divisão por zero)
+  ROUND(
+    (
+      SUM(
+        CASE
+          WHEN CR.STATUS_CARREG = 3
+           AND COALESCE(CR.PESO_BRUTO,0) > 0
+           AND COALESCE(CR.PESO_TARA,0)  > 0
+          THEN (CR.PESO_BRUTO - CR.PESO_TARA)
+          ELSE 0
+        END
+      ) / NULLIF(SUM(DISTINCT CA.QTDE_MANIFESTADA), 0)
+    ) * 100, 2
+  ) AS PERC
+
+FROM CARGA CA
+LEFT JOIN CARREGAMENTO CR
+  ON CR.COD_OPERACAO = CA.COD_OPERACAO
+ AND CR.COD_CARGA    = CA.COD_CARGA
+JOIN CLIENTE CL
+  ON CL.COD_CLIENTE  = CA.COD_CLIENTE
+
+WHERE CA.COD_OPERACAO = ?
+GROUP BY
+  CA.COD_OPERACAO,
+  CA.TIPO_DOC,
+  CA.NUMERO_DOC,
+  CA.COD_CARGA,
+  CL.NOME_REDUZIDO;
+
       `,
       [id]
     );
