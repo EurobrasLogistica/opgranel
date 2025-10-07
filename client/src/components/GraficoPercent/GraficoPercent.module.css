@@ -1,105 +1,122 @@
 .gfbox {
-    border: 1px solid #e6e2e2; 
-    border-radius: 5px;
-    margin: 1% auto;
-    width: auto;
-    background-color: #f3f3f3;
-    font-family: roboto;
+  border: 1px solid #e6e2e2;
+  border-radius: 5px;
+  margin: 1% auto;
+  width: auto;
+  background-color: #f3f3f3;
+  font-family: roboto;
 }
 
 .gftitle {
-    text-align: center;
-    font-size: 20px;
-    color: #153240;
-    margin: 20px 0;
+  text-align: center;
+  font-size: 20px;
+  color: #153240;
+  margin: 20px 0;
 }
 
-
+/* === ALTERADO: de flex para grid, 5 colunas === */
 .gfcoluns {
-    display: flex;
-    justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px; /* espaço entre os gráficos */
+  align-items: start;
 }
 
+/* opcional: deixar cada card mais compacto e sem deslocar o grid */
 .gfcolum {
-    margin: 0 40px;
-
-    /* border: 1px solid #000;  */
+  /* margin: 0 40px;  <-- REMOVA para o grid alinhar certinho */
+  margin: 0;
 }
 
+/* restante permanece igual */
 .grpercent {
-    text-align: center;
-    margin-top: 15px;
-    font-weight: 600;
-    color: #17344e;
-    letter-spacing: 01px;
-    transition: 0.8s;
+  text-align: center;
+  margin-top: 15px;
+  font-weight: 600;
+  color: #17344e;
+  letter-spacing: 01px;
+  transition: 0.8s;
 }
 
 .grbackbar {
-    width: 100%;
-    height: 160px;
-    background-color: #dbdbdb;
-    display: flex;
-    flex-direction: column-reverse;
-    border-radius: 3px;
+  width: 100%;
+  height: 160px;
+  background-color: #dbdbdb;
+  display: flex;
+  flex-direction: column-reverse;
+  border-radius: 3px;
 }
 
 .grblue {
-    background-color: #1e4e77;
-    border-top: 3px solid #2c94c9;
-    width: 100%;
-    border-radius: 5px 5px 0 0;
-    transition: 0.8s;
+  background-color: #1e4e77;
+  border-top: 3px solid #2c94c9;
+  width: 100%;
+  border-radius: 5px 5px 0 0;
+  transition: 0.8s;
 }
 
 .grred {
-    background-color: #740013;
-    border-top: 3px solid #ee2416;
-    width: 100%;
-    border-radius: 5px 5px 0 0;
-    transition: 0.5s;
+  background-color: #740013;
+  border-top: 3px solid #ee2416;
+  width: 100%;
+  border-radius: 5px 5px 0 0;
+  transition: 0.5s;
 }
 
 .grdesc {
-    text-align: justify;
-    margin-bottom: 15px;
-    font-size: 15px;
-    color: #153240;
-    font-family: roboto;
-      
+  text-align: justify;
+  margin-bottom: 15px;
+  font-size: 15px;
+  color: #153240;
+  font-family: roboto;
 }
 
 .DI_BL {
-    
-    text-align: center;
-    font-family: roboto;
-    font-weight: 600;
-    color: #153240;
-    transition: 0.8s;
+  text-align: center;
+  font-family: roboto;
+  font-weight: 600;
+  color: #153240;
+  transition: 0.8s;
 }
 
 .NOME_REDUZIDO {
-    
-    text-align: center;
-    font-family: roboto;
-    font-weight: 600;
-    color: #153240;
-    transition: 0.8s;
+  text-align: center;
+  font-family: roboto;
+  font-weight: 600;
+  color: #153240;
+  transition: 0.8s;
 }
 
 .linha {
-    border: 0;
-    height: 1px;
-    background: #153240;
-    background-image: linear-gradient(to right, #ccc, #153240, #4a5b64);
-  }
+  border: 0;
+  height: 1px;
+  background: #153240;
+  background-image: linear-gradient(to right, #ccc, #153240, #4a5b64);
+}
 
-  .manifestado {
-    text-align: justify;
-    line-height: 250%;
-    margin-bottom: 15px;
-    font-size: 15px;
-    color: #153240;
-    font-family: roboto;
-      
+.manifestado {
+  text-align: justify;
+  line-height: 250%;
+  margin-bottom: 15px;
+  font-size: 15px;
+  color: #153240;
+  font-family: roboto;
+}
+
+/* ===== Responsivo ===== */
+/* <= 1280px: 4 por linha */
+@media (max-width: 1280px) {
+  .gfcoluns { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* <= 1024px: 3 por linha */
+@media (max-width: 1024px) {
+  .gfcoluns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* <= 768px: 2 por linha */
+@media (max-width: 768px) {
+  .gfcoluns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* <= 480px: 1 por linha */
+@media (max-width: 480px) {
+  .gfcoluns { grid-template-columns: 1fr; }
 }
