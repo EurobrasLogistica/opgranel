@@ -463,7 +463,7 @@ const RelatorioPeriodo = () => {
                     {documentosResumo.length > 0 ? (
                       documentosResumo.map((val, idx) => (
                         <div key={idx} className={style.totalDoc}>
-                          <strong>{val.DOC_CARGA}</strong> |{" "}
+                          {val.DOC_CARGA} |{" "}
                           {(safeNumber(val.PESO_LIQUIDO_CARGA) / 1000).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 3,
