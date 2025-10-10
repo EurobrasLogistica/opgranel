@@ -2944,33 +2944,75 @@ app.put(`${API_PREFIX}/segundapesagem`, async (req, res) => {
       return res.status(400).json({ ok: false, error: "Campo 'usuario' é obrigatório." });
     }
 
-    // STATUS_CARREG = 2 (em segunda pesagem / carregado)
-    const sql = `
-      UPDATE CARREGAMENTO
-         SET PESO_CARREGADO   = ?,
-             DATA_CARREGAMENTO = ?,
-             USUARIO_CARREG    = ?,
-             STATUS_CARREG     = 2,
-             TICKET            = ?
-       WHERE ID_CARREGAMENTO  = ?
-       LIMIT 1
-    `;
-
-    const [result] = await db.query(sql, [
-      pesoCarregado,
-      data,
-      usuario,
-      ticket ?? null,
-      carregamentoId
-    ]);
-
-    if (!result.affectedRows) {
+    // 1) Busca PESO_TARA atual
+    const [taraRows] = await db.query(
+      `SELECT PESO_TARA FROM CARREGAMENTO WHERE ID_CARREGAMENTO = ? LIMIT 1`,
+      [carregamentoId]
+    );
+    if (!taraRows?.length) {
       return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+    const pesoTara = Number(taraRows[0].PESO_TARA);
+
+    // 2) Monta SQL conforme a regra de negócio
+    let sql, params;
+
+    if (pesoTara === 1000) {
+      // Quando tara = 1000: STATUS=3 e grava BRUTO = (PESO_CARREGADO + 1000), DATA_BRUTO = DATA_CARREGAMENTO
+      sql = `
+        UPDATE CARREGAMENTO
+           SET PESO_CARREGADO    = ?,
+               DATA_CARREGAMENTO  = ?,
+               USUARIO_CARREG     = ?,
+               STATUS_CARREG      = 3,
+               PESO_BRUTO         = ?,
+               DATA_BRUTO         = ?,
+               TICKET             = ?
+         WHERE ID_CARREGAMENTO   = ?
+         LIMIT 1
+      `;
+      params = [
+        pesoCarregado,
+        data,
+        usuario,
+        (pesoCarregado + 1000),
+        data,
+        ticket ?? null,
+        carregamentoId
+      ];
+    } else {
+      // Fluxo normal: STATUS=2 e não mexe nos campos de BRUTO
+      sql = `
+        UPDATE CARREGAMENTO
+           SET PESO_CARREGADO    = ?,
+               DATA_CARREGAMENTO  = ?,
+               USUARIO_CARREG     = ?,
+               STATUS_CARREG      = 2,
+               TICKET             = ?
+         WHERE ID_CARREGAMENTO   = ?
+         LIMIT 1
+      `;
+      params = [
+        pesoCarregado,
+        data,
+        usuario,
+        ticket ?? null,
+        carregamentoId
+      ];
+    }
+
+    // 3) Executa UPDATE
+    const [result] = await db.query(sql, params);
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado ao atualizar." });
     }
 
     return res.json({
       ok: true,
-      message: "Segunda pesagem cadastrada com sucesso.",
+      message:
+        pesoTara === 1000
+          ? "Segunda pesagem registrada (tara=1000): STATUS=3, BRUTO atualizado."
+          : "Segunda pesagem registrada: STATUS=2.",
       id: carregamentoId,
       affectedRows: result.affectedRows
     });
