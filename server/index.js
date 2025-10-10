@@ -5032,22 +5032,34 @@ setTimeout(() => {
 
 
 // MIC SISTEMAS - ENTREGAR NOTA
-app.post('/entregarnotamic/:id', async (req, res) => {
-  console.log(req.params)
-  const idCarregamento = req.params.id;
+app.post(`${API_PREFIX}/entregarnotamic/:id`, async (req, res) => {
+  try {
+    const idCarregamento = Number(req.params.id);
+    if (!Number.isFinite(idCarregamento) || idCarregamento <= 0) {
+      return res.status(400).json({ ok: false, error: "Parâmetro ':id' inválido." });
+    }
 
-  // NOTA ENTREGUE
-  db.query(`
-        UPDATE CARREGAMENTO
-        SET STATUS_NOTA_MIC = 6, OBS_NOTA = 'Nota entregue ao motorista'
-        WHERE ID_CARREGAMENTO = ?
-    `, idCarregamento, (err, result) => {
-    if (err)
-      res.status(400).send(`Erro ao atualizar BD(${err}).`);
-  });
+    const sql = `
+      UPDATE CARREGAMENTO
+         SET STATUS_NOTA_MIC = 6,
+             OBS_NOTA        = 'Nota entregue ao motorista'
+       WHERE ID_CARREGAMENTO = ?
+       LIMIT 1
+    `;
 
-  res.status(200).send();
-})
+    const [result] = await db.query(sql, [idCarregamento]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
+    }
+
+    return res.status(200).json({ ok: true, message: 'Nota entregue ao motorista.' });
+  } catch (err) {
+    console.error('[POST /entregarnotamic/:id] erro:', err?.message || err);
+    return res.status(500).json({ ok: false, error: 'Erro interno ao marcar nota como entregue.' });
+  }
+});
+
 
 // --- Baixar Nota Fiscal (PDF) ---
 app.post(`${API_PREFIX}/baixarnota`, async (req, res) => {
