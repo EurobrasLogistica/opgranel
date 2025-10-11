@@ -3947,7 +3947,7 @@ app.get(`${API_PREFIX}/periodos/gerais/:id`, async (req, res) => {
     INNER JOIN PERIODO_OPERACAO PO
       ON PO.COD_OPERACAO = O.COD_OPERACAO
     WHERE O.COD_OPERACAO = ?
-    ORDER BY PO.SEQ_PERIODO_OP DESC
+    ORDER BY PERIODO DESC
   `;
 
   try {
