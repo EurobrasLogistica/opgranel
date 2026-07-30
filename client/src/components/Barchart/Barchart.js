@@ -29,7 +29,7 @@ const BarChart = ({ id }) => {
     const [list, setList] = useState([])
 
     async function getMotivos() {
-        Axios.get(`https://opgranel.eurobraslogistica.com.br/api/grafico/${id}`,)
+        Axios.get(`https://operacao.eurobraslogistica.com.br/api/grafico/${id}`,)
             .then(function (res) {
                 setList(res.data)
                 console.log(res.data);

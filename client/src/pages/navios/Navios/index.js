@@ -20,7 +20,7 @@ const API_BASE =
   process.env.REACT_APP_SERVER ||
   (window.location.hostname === 'localhost'
     ? 'http://localhost:3009'
-    : 'https://opgranel.eurobraslogistica.com.br/api');
+    : 'https://operacao.eurobraslogistica.com.br/api');
 
 // (opcional) definir baseURL global do Axios
 Axios.defaults.baseURL = API_BASE;

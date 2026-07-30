@@ -8,7 +8,7 @@ import modal from "./Modal.module.css"
 const GerarNfe = () => {
 
     function EnviaDados() {
-        axios.post('https://opgranel.eurobraslogistica.com.br/api/gerarnfe', {
+        axios.post('https://operacao.eurobraslogistica.com.br/api/gerarnfe', {
             // firstName: 'Fred',
             // lastName: 'Flintstone'
         })

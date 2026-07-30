@@ -21,7 +21,7 @@ const CadastroMotorista = () => {
 
 
     const postMotorista = () => {
-        Axios.post("https://opgranel.eurobraslogistica.com.br/api/motorista/criar", {
+        Axios.post("https://operacao.eurobraslogistica.com.br/api/motorista/criar", {
             nome: nome,
             cpf: cpf,
             cnh: cnh,

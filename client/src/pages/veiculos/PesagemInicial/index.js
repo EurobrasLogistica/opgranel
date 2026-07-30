@@ -17,13 +17,13 @@ import confirm from "./Confirm.module.css";
  *  BASE DA API (flexível)
  *  Prioridades:
  *  - REACT_APP_SERVER
- *  - hostname === localhost ? http://localhost:3009 : https://opgranel.eurobraslogistica.com.br/api
+ *  - hostname === localhost ? http://localhost:3009 : https://operacao.eurobraslogistica.com.br/api
  *  ========================= */
 const API_BASE =
   process.env.REACT_APP_SERVER ||
   (window.location.hostname === "localhost"
     ? "http://localhost:3009"
-    : "https://opgranel.eurobraslogistica.com.br/api");
+    : "https://operacao.eurobraslogistica.com.br/api");
 
 // Configura Axios globalmente
 Axios.defaults.baseURL = API_BASE;

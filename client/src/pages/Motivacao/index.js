@@ -28,7 +28,7 @@ const Motivacao = () => {
     };
   
     useEffect(() => {
-      Axios.get(`https://opgranel.eurobraslogistica.com.br/api/motivados`)
+      Axios.get(`https://operacao.eurobraslogistica.com.br/api/motivados`)
         .then(response => {
           setMotivados(response.data);
         })
@@ -113,7 +113,7 @@ const Motivacao = () => {
         setMotivados(updatedMotivados);
     
         // Attempt to update the backend
-        Axios.post(`https://opgranel.eurobraslogistica.com.br/api/api/motivado/status/update`, { motivadoId, updatedStatus })
+        Axios.post(`https://operacao.eurobraslogistica.com.br/api/api/motivado/status/update`, { motivadoId, updatedStatus })
           .then(response => {
             showAlert('Status atualizado com sucesso!', 'success');
           })

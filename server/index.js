@@ -55,11 +55,11 @@ const transporter = nodemailer.createTransport({
 
 // ====== Middlewares (CORS robusto) ======
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
+  'http://localhost:3008',
+  'http://127.0.0.1:3008',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'https://opgranel.eurobraslogistica.com.br',
+  'https://operacao.eurobraslogistica.com.br',
 ];
 
 const corsOptions = {
