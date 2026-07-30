@@ -23,9 +23,14 @@ function Navbar() {
     { route: "/AlteracaoCadastral", icon: " fas fa-edit", text: "Alteração Cadastral", activeProp: "AlteracaoCadastral", allowedIds: ["grifo", "jmichelotto", "vhsilva", "nalves","ajunior", "walmeida", "dcruz", "glopes"] },
     { route: "/suporte", icon: "fas fa-sitemap icon", text: "Suporte", activeProp: "suporte", allowedIds: ["jmichelotto","arodrigues","vhsilva", "wesleyf", "gpsilva", "dbarbosa","csilva", "dcustodio", "ajunior","wgoncalves","glopes","mssilva","apsilva","jvalter","wteixeira","wnascimento","grifo","enascimento","toliveira","mmsantos","tazevedo","nalves","rpsouza","gmsantos","amsouza","hollanda","dcruz","walmeida"] },
     { route: "/relatorios", icon: "far fa-file-alt", text: "Relatórios", activeProp: "relatorios", allowedIds: ["jmichelotto", "arodrigues", "gpsilva", "vhsilva","csilva", "wesleyf", "ajunior", "dcustodio","wgoncalves","glopes", "mssilva","dbarbosa","apsilva","jvalter","wteixeira","wnascimento","grifo","enascimento","toliveira","mmsantos","tazevedo","nalves","rpsouza","gmsantos","amsouza","hollanda","dcruz","walmeida"] },
+    { route: "/configuracoes", icon: "fas fa-cog", text: "Configuracoes", activeProp: "configuracoes", allowedIds: ["grifo", "lucas", "glopes", "jmichelotto"] },
  ];
 
-  const filteredMenuItems = menuItems.filter(item => user && item.allowedIds.includes(user.id));
+  const filteredMenuItems = menuItems.filter(item => {
+      if (!user) return false;
+      if (user.admin) return true;
+      return item.allowedIds.includes(user.id);
+  });
   
   const handleNavigation = (route) => {
       setIsActive(false);

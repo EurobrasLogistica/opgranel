@@ -4022,27 +4022,449 @@ ORDER BY COD_OPERACAO, MOTIVO;
   });
 });
 
-app.post('/login/user', (req, res) => {
-  const usuario = req.body.usuario;
-  const senha = req.body.senha;
+async function loginUser(req, res) {
+  const usuario = String(req.body.usuario || '').trim();
+  const senha = String(req.body.senha || '');
 
-  console.log('Recebendo requisição para usuário:', usuario);
-  console.log('Senha recebida:', senha);
+  if (!usuario || !senha) {
+    return res.status(400).json({ message: 'Usuário e senha são obrigatórios.' });
+  }
 
-  db.query(` SELECT * FROM USUARIO WHERE USUARIO = ? AND SENHA = ?`, [usuario, senha], (err, result) => {
-    if (err) {
-      console.error('Erro ao verificar o usuário: ' + err);
-      res.status(500).json({ message: 'Erro interno ao verificar o usuário. Tente novamente.' });
-    } else {
-      if (result.length > 0) {
-        console.log('Usuário conectou');
-        req.session.user = usuario;
-        res.status(200).json({ message: 'Login bem-sucedido' });
-      } else {
-        res.status(400).json({ message: 'Login falhou. Verifique suas credenciais.' });
-      }
+  try {
+    const [result] = await db.query(
+      `SELECT
+         USUARIO,
+         NOME,
+         CPF,
+         EMAIL,
+         IND_ADMIN,
+         DEPARTAMENTO,
+         ATIVO,
+         DAT_CADASTRO
+       FROM USUARIO
+       WHERE USUARIO = ? AND SENHA = ?
+       LIMIT 1`,
+      [usuario, senha]
+    );
+
+    if (result.length === 0) {
+      return res.status(401).json({ message: 'Usuário ou senha incorretos.' });
     }
-  });
+
+    const user = result[0];
+
+    if (user.ATIVO !== 'S') {
+      return res.status(403).json({ message: 'Usuário está inativo.' });
+    }
+
+    req.session.user = user.USUARIO;
+
+    return res.status(200).json({
+      message: 'Login bem-sucedido.',
+      user: {
+        id: user.USUARIO,
+        nome: user.NOME,
+        cpf: user.CPF,
+        email: user.EMAIL,
+        admin: user.IND_ADMIN === 'S',
+        nivel: user.IND_ADMIN === 'S' ? 'admin' : 'usuario',
+        departamento: user.DEPARTAMENTO,
+        ativo: user.ATIVO
+      }
+    });
+  } catch (err) {
+    console.error('Erro ao verificar o usuário:', err);
+    return res.status(500).json({ message: 'Erro interno ao verificar o usuário. Tente novamente.' });
+  }
+}
+
+app.post('/login/user', loginUser);
+app.post(`${API_PREFIX}/login/user`, loginUser);
+
+let ensureWhatsappConfigTablesPromise = null;
+
+async function ensureWhatsappConfigTables() {
+  if (!ensureWhatsappConfigTablesPromise) {
+    ensureWhatsappConfigTablesPromise = (async () => {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS whatsapp_channels (
+          id int NOT NULL AUTO_INCREMENT,
+          nome varchar(255) NOT NULL,
+          url varchar(1024) NOT NULL,
+          token text NOT NULL,
+          webhook_provider varchar(20) NOT NULL DEFAULT 'zpro',
+          prioridade int NOT NULL DEFAULT '1',
+          ativo tinyint NOT NULL DEFAULT '1',
+          created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+      `);
+
+      const [providerColumns] = await db.query(
+        `SHOW COLUMNS FROM whatsapp_channels LIKE 'webhook_provider'`
+      );
+
+      if (!providerColumns.length) {
+        await db.query(`
+          ALTER TABLE whatsapp_channels
+          ADD COLUMN webhook_provider varchar(20) NOT NULL DEFAULT 'zpro' AFTER token
+        `);
+      }
+
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS whatsapp_watchdog_state (
+          id int NOT NULL AUTO_INCREMENT,
+          channel_id int DEFAULT NULL,
+          channel_name varchar(255) NOT NULL,
+          scope_origin varchar(255) NOT NULL,
+          scope_api_id varchar(128) NOT NULL,
+          session_id int DEFAULT NULL,
+          session_name varchar(255) DEFAULT NULL,
+          phone_number varchar(40) DEFAULT NULL,
+          status varchar(64) NOT NULL,
+          last_seen_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          last_change_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          last_error text,
+          updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uk_watchdog_state_identity (channel_name, scope_origin, scope_api_id),
+          UNIQUE KEY uk_watchdog_state_channel (channel_id),
+          KEY idx_watchdog_state_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+      `);
+
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS whatsapp_watchdog_log (
+          id bigint NOT NULL AUTO_INCREMENT,
+          channel_id int DEFAULT NULL,
+          channel_name varchar(255) NOT NULL,
+          scope_origin varchar(255) NOT NULL,
+          scope_api_id varchar(128) NOT NULL,
+          session_id int DEFAULT NULL,
+          session_name varchar(255) DEFAULT NULL,
+          phone_number varchar(40) DEFAULT NULL,
+          status varchar(64) DEFAULT NULL,
+          event_type varchar(40) NOT NULL,
+          message varchar(1024) NOT NULL,
+          details_json json DEFAULT NULL,
+          created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_watchdog_log_channel (channel_id),
+          KEY idx_watchdog_log_created (created_at),
+          KEY idx_watchdog_log_event_type (event_type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+      `);
+    })().catch((error) => {
+      ensureWhatsappConfigTablesPromise = null;
+      throw error;
+    });
+  }
+
+  await ensureWhatsappConfigTablesPromise;
+}
+
+const normalizeText = (value) => String(value ?? '').trim();
+
+const normalizeWhatsappChannelUrl = (value) => {
+  const raw = normalizeText(value);
+  if (!raw) return '';
+
+  try {
+    const parsed = new URL(raw);
+    parsed.pathname = parsed.pathname.replace(/\/{2,}/g, '/');
+    return parsed.toString();
+  } catch {
+    return raw;
+  }
+};
+
+const maskToken = (token) => {
+  const value = normalizeText(token);
+  if (!value) return '';
+  if (value.length <= 6) return '******';
+  return `${'*'.repeat(Math.max(value.length - 6, 6))}${value.slice(-6)}`;
+};
+
+const mapWhatsappChannel = (row, includeToken = false) => ({
+  id: row.id,
+  nome: row.nome,
+  url: row.url,
+  token: includeToken ? row.token : undefined,
+  token_masked: maskToken(row.token),
+  webhook_provider: row.webhook_provider || 'zpro',
+  prioridade: row.prioridade,
+  ativo: Number(row.ativo) === 1,
+  created_at: row.created_at,
+  updated_at: row.updated_at
+});
+
+const resolveWhatsappTextEndpoint = (rawUrl) => {
+  const trimmed = normalizeWhatsappChannelUrl(rawUrl);
+  if (!trimmed) return trimmed;
+
+  try {
+    const parsed = new URL(trimmed);
+    parsed.pathname = parsed.pathname.replace(/\/group\/?$/i, '').replace(/\/+$/, '') || '/';
+    return parsed.toString();
+  } catch {
+    return trimmed.replace(/\/group\/?$/i, '');
+  }
+};
+
+app.get(`${API_PREFIX}/whatsapp/channels`, async (_req, res) => {
+  try {
+    await ensureWhatsappConfigTables();
+
+    const [rows] = await db.query(`
+      SELECT id, nome, url, token, webhook_provider, prioridade, ativo, created_at, updated_at
+      FROM whatsapp_channels
+      ORDER BY prioridade ASC, id ASC
+    `);
+
+    return res.status(200).json(rows.map((row) => mapWhatsappChannel(row)));
+  } catch (err) {
+    console.error('Erro ao listar canais de WhatsApp:', err);
+    return res.status(500).json({ message: 'Erro ao listar canais de WhatsApp.' });
+  }
+});
+
+app.post(`${API_PREFIX}/whatsapp/channels`, async (req, res) => {
+  const nome = normalizeText(req.body.nome);
+  const url = normalizeWhatsappChannelUrl(req.body.url);
+  const token = normalizeText(req.body.token);
+  const webhookProvider = normalizeText(req.body.webhook_provider) || 'zpro';
+  const prioridade = Math.max(parseInt(req.body.prioridade, 10) || 1, 1);
+  const ativo = req.body.ativo === false || req.body.ativo === 0 ? 0 : 1;
+
+  if (!nome || !url || !token) {
+    return res.status(400).json({ message: 'Numero/nome, URL e token sao obrigatorios.' });
+  }
+
+  try {
+    await ensureWhatsappConfigTables();
+
+    const [result] = await db.query(
+      `INSERT INTO whatsapp_channels (nome, url, token, webhook_provider, prioridade, ativo)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [nome, url, token, webhookProvider, prioridade, ativo]
+    );
+
+    const [rows] = await db.query(
+      `SELECT id, nome, url, token, webhook_provider, prioridade, ativo, created_at, updated_at
+       FROM whatsapp_channels
+       WHERE id = ?`,
+      [result.insertId]
+    );
+
+    return res.status(201).json(mapWhatsappChannel(rows[0]));
+  } catch (err) {
+    console.error('Erro ao criar canal de WhatsApp:', err);
+    return res.status(500).json({ message: 'Erro ao criar canal de WhatsApp.' });
+  }
+});
+
+app.put(`${API_PREFIX}/whatsapp/channels/:id`, async (req, res) => {
+  const id = Number(req.params.id);
+  const nome = normalizeText(req.body.nome);
+  const url = normalizeWhatsappChannelUrl(req.body.url);
+  const token = normalizeText(req.body.token);
+  const webhookProvider = normalizeText(req.body.webhook_provider) || 'zpro';
+  const prioridade = Math.max(parseInt(req.body.prioridade, 10) || 1, 1);
+  const ativo = req.body.ativo === false || req.body.ativo === 0 ? 0 : 1;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: 'Canal invalido.' });
+  }
+
+  if (!nome || !url) {
+    return res.status(400).json({ message: 'Numero/nome e URL sao obrigatorios.' });
+  }
+
+  try {
+    await ensureWhatsappConfigTables();
+
+    const params = token
+      ? [nome, url, token, webhookProvider, prioridade, ativo, id]
+      : [nome, url, webhookProvider, prioridade, ativo, id];
+    const sql = token
+      ? `UPDATE whatsapp_channels
+            SET nome = ?, url = ?, token = ?, webhook_provider = ?, prioridade = ?, ativo = ?
+          WHERE id = ?`
+      : `UPDATE whatsapp_channels
+            SET nome = ?, url = ?, webhook_provider = ?, prioridade = ?, ativo = ?
+          WHERE id = ?`;
+
+    const [result] = await db.query(sql, params);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ message: 'Canal nao encontrado.' });
+    }
+
+    const [rows] = await db.query(
+      `SELECT id, nome, url, token, webhook_provider, prioridade, ativo, created_at, updated_at
+       FROM whatsapp_channels
+       WHERE id = ?`,
+      [id]
+    );
+
+    return res.status(200).json(mapWhatsappChannel(rows[0]));
+  } catch (err) {
+    console.error('Erro ao atualizar canal de WhatsApp:', err);
+    return res.status(500).json({ message: 'Erro ao atualizar canal de WhatsApp.' });
+  }
+});
+
+app.patch(`${API_PREFIX}/whatsapp/channels/:id/ativo`, async (req, res) => {
+  const id = Number(req.params.id);
+  const ativo = req.body.ativo === true || req.body.ativo === 1 ? 1 : 0;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: 'Canal invalido.' });
+  }
+
+  try {
+    await ensureWhatsappConfigTables();
+    const [result] = await db.query(
+      `UPDATE whatsapp_channels SET ativo = ? WHERE id = ?`,
+      [ativo, id]
+    );
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ message: 'Canal nao encontrado.' });
+    }
+
+    return res.status(200).json({ id, ativo: ativo === 1 });
+  } catch (err) {
+    console.error('Erro ao alterar status do canal de WhatsApp:', err);
+    return res.status(500).json({ message: 'Erro ao alterar status do canal.' });
+  }
+});
+
+app.delete(`${API_PREFIX}/whatsapp/channels/:id`, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: 'Canal invalido.' });
+  }
+
+  try {
+    await ensureWhatsappConfigTables();
+    const [result] = await db.query(`DELETE FROM whatsapp_channels WHERE id = ?`, [id]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ message: 'Canal nao encontrado.' });
+    }
+
+    return res.status(204).send();
+  } catch (err) {
+    console.error('Erro ao excluir canal de WhatsApp:', err);
+    return res.status(500).json({ message: 'Erro ao excluir canal de WhatsApp.' });
+  }
+});
+
+app.post(`${API_PREFIX}/whatsapp/channels/:id/test`, async (req, res) => {
+  const id = Number(req.params.id);
+  const number = normalizeText(req.body.number).replace(/\D/g, '');
+  const mensagem = normalizeText(req.body.mensagem) || 'Mensagem de teste do canal WhatsApp.';
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: 'Canal invalido.' });
+  }
+
+  if (!number) {
+    return res.status(400).json({ message: 'Informe um numero valido para teste.' });
+  }
+
+  try {
+    await ensureWhatsappConfigTables();
+
+    const [rows] = await db.query(
+      `SELECT id, nome, url, token, webhook_provider, prioridade, ativo, created_at, updated_at
+       FROM whatsapp_channels
+       WHERE id = ?
+       LIMIT 1`,
+      [id]
+    );
+
+    const channel = rows[0];
+    if (!channel) {
+      return res.status(404).json({ message: 'Canal nao encontrado.' });
+    }
+
+    const response = await axios.post(
+      resolveWhatsappTextEndpoint(channel.url),
+      {
+        body: mensagem,
+        number,
+        externalKey: 'OperacaoGranel'
+      },
+      {
+        headers: {
+          Authorization: channel.token,
+          'Content-Type': 'application/json'
+        },
+        timeout: 20000,
+        maxBodyLength: Infinity
+      }
+    );
+
+    return res.status(200).json({
+      message: 'Mensagem de teste enviada com sucesso.',
+      http_status: response.status,
+      channel: mapWhatsappChannel(channel)
+    });
+  } catch (err) {
+    const externalMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+    console.error('Erro ao testar canal de WhatsApp:', externalMessage || err);
+    return res.status(500).json({
+      message: externalMessage
+        ? `Erro ao enviar mensagem de teste: ${externalMessage}`
+        : 'Erro ao enviar mensagem de teste.'
+    });
+  }
+});
+
+app.get(`${API_PREFIX}/whatsapp/watchdog/state`, async (_req, res) => {
+  try {
+    await ensureWhatsappConfigTables();
+    const [rows] = await db.query(`
+      SELECT
+        id, channel_id, channel_name, scope_origin, scope_api_id, session_id,
+        session_name, phone_number, status, last_seen_at, last_change_at,
+        last_error, updated_at
+      FROM whatsapp_watchdog_state
+      ORDER BY updated_at DESC, id DESC
+    `);
+
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('Erro ao listar estado do watchdog WhatsApp:', err);
+    return res.status(500).json({ message: 'Erro ao listar monitoramento do WhatsApp.' });
+  }
+});
+
+app.get(`${API_PREFIX}/whatsapp/watchdog/log`, async (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 500);
+
+  try {
+    await ensureWhatsappConfigTables();
+    const [rows] = await db.query(
+      `SELECT
+         id, channel_id, channel_name, scope_origin, scope_api_id, session_id,
+         session_name, phone_number, status, event_type, message, details_json,
+         created_at
+       FROM whatsapp_watchdog_log
+       ORDER BY created_at DESC, id DESC
+       LIMIT ?`,
+      [limit]
+    );
+
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('Erro ao listar logs do watchdog WhatsApp:', err);
+    return res.status(500).json({ message: 'Erro ao listar logs do WhatsApp.' });
+  }
 });
 
 // Puxa a última placa usada pelo motorista (histórico mais recente)

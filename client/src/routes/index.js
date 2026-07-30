@@ -28,6 +28,7 @@ import Motivacao from "../pages/Motivacao"
 import CadastroInfo from "../pages/CadastroInfo";
 import AlteracaoCadastral from "../pages/AlteracaoCadastral"
 import PercentualPorao from "../pages/operacao/PercentualPorao"
+import Configuracoes from "../pages/Configuracoes";
 
 //recebe item, no caso Home
 const Private = ({ Item }) => {
@@ -66,7 +67,8 @@ const RoutesApp = () => {
                     <Route exact path="/operacao/pesagemfinal/:id" element={<Private Item={PesagemFinal} />} />
                     <Route exact path="/veiculos/buscarmotorista" element={<Private Item={BuscarMotorista} />} /> 
                     <Route exact path="/AlteracaoCadastral" element={<Private Item={AlteracaoCadastral} />} />
-                    <Route exact path="/CadastroInfo" element={<Private Item={CadastroInfo} />} />                   
+                    <Route exact path="/CadastroInfo" element={<Private Item={CadastroInfo} />} />
+                    <Route exact path="/configuracoes" element={<Private Item={Configuracoes} />} />
                     <Route path="/" element={<Private Item={Dashboard} />} />
                     <Route path="*" element={<Private Item={Dashboard} />} />
                 </Routes>
