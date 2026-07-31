@@ -224,6 +224,12 @@ const Operacao = () => {
   const getVeiculoAtual = () =>
     veiculos.find(item => item.ID_CARREGAMENTO === i.ID_CARREGAMENTO) || i;
 
+  const removerVeiculoAtualDaLista = () => {
+    const idCarregamento = i?.ID_CARREGAMENTO;
+    if (!idCarregamento) return;
+    setVeiculos((prev) => prev.filter((item) => item.ID_CARREGAMENTO !== idCarregamento));
+  };
+
   const getQtDescarregado = () => {
     api.get(`/dashboard/descarregado/${id}`).then((res) => setDescarregado(res.data[0].DESCARREGADO));
   };
@@ -532,14 +538,13 @@ const validaDados2 = () => {
     }).then(async (res) => {
       if (res.data.sqlMessage) return showAlert(res.data.sqlMessage, 'error');
       showAlert('Veiculo pesado com sucesso!', 'success');
-      // Envio automático do ticket por e-mail se a flag de emissão vier "S"
-      if (shouldEmitNF(getVeiculoAtual())) {
-        try {
-          await EnviarTicketPesagemEmail();
-          showAlert('Ticket enviado por e-mail!', 'success');
-        } catch (err) {
-          showAlert(err?.response?.data?.message || 'Erro ao enviar ticket por e-mail.', 'error');
-        }
+      removerVeiculoAtualDaLista();
+      refreshData();
+      try {
+        await EnviarTicketPesagemEmail();
+        showAlert('Ticket enviado por e-mail!', 'success');
+      } catch (err) {
+        showAlert(err?.response?.data?.message || 'Erro ao enviar ticket por e-mail.', 'error');
       }
       FecharPesagem();
     }).catch((error) => console.log(error));
@@ -558,7 +563,8 @@ const SegundaPesagemComNF = () => {
       return showAlert(res.data.sqlMessage, 'error');
     }
     showAlert('Veículo pesado com sucesso!', 'success');
-    // Sempre enviar o ticket por e-mail nesta rota
+    removerVeiculoAtualDaLista();
+    refreshData();
     try {
       await EnviarTicketPesagemEmail();
       showAlert('Ticket enviado por e-mail!', 'success');

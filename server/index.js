@@ -5051,15 +5051,12 @@ async function buildWhatsappSaldoNavioMessage(operacao) {
   const stats = await getOperacaoResumoStats(operacao.COD_OPERACAO);
 
   return [
-    `*SALDO NAVIO*`,
-    `Navio: *${operacao.NOME_NAVIO || '-'}*`,
-    `Ticket: ${operacao.TICKET_NAVIO || '-'}`,
+    `🚢 *${operacao.NOME_NAVIO || '-'}*`,
     ``,
-    `Carregados: ${stats.carregados} autos`,
-    `Manifestado: ${formatWhatsappTons(stats.manifestado)} t`,
-    `Descarregado: ${formatWhatsappTons(stats.descarregado)} t`,
-    `Peso moega: ${formatWhatsappTons(stats.pesoMoega)} t`,
-    `Saldo: ${formatWhatsappTons(stats.saldo)} t`
+    `Autos: ${stats.carregados} autos`,
+    `Manif: ${formatWhatsappTons(stats.manifestado)} Tons`,
+    `Descarregado: ${formatWhatsappTons(stats.descarregado)} Tons`,
+    `Saldo: ${formatWhatsappTons(stats.saldo)} Tons`
   ].join('\n');
 }
 
