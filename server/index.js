@@ -5081,6 +5081,7 @@ const whatsappTicketCommands = [
   'HORA HORA PRODUTO',
   'HORA A HORA',
   'HORA HORA',
+  'PRODUCAO POR PERIODO',
   'STATUS',
   'AJUDA'
 ];
@@ -5581,6 +5582,60 @@ async function buildWhatsappAutosAbertosMessage(operacao) {
   return body.trim();
 }
 
+async function buildWhatsappProducaoPorPeriodoMessage(operacao) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      PO.SEQ_PERIODO_OP,
+      CONCAT(DATE_FORMAT(PO.DAT_INI_PERIODO, '%d/%m/%Y'), ' ', PE.DEN_PERIODO) AS PERIODO_LABEL,
+      PO.DAT_INI_PERIODO,
+      PO.DAT_FIM_PERIODO,
+      COUNT(CAR.ID_CARREGAMENTO) AS QTDE_AUTOS,
+      COALESCE(SUM(CAR.PESO_BRUTO - CAR.PESO_TARA), 0) AS PESO_TOTAL
+    FROM PERIODO_OPERACAO PO
+      INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
+      LEFT JOIN CARREGAMENTO CAR
+        ON CAR.COD_OPERACAO = PO.COD_OPERACAO
+       AND CAR.STATUS_CARREG = 3
+       AND CAR.PESO_BRUTO > 0
+       AND CAR.DATA_CARREGAMENTO >= PO.DAT_INI_PERIODO
+       AND CAR.DATA_CARREGAMENTO < COALESCE(PO.DAT_FIM_PERIODO, NOW())
+    WHERE PO.COD_OPERACAO = ?
+    GROUP BY
+      PO.SEQ_PERIODO_OP,
+      PE.DEN_PERIODO,
+      PO.DAT_INI_PERIODO,
+      PO.DAT_FIM_PERIODO
+    ORDER BY PO.DAT_INI_PERIODO
+    `,
+    [operacao.COD_OPERACAO]
+  );
+
+  if (!rows.length) {
+    return `🚢 *${operacao.NOME_NAVIO || '-'}*\n\nNao encontrei periodos para montar a PRODUCAO POR PERIODO.`;
+  }
+
+  let totalAutos = 0;
+  let totalPeso = 0;
+  const body = [
+    `🚢 *${operacao.NOME_NAVIO || '-'}*`,
+    `*PRODUCAO POR PERIODO*`,
+    ``
+  ];
+
+  rows.forEach((row) => {
+    const autos = Number(row.QTDE_AUTOS || 0);
+    const peso = Number(row.PESO_TOTAL || 0);
+    totalAutos += autos;
+    totalPeso += peso;
+
+    body.push(`*${row.PERIODO_LABEL || '-'}* - ${autos} Autos - ${formatWhatsappTons(peso)} Tons`);
+  });
+
+  body.push(``, `Total: ${totalAutos} autos`, `Descarregado: ${formatWhatsappTons(totalPeso)} Tons`);
+  return body.join('\n');
+}
+
 async function buildWhatsappHoraHoraMessage(operacao) {
   const [rows] = await db.query(
     `
@@ -5814,6 +5869,7 @@ const buildWhatsappHelpMessage = () => [
   `• *SALDO PORAO* – Consulta saldo por porão`,
   `• *HORA HORA* – Acompanhamento hora a hora`,
   `• *HORA HORA PRODUTO* – Hora a hora separado por produto`,
+  `• *PRODUÇÃO POR PERIODO* – Produção consolidada por período`,
   `• *AUTOS EM ABERTO* – Lista de autos aguardando`
 ].join('\n');
 
@@ -5821,6 +5877,7 @@ async function buildWhatsappTicketCommandMessage(command, operacao) {
   if (command === 'AJUDA') return buildWhatsappHelpMessage();
   if (command === 'SALDO NAVIO') return buildWhatsappSaldoNavioMessage(operacao);
   if (command === 'SALDO PORAO') return buildWhatsappSaldoPoraoMessage(operacao);
+  if (command === 'PRODUCAO POR PERIODO') return buildWhatsappProducaoPorPeriodoMessage(operacao);
   if (command === 'HORA HORA PRODUTO' || command === 'HORA A HORA PRODUTO') return buildWhatsappHoraHoraProdutoMessage(operacao);
   if (command === 'HORA HORA' || command === 'HORA A HORA') return buildWhatsappHoraHoraMessage(operacao);
   if (command === 'SALDO DI') return buildWhatsappSaldoDiMessage(operacao);
