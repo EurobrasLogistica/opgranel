@@ -3046,7 +3046,7 @@ async function sendTicketPesagemEmail(idCarregamento) {
     SELECT
       CAR.ID_CARREGAMENTO,
       CAR.TICKET,
-      CAR.NR_PEDIDO,
+      PD.NR_PEDIDO,
       CAR.PEDIDO_MIC,
       CAR.PLACA_CAVALO,
       CAR.PLACA_CARRETA,
@@ -3075,6 +3075,9 @@ async function sendTicketPesagemEmail(idCarregamento) {
       LEFT JOIN NAVIO NAV ON NAV.COD_NAVIO = OPE.COD_NAVIO
       LEFT JOIN CARGA CARG ON CARG.COD_OPERACAO = CAR.COD_OPERACAO
                           AND CARG.COD_CARGA = CAR.COD_CARGA
+      LEFT JOIN PEDIDO PD ON PD.COD_OPERACAO = CAR.COD_OPERACAO
+                          AND PD.COD_CARGA = CAR.COD_CARGA
+                          AND PD.COD_TRANSP = CAR.COD_TRANSP
       LEFT JOIN PRODUTO PROD ON PROD.COD_PRODUTO = CARG.COD_PRODUTO
       LEFT JOIN DESTINO DEST ON DEST.COD_DESTINO = CAR.COD_DESTINO
     WHERE CAR.ID_CARREGAMENTO = ?
@@ -3153,7 +3156,7 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
       SELECT
         CAR.ID_CARREGAMENTO,
         CAR.TICKET,
-        CAR.NR_PEDIDO,
+        PD.NR_PEDIDO,
         CAR.PEDIDO_MIC,
         CAR.PLACA_CAVALO,
         CAR.PLACA_CARRETA,
@@ -3182,6 +3185,9 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
         LEFT JOIN NAVIO NAV ON NAV.COD_NAVIO = OPE.COD_NAVIO
         LEFT JOIN CARGA CARG ON CARG.COD_OPERACAO = CAR.COD_OPERACAO
                             AND CARG.COD_CARGA = CAR.COD_CARGA
+        LEFT JOIN PEDIDO PD ON PD.COD_OPERACAO = CAR.COD_OPERACAO
+                            AND PD.COD_CARGA = CAR.COD_CARGA
+                            AND PD.COD_TRANSP = CAR.COD_TRANSP
         LEFT JOIN PRODUTO PROD ON PROD.COD_PRODUTO = CARG.COD_PRODUTO
         LEFT JOIN DESTINO DEST ON DEST.COD_DESTINO = CAR.COD_DESTINO
       WHERE CAR.ID_CARREGAMENTO = ?
@@ -3673,7 +3679,7 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
     const sql = `
       SELECT
         CAR.ID_CARREGAMENTO,
-        CAR.NR_PEDIDO,
+        PD.NR_PEDIDO,
         MO.NOME_MOTORISTA,
         CAR.PLACA_CAVALO,
         CAR.PESO_TARA,
@@ -3683,7 +3689,8 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
         CAR.PESO_BRUTO,
         CAR.DATA_BRUTO,
         CONCAT(CG.TIPO_DOC, ' ', CG.NUMERO_DOC) AS DOCUMENTO,
-        TP.*,
+        TP.NOME_TRANSP,
+        TP.NOME_TRANSP AS NOME_REDUZIDO,
         FC_PERIODO_CARREGAMENTO(CAR.DATA_BRUTO) AS PERIODO_BRUTO,
         (CAR.PESO_BRUTO - CAR.PESO_TARA) AS PESO_LIQUIDO,
         (CAR.PESO_BRUTO - CAR.PESO_TARA - CAR.PESO_CARREGADO) AS DIFERENCA,
@@ -3696,6 +3703,9 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
       JOIN CARGA        CG ON CG.COD_OPERACAO = CAR.COD_OPERACAO
                            AND CG.COD_CARGA   = CAR.COD_CARGA
       LEFT JOIN TRANSPORTADORA TP ON TP.COD_TRANSP = CAR.COD_TRANSP
+      LEFT JOIN PEDIDO PD ON PD.COD_OPERACAO = CAR.COD_OPERACAO
+                          AND PD.COD_CARGA = CAR.COD_CARGA
+                          AND PD.COD_TRANSP = CAR.COD_TRANSP
       WHERE CAR.STATUS_CARREG = 3
         AND CAR.PESO_BRUTO > 0
         AND CAR.COD_OPERACAO = ?
