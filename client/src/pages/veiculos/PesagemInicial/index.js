@@ -190,9 +190,19 @@ const PesagemInicial = () => {
 
   // ----- validações / cadastro -----
   const selectedDoc = docs?.find((d) => String(d.COD_CARGA) === String(doc));
+  const selectedPedido = pedidos?.find((p) => String(p.NR_PEDIDO) === String(pedidoMic));
+  const formatTonsFromKg = (kg) =>
+    (Number(kg || 0) / 1000).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 3,
+    });
   const saldoTons =
     selectedDoc && typeof selectedDoc.SALDO === "number"
       ? (selectedDoc.SALDO / 1000).toFixed(2)
+      : null;
+  const saldoPedidoTons =
+    selectedPedido && selectedPedido.SALDO !== undefined
+      ? formatTonsFromKg(selectedPedido.SALDO)
       : null;
 
   const validaDados = () => {
@@ -276,7 +286,10 @@ const PesagemInicial = () => {
     setTimeout(() => setHideButton(false), 4000);
 
     // Se saldo <= 150 t, abrir confirmação
-    if (selectedDoc && Number(selectedDoc.SALDO) <= 150000) {
+    if (
+      (selectedPedido && Number(selectedPedido.SALDO) <= 150000) ||
+      (!selectedPedido && selectedDoc && Number(selectedDoc.SALDO) <= 150000)
+    ) {
       setOpenConfirm(true);
       return;
     }
@@ -477,6 +490,7 @@ const PesagemInicial = () => {
                     {pedidos?.map((val) => (
                       <option key={val.NR_PEDIDO} value={val.NR_PEDIDO}>
                         {val.NR_PEDIDO}
+                        {val.SALDO !== undefined ? ` - Saldo: ${formatTonsFromKg(val.SALDO)} t` : ""}
                       </option>
                     ))}
                   </select>
@@ -511,7 +525,13 @@ const PesagemInicial = () => {
             <div onClick={() => setOpenConfirm(false)}>Voltar</div>
           </div>
           <div className={confirm.center}>
-            {selectedDoc ? (
+            {selectedPedido ? (
+              <>
+                Pedido {selectedPedido.NR_PEDIDO} esta com apenas {saldoPedidoTons} tons de saldo.
+                <br />
+                <div>Deseja continuar mesmo assim?</div>
+              </>
+            ) : selectedDoc ? (
               <>
                 ⚠ Documento {selectedDoc.NUMERO} está com apenas {saldoTons} tons de saldo.
                 <br />

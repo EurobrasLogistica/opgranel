@@ -28,6 +28,7 @@ const CadastroInfo = () => {
   const [doc, setDoc] = useState("");
   const [transportadoras, setTransportadoras] = useState([]);
   const [transportadora, setTransportadora] = useState("");
+  const [pedidoManifestado, setPedidoManifestado] = useState("");
 
   // Consulta (tabelas)
   const [consultaData, setConsultaData] = useState([]);
@@ -62,6 +63,7 @@ const CadastroInfo = () => {
     setNavio("");
     setDoc("");
     setTransportadora("");
+    setPedidoManifestado("");
     setConsultaData([]);
   };
 
@@ -99,6 +101,9 @@ const CadastroInfo = () => {
   };
 
   // ------- Validação
+  const parseManifestadoTons = (value) =>
+    Number(String(value || "").replace(/\./g, "").replace(",", "."));
+
   const validateFields = () => {
     switch (activeButton) {
       case "Transportadora":
@@ -143,11 +148,20 @@ const CadastroInfo = () => {
         return true;
 
       case "Pedido":
-        if (!navio || !inputValue || !transportadora || !doc) {
+        if (!navio || !inputValue || !transportadora || !doc || !pedidoManifestado) {
           enqueueSnackbar(
             "Selecione navio, DI/BL, transportadora e informe o nº do pedido.",
             { variant: "error" }
           );
+          return false;
+        }
+        if (
+          !Number.isFinite(parseManifestadoTons(pedidoManifestado)) ||
+          parseManifestadoTons(pedidoManifestado) <= 0
+        ) {
+          enqueueSnackbar("Informe um manifestado valido para o pedido.", {
+            variant: "error",
+          });
           return false;
         }
         return true;
@@ -214,11 +228,13 @@ const CadastroInfo = () => {
           break;
 
         case "Pedido":
+          const manifestadoTons = parseManifestadoTons(pedidoManifestado);
           await api.post("/pedido/criar", {
             operacao: navio, // COD_OPERACAO
             pedido: inputValue, // nº pedido
             transportadora,
             documento: doc, // COD_CARGA
+            manifestado: manifestadoTons * 1000,
             usuario,
           });
           enqueueSnackbar("Pedido adicionado!", { variant: "success" });
@@ -236,6 +252,7 @@ const CadastroInfo = () => {
 
       // reset de campos de entrada principais
       setInputValue("");
+      setPedidoManifestado("");
     } catch (error) {
       console.error(error);
       const msg =
@@ -332,7 +349,12 @@ const CadastroInfo = () => {
           </div>
 
           <div className={style.buttonGroup}>
-            {/* <button className={style.button} onClick={() => handleButtonClick('Pedido')}>Pedido</button> */}
+            <button
+              className={style.button}
+              onClick={() => handleButtonClick("Pedido")}
+            >
+              Pedido
+            </button>
             <button
               className={style.button}
               onClick={() => handleButtonClick("Transportadora")}
@@ -501,6 +523,14 @@ const CadastroInfo = () => {
                   disabled={!navio}
                 />
 
+                <input
+                  type="text"
+                  value={pedidoManifestado}
+                  onChange={(e) => setPedidoManifestado(e.target.value)}
+                  placeholder="Manifestado (tons)"
+                  disabled={!navio}
+                />
+
                 <label>Transportadora:</label>
                 <select
                   value={transportadora}
@@ -525,7 +555,7 @@ const CadastroInfo = () => {
                 <button
                   className={style.button}
                   onClick={handleAddItem}
-                  disabled={!navio || !doc || !inputValue || !transportadora}
+                  disabled={!navio || !doc || !inputValue || !transportadora || !pedidoManifestado}
                 >
                   Adicionar Pedido
                 </button>

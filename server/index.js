@@ -787,34 +787,116 @@ app.post(`${API_PREFIX}/produto/criar`, (req, res) => {
 
 
 //CRIAR UM PEDIDO
-app.post(`${API_PREFIX}/pedido/criar`, (req, res) => {
-  const operacao = req.body.operacao;
-  const pedido = req.body.pedido;
-  const documento = req.body.pedido;
-  const transportadora = req.body.pedido;
-  db.query('INSERT INTO PEDIDO ( COD_OPERACAO, NR_PEDIDO, COD_CARGA, COD_TRANSP) VALUES (?,?, ?,?)',
-    [operacao, pedido, documento, transportadora], (err, result) => {
-      if (err) {
-        res.send(err)
-        console.log(err)
-      } else {
-        res.send("sucesso")
-        console.log('Pedido adicionado!');
-      }
+app.post(`${API_PREFIX}/pedido/criar`, async (req, res) => {
+  try {
+    const {
+      operacao,
+      pedido,
+      documento,
+      transportadora,
+      manifestado = 0,
+    } = req.body || {};
+
+    const codOperacao = Number(operacao);
+    const codCarga = Number(documento);
+    const codTransp = Number(transportadora);
+    const manifestadoKg = Number(manifestado);
+    const nrPedido = String(pedido || '').trim();
+
+    if (!Number.isFinite(codOperacao) || codOperacao <= 0) {
+      return res.status(400).json({ ok: false, message: 'Operação inválida.' });
     }
-  )
+    if (!nrPedido) {
+      return res.status(400).json({ ok: false, message: 'Número do pedido é obrigatório.' });
+    }
+    if (!Number.isFinite(codCarga) || codCarga <= 0) {
+      return res.status(400).json({ ok: false, message: 'Documento (DI/BL) inválido.' });
+    }
+    if (!Number.isFinite(codTransp) || codTransp <= 0) {
+      return res.status(400).json({ ok: false, message: 'Transportadora inválida.' });
+    }
+    if (!Number.isFinite(manifestadoKg) || manifestadoKg < 0) {
+      return res.status(400).json({ ok: false, message: 'Manifestado do pedido inválido.' });
+    }
+
+    const [result] = await db.query(
+      `
+      INSERT INTO PEDIDO (
+        COD_OPERACAO,
+        NR_PEDIDO,
+        COD_CARGA,
+        COD_TRANSP,
+        MANIFESTADO
+      ) VALUES (?, ?, ?, ?, ?)
+      `,
+      [codOperacao, nrPedido, codCarga, codTransp, manifestadoKg]
+    );
+
+    console.log('Pedido adicionado!', result?.insertId);
+    return res.status(201).json({ ok: true, id: result?.insertId });
+  } catch (err) {
+    console.error('[POST /pedido/criar][ERR]', err);
+    return res.status(500).json({
+      ok: false,
+      message: err?.sqlMessage || err?.message || 'Erro ao criar pedido.',
+    });
+  }
 });
 
 // pedido - Consultar todas as pedidos
-app.get(`${API_PREFIX}/pedido/consultar`, (req, res) => {
-  const query = "SELECT * FROM PEDIDO ORDER BY ID_PEDIDO DESC;";
-  db.query(query, (err, result) => {
-    if (err) {
-      res.status(500).send(err);
-    } else {
-      res.json(result);
-    }
-  });
+app.get(`${API_PREFIX}/pedido/consultar`, async (_req, res) => {
+  const query = `
+    SELECT
+      PD.ID_PEDIDO,
+      PD.COD_OPERACAO,
+      PD.NR_PEDIDO,
+      PD.COD_CARGA,
+      PD.COD_TRANSP,
+      PD.MANIFESTADO,
+      COALESCE(SUM(
+        CASE
+          WHEN CR.STATUS_CARREG = 3
+           AND COALESCE(CR.PESO_BRUTO, 0) > 0
+           AND COALESCE(CR.PESO_TARA, 0) > 0
+          THEN CR.PESO_BRUTO - CR.PESO_TARA
+          ELSE 0
+        END
+      ), 0) AS DESCARREGADO,
+      PD.MANIFESTADO - COALESCE(SUM(
+        CASE
+          WHEN CR.STATUS_CARREG = 3
+           AND COALESCE(CR.PESO_BRUTO, 0) > 0
+           AND COALESCE(CR.PESO_TARA, 0) > 0
+          THEN CR.PESO_BRUTO - CR.PESO_TARA
+          ELSE 0
+        END
+      ), 0) AS SALDO
+    FROM PEDIDO PD
+      LEFT JOIN CARREGAMENTO CR
+        ON CR.COD_OPERACAO = PD.COD_OPERACAO
+       AND CR.COD_CARGA = PD.COD_CARGA
+       AND CR.COD_TRANSP = PD.COD_TRANSP
+       AND CR.PEDIDO_MIC = PD.NR_PEDIDO
+    GROUP BY
+      PD.ID_PEDIDO,
+      PD.COD_OPERACAO,
+      PD.NR_PEDIDO,
+      PD.COD_CARGA,
+      PD.COD_TRANSP,
+      PD.MANIFESTADO
+    ORDER BY PD.ID_PEDIDO DESC;
+  `;
+  try {
+    const [rows] = await db.query(query);
+    res.set("Cache-Control", "no-store");
+    return res.json(rows);
+  } catch (err) {
+    console.error("[GET /pedido/consultar][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      message: err?.sqlMessage || err?.message || "Erro ao consultar pedidos.",
+    });
+  }
 });
 
 // Transportadora - Consultar todas as transportadoras
@@ -4994,8 +5076,11 @@ const whatsappTicketCommands = [
   'AUTOS EM ABERTO',
   'SALDO PRODUTO',
   'SALDO PEDIDO',
+  'SALDO PORAO',
   'SALDO NAVIO',
   'SALDO DI',
+  'HORA A HORA PRODUTO',
+  'HORA HORA PRODUTO',
   'HORA A HORA',
   'HORA HORA',
   'STATUS',
@@ -5372,13 +5457,14 @@ async function buildWhatsappSaldoPedidoMessage(operacao) {
       PD.NR_PEDIDO,
       TP.NOME_TRANSP,
       CG.NUMERO_DOC,
-      CG.QTDE_MANIFESTADA AS MANIFESTADO,
+      PD.MANIFESTADO,
       COALESCE((
         SELECT SUM(CR.PESO_BRUTO - CR.PESO_TARA)
         FROM CARREGAMENTO CR
         WHERE CR.COD_OPERACAO = PD.COD_OPERACAO
           AND CR.COD_CARGA = PD.COD_CARGA
-          AND (CR.NR_PEDIDO = PD.NR_PEDIDO OR PD.NR_PEDIDO IS NULL)
+          AND CR.COD_TRANSP = PD.COD_TRANSP
+          AND CR.PEDIDO_MIC = PD.NR_PEDIDO
           AND CR.PESO_BRUTO > 0
           AND CR.STATUS_CARREG = 3
       ), 0) AS DESCARREGADO
@@ -5402,10 +5488,57 @@ async function buildWhatsappSaldoPedidoMessage(operacao) {
     body += `Pedido: *${row.NR_PEDIDO || '-'}*\n`;
     body += `Transportadora: ${row.NOME_TRANSP || '-'}\n`;
     body += `DI: ${row.NUMERO_DOC || '-'}\n`;
+    body += `Manifestado: ${formatWhatsappTons(row.MANIFESTADO)} t\n`;
+    body += `Descarregado: ${formatWhatsappTons(row.DESCARREGADO)} t\n`;
     body += `Saldo: ${formatWhatsappTons(saldo)} t\n\n`;
   });
 
   if (rows.length > 20) body += `Exibindo 20 de ${rows.length} pedidos.\n`;
+  return body.trim();
+}
+
+async function buildWhatsappSaldoPoraoMessage(operacao) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      PL.PORAO,
+      PR.PRODUTO,
+      SUM(DISTINCT PL.QTDE_MANIFESTADA) AS MANIFESTADO,
+      COALESCE(SUM(
+        CASE
+          WHEN CR.STATUS_CARREG = 3
+           AND COALESCE(CR.PESO_BRUTO, 0) > 0
+           AND COALESCE(CR.PESO_TARA, 0) > 0
+          THEN CR.PESO_BRUTO - CR.PESO_TARA
+          ELSE 0
+        END
+      ), 0) AS DESCARREGADO
+    FROM PLANO_CARGA PL
+      LEFT JOIN PRODUTO PR ON PR.COD_PRODUTO = PL.COD_PRODUTO
+      LEFT JOIN CARREGAMENTO CR
+        ON CR.COD_OPERACAO = PL.COD_OPERACAO
+       AND CR.PORAO = PL.PORAO
+    WHERE PL.COD_OPERACAO = ?
+    GROUP BY PL.COD_OPERACAO, PL.PORAO, PR.PRODUTO
+    ORDER BY PL.PORAO, PR.PRODUTO
+    `,
+    [operacao.COD_OPERACAO]
+  );
+
+  if (!rows.length) {
+    return `*SALDO PORAO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhum porao encontrado.`;
+  }
+
+  let body = `*SALDO PORAO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  rows.forEach((row) => {
+    const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
+    body += `Porao: *${row.PORAO || '-'}*\n`;
+    body += `Produto: ${row.PRODUTO || '-'}\n`;
+    body += `Manifestado: ${formatWhatsappTons(row.MANIFESTADO)} t\n`;
+    body += `Descarregado: ${formatWhatsappTons(row.DESCARREGADO)} t\n`;
+    body += `Saldo: ${formatWhatsappTons(saldo)} t\n\n`;
+  });
+
   return body.trim();
 }
 
@@ -5417,6 +5550,7 @@ async function buildWhatsappAutosAbertosMessage(operacao) {
       MT.NOME_MOTORISTA,
       CA.PLACA_CAVALO,
       CA.PLACA_CARRETA,
+      CA.PEDIDO_MIC,
       CG.NUMERO_DOC,
       CA.DATA_TARA
     FROM CARREGAMENTO CA
@@ -5435,11 +5569,13 @@ async function buildWhatsappAutosAbertosMessage(operacao) {
     return `*AUTOS EM ABERTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhum auto em aberto.`;
   }
 
-  let body = `*AUTOS EM ABERTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  let body = `*AUTOS EM ABERTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\n`;
   rows.forEach((row) => {
-    body += `#${row.ID_CARREGAMENTO} - ${row.PLACA_CAVALO || '-'} / ${row.PLACA_CARRETA || '-'}\n`;
+    body += `*Auto #${row.ID_CARREGAMENTO}*\n`;
+    body += `Placas: ${row.PLACA_CAVALO || '-'} / ${row.PLACA_CARRETA || '-'}\n`;
     body += `Motorista: ${row.NOME_MOTORISTA || '-'}\n`;
-    body += `DI: ${row.NUMERO_DOC || '-'}\n\n`;
+    body += `DI: ${row.NUMERO_DOC || '-'}\n`;
+    body += `Pedido: ${row.PEDIDO_MIC || '-'}\n\n`;
   });
 
   return body.trim();
@@ -5530,33 +5666,97 @@ async function buildWhatsappHoraHoraMessage(operacao) {
   ].join('\n');
 }
 
+async function buildWhatsappHoraHoraProdutoMessage(operacao) {
+  const [rows] = await db.query(
+    `
+    WITH periodo_aberto AS (
+      SELECT
+        PO.DAT_INI_PERIODO AS INICIO,
+        CASE
+          WHEN TIME_FORMAT(PO.DAT_INI_PERIODO, '%H:%i:%s') BETWEEN '19:00:00' AND '23:59:59'
+            THEN CONCAT(DATE_FORMAT(DATE_ADD(PO.DAT_INI_PERIODO, INTERVAL 1 DAY), '%Y-%m-%d'), ' ', PE.FIM_PERIODO, ':00')
+          ELSE CONCAT(DATE_FORMAT(PO.DAT_INI_PERIODO, '%Y-%m-%d'), ' ', PE.FIM_PERIODO, ':00')
+        END AS FIM,
+        CONCAT(DATE_FORMAT(PO.DAT_INI_PERIODO, '%d/%m/%Y'), ' ', PE.DEN_PERIODO) AS PERIODO_LABEL
+      FROM PERIODO_OPERACAO PO
+        INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
+      WHERE PO.COD_OPERACAO = ?
+        AND PO.DAT_FIM_PERIODO IS NULL
+      ORDER BY PO.DAT_INI_PERIODO DESC
+      LIMIT 1
+    )
+    SELECT
+      CASE
+        WHEN HOR.HORA = 23 THEN '23:00 às 00:00'
+        WHEN HOR.HORA = 0 THEN '00:00 às 01:00'
+        ELSE CONCAT(LPAD(HOR.HORA, 2, '0'), ':00 às ', LPAD(HOR.HORA + 1, 2, '0'), ':00')
+      END AS HORA,
+      HOR.ORDEM,
+      COALESCE(PR.PRODUTO, '-') AS PRODUTO,
+      COUNT(*) AS QTDE_AUTOS,
+      COALESCE(SUM(CAR.PESO_BRUTO - CAR.PESO_TARA), 0) AS PESO_TOTAL,
+      PA.PERIODO_LABEL
+    FROM CARREGAMENTO CAR
+      JOIN VW_HORARIOS_2 HOR ON HOR.HORA = HOUR(CAR.DATA_CARREGAMENTO)
+      CROSS JOIN periodo_aberto PA
+      LEFT JOIN CARGA CG
+        ON CG.COD_OPERACAO = CAR.COD_OPERACAO
+       AND CG.COD_CARGA = CAR.COD_CARGA
+      LEFT JOIN PRODUTO PR ON PR.COD_PRODUTO = CG.COD_PRODUTO
+    WHERE CAR.COD_OPERACAO = ?
+      AND CAR.STATUS_CARREG = 3
+      AND CAR.PESO_BRUTO > 0
+      AND CAR.DATA_CARREGAMENTO >= PA.INICIO
+      AND CAR.DATA_CARREGAMENTO <= PA.FIM
+    GROUP BY HOR.ORDEM, HOR.HORA, PR.PRODUTO, PA.PERIODO_LABEL
+    ORDER BY HOR.ORDEM, PR.PRODUTO
+    `,
+    [operacao.COD_OPERACAO, operacao.COD_OPERACAO]
+  );
+
+  if (!rows.length) {
+    return `🚢 *${operacao.NOME_NAVIO || '-'}*\n\nNao encontrei periodo aberto ou autos carregados para montar o HORA HORA PRODUTO.`;
+  }
+
+  let totalAutos = 0;
+  let totalPeso = 0;
+  const body = [
+    `🚢 *${operacao.NOME_NAVIO || '-'}*`,
+    `*HORA HORA PRODUTO* - ${rows[0].PERIODO_LABEL || '-'}`,
+    ``
+  ];
+
+  rows.forEach((row) => {
+    const autos = Number(row.QTDE_AUTOS || 0);
+    const peso = Number(row.PESO_TOTAL || 0);
+    totalAutos += autos;
+    totalPeso += peso;
+    body.push(`*${row.HORA}* - ${row.PRODUTO || '-'} - ${autos} Autos - ${formatWhatsappTons(peso)} Tons`);
+  });
+
+  body.push(``, `Total: ${totalAutos} autos`, `Descarregado: ${formatWhatsappTons(totalPeso)} Tons`);
+  return body.join('\n');
+}
+
 const buildWhatsappHelpMessage = () => [
-  '*COMANDOS OPERACAO GRANEL*',
-  '',
-  'No grupo cadastrado em TICKET_NAVIO, use:',
-  '*STATUS*',
-  '*SALDO NAVIO*',
-  '*HORA HORA*',
-  '*SALDO DI*',
-  '*SALDO PRODUTO*',
-  '*SALDO PEDIDO*',
-  '*AUTOS EM ABERTO*',
-  '',
-  'Fora do grupo cadastrado, informe o ticket:',
-  '*STATUS <ticket>*',
-  '*SALDO NAVIO <ticket>*',
-  '*HORA HORA <ticket>*',
-  '*SALDO DI <ticket>*',
-  '*SALDO PRODUTO <ticket>*',
-  '*SALDO PEDIDO <ticket>*',
-  '*AUTOS EM ABERTO <ticket>*',
-  '',
-  'Exemplo: *SALDO NAVIO NAVIO01*'
+  `Utilize os comandos abaixo para consultar informações operacionais:`,
+  ``,
+  `• *AJUDA* – Exibe esta mensagem`,
+  `• *SALDO NAVIO* – Consulta saldo por navio`,
+  `• *SALDO DI* – Consulta saldo por DI`,
+  `• *SALDO PEDIDO* – Consulta saldo por pedido`,
+  `• *SALDO PRODUTO* – Consulta saldo por produto`,
+  `• *SALDO PORAO* – Consulta saldo por porão`,
+  `• *HORA HORA* – Acompanhamento hora a hora`,
+  `• *HORA HORA PRODUTO* – Hora a hora separado por produto`,
+  `• *AUTOS EM ABERTO* – Lista de autos aguardando`
 ].join('\n');
 
 async function buildWhatsappTicketCommandMessage(command, operacao) {
   if (command === 'AJUDA') return buildWhatsappHelpMessage();
   if (command === 'SALDO NAVIO') return buildWhatsappSaldoNavioMessage(operacao);
+  if (command === 'SALDO PORAO') return buildWhatsappSaldoPoraoMessage(operacao);
+  if (command === 'HORA HORA PRODUTO' || command === 'HORA A HORA PRODUTO') return buildWhatsappHoraHoraProdutoMessage(operacao);
   if (command === 'HORA HORA' || command === 'HORA A HORA') return buildWhatsappHoraHoraMessage(operacao);
   if (command === 'SALDO DI') return buildWhatsappSaldoDiMessage(operacao);
   if (command === 'SALDO PRODUTO') return buildWhatsappSaldoProdutoMessage(operacao);
@@ -5595,7 +5795,7 @@ async function handleWhatsappTicketWebhook(req, res) {
       if (!parsed.ticket) {
         await sendWhatsappWebhookReply(
           target,
-          `Nao encontrei operacao vinculada ao grupo ${target.number}. Cadastre esse identificador no campo TICKET_NAVIO da tabela OPERACAO ou informe o ticket no comando. Exemplo: SALDO NAVIO NAVIO01`
+          `Nao encontrei operacao vinculada ao grupo ${target.number}. Vincule este grupo a uma operacao no cadastro da operacao.`
         );
         return res.status(200).send('Grupo sem operacao vinculada');
       }
@@ -6090,12 +6290,45 @@ app.get(`${API_PREFIX}/buscar/pedidos/:id`, async (req, res) => {
     const [rows] = await db.query(
       `
       SELECT
-        ID_PEDIDO,
-        NR_PEDIDO,
-        COD_OPERACAO
-      FROM PEDIDO
-      WHERE COD_OPERACAO = ?
-      ORDER BY NR_PEDIDO
+        PD.ID_PEDIDO,
+        PD.NR_PEDIDO,
+        PD.COD_OPERACAO,
+        PD.COD_CARGA,
+        PD.COD_TRANSP,
+        PD.MANIFESTADO,
+        COALESCE(SUM(
+          CASE
+            WHEN CR.STATUS_CARREG = 3
+             AND COALESCE(CR.PESO_BRUTO, 0) > 0
+             AND COALESCE(CR.PESO_TARA, 0) > 0
+            THEN CR.PESO_BRUTO - CR.PESO_TARA
+            ELSE 0
+          END
+        ), 0) AS DESCARREGADO,
+        PD.MANIFESTADO - COALESCE(SUM(
+          CASE
+            WHEN CR.STATUS_CARREG = 3
+             AND COALESCE(CR.PESO_BRUTO, 0) > 0
+             AND COALESCE(CR.PESO_TARA, 0) > 0
+            THEN CR.PESO_BRUTO - CR.PESO_TARA
+            ELSE 0
+          END
+        ), 0) AS SALDO
+      FROM PEDIDO PD
+        LEFT JOIN CARREGAMENTO CR
+          ON CR.COD_OPERACAO = PD.COD_OPERACAO
+         AND CR.COD_CARGA = PD.COD_CARGA
+         AND CR.COD_TRANSP = PD.COD_TRANSP
+         AND CR.PEDIDO_MIC = PD.NR_PEDIDO
+      WHERE PD.COD_OPERACAO = ?
+      GROUP BY
+        PD.ID_PEDIDO,
+        PD.NR_PEDIDO,
+        PD.COD_OPERACAO,
+        PD.COD_CARGA,
+        PD.COD_TRANSP,
+        PD.MANIFESTADO
+      ORDER BY PD.NR_PEDIDO
       `,
       [id]
     );

@@ -21,6 +21,11 @@ import style from "./Operacao.module.css";
 import emailjs from 'emailjs-com';
 
 const Operacao = () => {
+  const formatTonsFromKg = (kg) =>
+    (Number(kg || 0) / 1000).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 3,
+    });
 
   useEffect(() => {
     // DadosDashboard();
@@ -850,7 +855,10 @@ const SegundaPesagemComNF = () => {
                       <option disabled defaultValue>Selecione uma opção</option>
                       {pedidos?.map((val) => {
                         return (
-                          <option value={val.NR_PEDIDO} key={val.NR_PEDIDO}>{val.NR_PEDIDO}</option>
+                          <option value={val.NR_PEDIDO} key={val.NR_PEDIDO}>
+                            {val.NR_PEDIDO}
+                            {val.SALDO !== undefined ? ` - Saldo: ${formatTonsFromKg(val.SALDO)} t` : ""}
+                          </option>
                         )
                       })}
                     </select>

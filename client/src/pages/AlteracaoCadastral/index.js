@@ -68,6 +68,11 @@ const AlteracaoCadastral = () => {
   const [motivo, setMotivo] = useState("");
 
   const showAlert = (txt, variant) => enqueueSnackbar(txt, { variant });
+  const formatTonsFromKg = (kg) =>
+    (Number(kg || 0) / 1000).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 3,
+    });
 
   // cargas estáticas iniciais
   useEffect(() => {
@@ -655,6 +660,7 @@ const AlteracaoCadastral = () => {
                         {pedidos?.map((val) => (
                           <option key={val.NR_PEDIDO} value={val.NR_PEDIDO}>
                             {val.NR_PEDIDO}
+                            {val.SALDO !== undefined ? ` - Saldo: ${formatTonsFromKg(val.SALDO)} t` : ""}
                           </option>
                         ))}
                       </select>
