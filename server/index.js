@@ -74,7 +74,7 @@ const ticketPesagemTransporter = nodemailer.createTransport({
   secure: String(process.env.TICKET_MAIL_SECURE || 'true') === 'true',
   auth: {
     user: process.env.TICKET_MAIL_USER || 'lucas.rodrigues@konexapp.com.br',
-    pass: process.env.TICKET_MAIL_PASS
+    pass: process.env.TICKET_MAIL_PASS || 'Luc@s262327158265'
   },
   tls: { rejectUnauthorized: false }
 });
@@ -1670,7 +1670,7 @@ SELECT
   OP.DAT_INI_PERIODO AS INI_PERIODO,
   BE.NOME_BERCO,
   MO.DESC_EQUIPAMENTO AS MOEGA,
-  FC_PERIODO_CARREGAMENTO(OP.DAT_INI_PERIODO) AS PERIODO
+  CONCAT(DATE_FORMAT(OP.DAT_INI_PERIODO, '%d/%m/%Y'), ' ', PE.DEN_PERIODO) AS PERIODO
 FROM PERIODO_OPERACAO OP
   JOIN PERIODO PE        ON PE.COD_PERIODO     = OP.COD_PERIODO
   JOIN OPERACAO P        ON P.COD_OPERACAO     = OP.COD_OPERACAO
@@ -1688,8 +1688,7 @@ GROUP BY
   PE.DEN_PERIODO,
   OP.DAT_INI_PERIODO,
   BE.NOME_BERCO,
-  MO.DESC_EQUIPAMENTO,
-  FC_PERIODO_CARREGAMENTO(OP.DAT_INI_PERIODO)
+  MO.DESC_EQUIPAMENTO
 ORDER BY OP.SEQ_PERIODO_OP DESC
 LIMIT 1;
   `;
@@ -2523,7 +2522,16 @@ FROM (
 
   /* Linha base com todos os horários possíveis do período aberto */
   SELECT
-    (H.HORARIO) COLLATE utf8mb4_unicode_ci AS HORA,
+    (
+      CASE
+        WHEN H.HORA = 23 THEN '23:00 às 00:00'
+        WHEN H.HORA = 0  THEN '00:00 às 01:00'
+        ELSE CONCAT(
+          LPAD(H.HORA, 2, '0'), ':00 às ',
+          LPAD(H.HORA + 1, 2, '0'), ':00'
+        )
+      END
+    ) COLLATE utf8mb4_unicode_ci AS HORA,
     H.QUANTIDADE_AUTOS,
     H.ORDEM
   FROM VW_HORARIOS_2 H
@@ -2531,7 +2539,7 @@ FROM (
     SELECT HOUR(PO.DAT_INI_PERIODO)
     FROM PERIODO_OPERACAO PO
     INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
-    WHERE PO.COD_OPERACAO = 104
+    WHERE PO.COD_OPERACAO = ?
       AND PO.DAT_FIM_PERIODO IS NULL
     ORDER BY PO.DAT_INI_PERIODO DESC
     LIMIT 1
@@ -4232,14 +4240,16 @@ app.get(`${API_PREFIX}/periodos/gerais/:id`, async (req, res) => {
       O.COD_NAVIO,
       CONCAT(N.NOME_NAVIO, ' (', O.RAP, ')') AS NAVIO,
       PO.SEQ_PERIODO_OP,
-      FC_PERIODO_CARREGAMENTO(PO.DAT_INI_PERIODO) AS PERIODO
+      CONCAT(DATE_FORMAT(PO.DAT_INI_PERIODO, '%d/%m/%Y'), ' ', PE.DEN_PERIODO) AS PERIODO
     FROM OPERACAO O
     INNER JOIN NAVIO N
       ON N.COD_NAVIO = O.COD_NAVIO
     INNER JOIN PERIODO_OPERACAO PO
       ON PO.COD_OPERACAO = O.COD_OPERACAO
+    INNER JOIN PERIODO PE
+      ON PE.COD_PERIODO = PO.COD_PERIODO
     WHERE O.COD_OPERACAO = ?
-    ORDER BY PERIODO DESC
+    ORDER BY PO.DAT_INI_PERIODO DESC
   `;
 
   try {
@@ -4265,14 +4275,16 @@ app.get('/portal/periodos/gerais/:id', (req, res) => {
         O.COD_NAVIO,
         CONCAT(N.NOME_NAVIO, " (", O.RAP, ")") AS NAVIO,
         PO.SEQ_PERIODO_OP,
-        FC_PERIODO_CARREGAMENTO(PO.DAT_INI_PERIODO) AS PERIODO
+        CONCAT(DATE_FORMAT(PO.DAT_INI_PERIODO, '%d/%m/%Y'), ' ', PE.DEN_PERIODO) AS PERIODO
         FROM operacaogranel.OPERACAO O
         INNER JOIN operacaogranel.NAVIO N
         ON N.COD_NAVIO = O.COD_NAVIO
         INNER JOIN operacaogranel.PERIODO_OPERACAO PO
         ON PO.COD_OPERACAO = O.COD_OPERACAO
+        INNER JOIN operacaogranel.PERIODO PE
+        ON PE.COD_PERIODO = PO.COD_PERIODO
         WHERE O.COD_OPERACAO = ?
-        ORDER BY PERIODO DESC;         
+        ORDER BY PO.DAT_INI_PERIODO DESC;         
     `, id, (err, result) => {
     if (err) {
       console.log(err)
@@ -5254,7 +5266,7 @@ async function buildWhatsappHoraHoraMessage(operacao) {
             THEN CONCAT(DATE_FORMAT(DATE_ADD(PO.DAT_INI_PERIODO, INTERVAL 1 DAY), '%Y-%m-%d'), ' ', PE.FIM_PERIODO, ':00')
           ELSE CONCAT(DATE_FORMAT(PO.DAT_INI_PERIODO, '%Y-%m-%d'), ' ', PE.FIM_PERIODO, ':00')
         END AS FIM,
-        FC_PERIODO_CARREGAMENTO(PO.DAT_INI_PERIODO) AS PERIODO_LABEL
+        CONCAT(DATE_FORMAT(PO.DAT_INI_PERIODO, '%d/%m/%Y'), ' ', PE.DEN_PERIODO) AS PERIODO_LABEL
       FROM PERIODO_OPERACAO PO
         INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
       WHERE PO.COD_OPERACAO = ?
@@ -5264,7 +5276,11 @@ async function buildWhatsappHoraHoraMessage(operacao) {
     ),
     base_horas AS (
       SELECT
-        H.HORARIO,
+        CASE
+          WHEN H.HORA = 23 THEN '23:00 às 00:00'
+          WHEN H.HORA = 0 THEN '00:00 às 01:00'
+          ELSE CONCAT(LPAD(H.HORA, 2, '0'), ':00 às ', LPAD(H.HORA + 1, 2, '0'), ':00')
+        END AS HORARIO,
         H.ORDEM
       FROM VW_HORARIOS_2 H
         JOIN periodo_aberto PA ON H.INI_PERIODO = HOUR(PA.INICIO)
