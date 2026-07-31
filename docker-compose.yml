@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -13,8 +11,6 @@ services:
     volumes:
       - ./server/Files/Notas_Fiscais:/app/server/Files/Notas_Fiscais
       - ./server/logs:/app/logs
-    env_file:
-      - ./server/.env
     ports:
       - "3009:3009"
     environment:
@@ -28,6 +24,7 @@ services:
       TICKET_MAIL_PORT: 465
       TICKET_MAIL_SECURE: "true"
       TICKET_MAIL_USER: lucas.rodrigues@konexapp.com.br
+      TICKET_MAIL_PASS: ${TICKET_MAIL_PASS:-}
       PORT: 3009
       TZ: America/Sao_Paulo
     depends_on:
