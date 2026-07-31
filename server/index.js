@@ -2232,10 +2232,10 @@ UNION
                                     <p>Olá!</p>
                                     <p>Seguem dados da operação até o momento:</p>
                                     <p>Período:<strong> ${periodo} </strong><br>
-                                     🚢 Navio:<strong> ${nomeNavio} </strong></p>
+                                     🚢 <strong> ${nomeNavio} </strong></p>
                                     <p>Berço: <strong> ${berco} </strong> </p>
                                     <p>Total movimentado desde o início da descarga:<strong> ${total_movimentado} </strong><br>
-                                     Saldo do Navio:<strong> ${nomeNavio} </strong> = <strong> ${total_saldo} TON </strong></p>
+                                     Saldo do <strong> ${nomeNavio} </strong> = <strong> ${total_saldo} TON </strong></p>
                                     <h3>Resumo Geral:</h3>
                                     ${tableHTML1}
                                     <h3>📍 Saldo descarregado por Destino do período ${periodo}:</h3>
@@ -2385,7 +2385,7 @@ app.post(`${API_PREFIX}/periodo/dadosEmail`, (req, res) => {
 
   db.query(query, [data, data, data, data, data, data, data, data, data, data, id], (err, navioResult) => {
     if (err) {
-      console.log('Erro ao obter informações do navio:', err);
+      console.log('Erro ao obter informações do ', err);
       return res.status(500).json({ message: 'Erro ao obter informações do navio' });
     }
 
@@ -5318,7 +5318,7 @@ async function buildWhatsappStatusMessage(operacao) {
 
   return [
     `*STATUS DA OPERACAO*`,
-    `Navio: *${operacao.NOME_NAVIO || '-'}*`,
+    `🚢  *${operacao.NOME_NAVIO || '-'}*`,
     `RAP: ${operacao.RAP || '-'}`,
     `Ticket: ${operacao.TICKET_NAVIO || '-'}`,
     `Status: ${operacao.STATUS_OPERACAO || '-'}`,
@@ -5387,10 +5387,10 @@ async function buildWhatsappSaldoDiMessage(operacao) {
   );
 
   if (!rows.length) {
-    return `*SALDO DI*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhuma DI encontrada.`;
+    return `*SALDO DI*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\nNenhuma DI encontrada.`;
   }
 
-  let body = `*SALDO DI*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  let body = `*SALDO DI*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\n`;
   rows.slice(0, 20).forEach((row) => {
     const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
     body += `DI: *${row.TIPO_DOC || ''} ${row.NUMERO_DOC || '-'}*\n`;
@@ -5435,10 +5435,10 @@ async function buildWhatsappSaldoProdutoMessage(operacao) {
   );
 
   if (!rows.length) {
-    return `*SALDO PRODUTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhum produto encontrado.`;
+    return `*SALDO PRODUTO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\nNenhum produto encontrado.`;
   }
 
-  let body = `*SALDO PRODUTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  let body = `*SALDO PRODUTO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\n`;
   rows.forEach((row) => {
     const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
     body += `Produto: *${row.PRODUTO || '-'}*\n`;
@@ -5479,10 +5479,10 @@ async function buildWhatsappSaldoPedidoMessage(operacao) {
   );
 
   if (!rows.length) {
-    return `*SALDO PEDIDO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhum pedido encontrado.`;
+    return `*SALDO PEDIDO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\nNenhum pedido encontrado.`;
   }
 
-  let body = `*SALDO PEDIDO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  let body = `*SALDO PEDIDO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\n`;
   rows.slice(0, 20).forEach((row) => {
     const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
     body += `Pedido: *${row.NR_PEDIDO || '-'}*\n`;
@@ -5526,10 +5526,10 @@ async function buildWhatsappSaldoPoraoMessage(operacao) {
   );
 
   if (!rows.length) {
-    return `*SALDO PORAO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhum porao encontrado.`;
+    return `*SALDO PORAO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\nNenhum porao encontrado.`;
   }
 
-  let body = `*SALDO PORAO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  let body = `*SALDO PORAO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\n`;
   rows.forEach((row) => {
     const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
     body += `Porao: *${row.PORAO || '-'}*\n`;
@@ -5566,10 +5566,10 @@ async function buildWhatsappAutosAbertosMessage(operacao) {
   );
 
   if (!rows.length) {
-    return `*AUTOS EM ABERTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhum auto em aberto.`;
+    return `*AUTOS EM ABERTO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\nNenhum auto em aberto.`;
   }
 
-  let body = `*AUTOS EM ABERTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\n`;
+  let body = `*AUTOS EM ABERTO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\n`;
   rows.forEach((row) => {
     body += `*Auto #${row.ID_CARREGAMENTO}*\n`;
     body += `Placas: ${row.PLACA_CAVALO || '-'} / ${row.PLACA_CARRETA || '-'}\n`;
@@ -5815,7 +5815,7 @@ async function handleWhatsappTicketWebhook(req, res) {
     await sendWhatsappWebhookReply(target, body);
     return res.status(200).send('Comando processado');
   } catch (err) {
-    console.error('Erro ao processar comando WhatsApp por TICKET_NAVIO:', err?.message || err);
+    console.error('Erro ao processar comando WhatsApp por TICKET_', err?.message || err);
     return res.status(500).json({
       message: err?.message || 'Erro ao processar comando WhatsApp.'
     });
