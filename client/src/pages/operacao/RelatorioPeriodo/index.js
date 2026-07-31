@@ -133,11 +133,28 @@ const RelatorioPeriodo = () => {
         y += LINE_H * lines;
       };
 
+      const addText = (value) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        const txt = String(value ?? "--");
+        const wrapped = doc.splitTextToSize(txt, W - (M * 2));
+        doc.text(wrapped, M, y);
+        const lines = Array.isArray(wrapped) ? wrapped.length : 1;
+        y += LINE_H * lines;
+      };
+
+      const documentoPedido = [row.DOCUMENTO, row.NR_PEDIDO]
+        .map((v) => String(v ?? "").trim())
+        .filter(Boolean)
+        .join(" - ");
+      const transportadoraReduzida = row.NOME_REDUZIDO || row.NOME_REDUZIDO_TRANSP || row.NOME_TRANSP || "--";
+
       add("Data/Hora:", formatDateBR(row.DATA_CARREGAMENTO));
       add("Placa Cavalo:", row.PLACA_CAVALO);
       add("Peso Carregado:", formatKg(row.PESO_CARREGADO));
       add("Navio:", (dadosDash?.NOME_NAVIO || "--"));
-      add((row.DOCUMENTO));
+      addText(documentoPedido || "--");
+      addText(transportadoraReduzida);
 
       doc.save(`ticket_${row.ID_CARREGAMENTO}.pdf`);
     } catch (e) {

@@ -2949,6 +2949,16 @@ const formatDateEmail = (value) => {
   return date.toLocaleString('pt-BR');
 };
 
+const formatTicketDocumento = (row) => {
+  const documento = String(row.DOCUMENTO || `${row.TIPO_DOC || ''} ${row.NUMERO_DOC || ''}`.trim()).trim();
+  const pedido = String(row.NR_PEDIDO || '').trim();
+  return [documento, pedido].filter(Boolean).join(' - ') || '-';
+};
+
+const getNomeReduzidoTransportadora = (row) => {
+  return row.NOME_REDUZIDO_TRANSP || row.NOME_REDUZIDO || row.NOME_TRANSP || '-';
+};
+
 const renderTicketPesagemHtml = (row) => {
   const pesoTara = Number(row.PESO_TARA || 0);
   const pesoBruto = Number(row.PESO_BRUTO || 0) || (pesoTara + Number(row.PESO_LIQUIDO || 0));
@@ -2989,7 +2999,8 @@ const renderTicketPesagemHtml = (row) => {
           ${line('Ticket', row.TICKET || '-')}
           ${line('Navio', row.NOME_NAVIO || '-')}
           ${line('RAP', row.RAP || '-')}
-          ${line('Documento', `${row.TIPO_DOC || ''} ${row.NUMERO_DOC || ''}`.trim() || '-')}
+          ${line('Documento', formatTicketDocumento(row))}
+          ${line('Transportadora', getNomeReduzidoTransportadora(row))}
           ${line('Produto', row.PRODUTO || '-')}
           ${line('Pedido MIC', row.PEDIDO_MIC || '-')}
           ${line('Destino', row.NOME_DESTINO || '-')}
@@ -3003,7 +3014,6 @@ const renderTicketPesagemHtml = (row) => {
           ${line('Carreta 1', row.PLACA_CARRETA || '-')}
           ${line('Carreta 2', row.PLACA_CARRETA2 || '-')}
           ${line('Carreta 3', row.PLACA_CARRETA3 || '-')}
-          ${line('Transportadora', row.NOME_TRANSP || '-')}
         </table>
 
         <h2>Pesagem</h2>
@@ -3036,6 +3046,7 @@ async function sendTicketPesagemEmail(idCarregamento) {
     SELECT
       CAR.ID_CARREGAMENTO,
       CAR.TICKET,
+      CAR.NR_PEDIDO,
       CAR.PEDIDO_MIC,
       CAR.PLACA_CAVALO,
       CAR.PLACA_CARRETA,
@@ -3050,7 +3061,7 @@ async function sendTicketPesagemEmail(idCarregamento) {
       CAR.PESO_LIQUIDO,
       MOT.NOME_MOTORISTA,
       MOT.CPF_MOTORISTA,
-      TRA.NOME_TRANSP,
+      TRA.*,
       NAV.NOME_NAVIO,
       OPE.RAP,
       CARG.TIPO_DOC,
@@ -3095,7 +3106,8 @@ async function sendTicketPesagemEmail(idCarregamento) {
       <tr><td><b>Motorista</b></td><td>${escapeHtml(row.NOME_MOTORISTA || '-')}</td></tr>
       <tr><td><b>Cavalo</b></td><td>${escapeHtml(row.PLACA_CAVALO || '-')}</td></tr>
       <tr><td><b>Carretas</b></td><td>${escapeHtml([row.PLACA_CARRETA, row.PLACA_CARRETA2, row.PLACA_CARRETA3].filter(Boolean).join(' / ') || '-')}</td></tr>
-      <tr><td><b>Documento</b></td><td>${escapeHtml(`${row.TIPO_DOC || ''} ${row.NUMERO_DOC || ''}`.trim() || '-')}</td></tr>
+      <tr><td><b>Documento</b></td><td>${escapeHtml(formatTicketDocumento(row))}</td></tr>
+      <tr><td><b>Transportadora</b></td><td>${escapeHtml(getNomeReduzidoTransportadora(row))}</td></tr>
       <tr><td><b>Produto</b></td><td>${escapeHtml(row.PRODUTO || '-')}</td></tr>
       <tr><td><b>Peso tara</b></td><td>${escapeHtml(formatKgEmail(pesoTara))} kg</td></tr>
       <tr><td><b>Peso bruto</b></td><td>${escapeHtml(formatKgEmail(pesoBruto))} kg</td></tr>
@@ -3141,6 +3153,7 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
       SELECT
         CAR.ID_CARREGAMENTO,
         CAR.TICKET,
+        CAR.NR_PEDIDO,
         CAR.PEDIDO_MIC,
         CAR.PLACA_CAVALO,
         CAR.PLACA_CARRETA,
@@ -3155,7 +3168,7 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
         CAR.PESO_LIQUIDO,
         MOT.NOME_MOTORISTA,
         MOT.CPF_MOTORISTA,
-        TRA.NOME_TRANSP,
+        TRA.*,
         NAV.NOME_NAVIO,
         OPE.RAP,
         CARG.TIPO_DOC,
@@ -3200,7 +3213,8 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
         <tr><td><b>Motorista</b></td><td>${escapeHtml(row.NOME_MOTORISTA || '-')}</td></tr>
         <tr><td><b>Cavalo</b></td><td>${escapeHtml(row.PLACA_CAVALO || '-')}</td></tr>
         <tr><td><b>Carretas</b></td><td>${escapeHtml([row.PLACA_CARRETA, row.PLACA_CARRETA2, row.PLACA_CARRETA3].filter(Boolean).join(' / ') || '-')}</td></tr>
-        <tr><td><b>Documento</b></td><td>${escapeHtml(`${row.TIPO_DOC || ''} ${row.NUMERO_DOC || ''}`.trim() || '-')}</td></tr>
+        <tr><td><b>Documento</b></td><td>${escapeHtml(formatTicketDocumento(row))}</td></tr>
+        <tr><td><b>Transportadora</b></td><td>${escapeHtml(getNomeReduzidoTransportadora(row))}</td></tr>
         <tr><td><b>Produto</b></td><td>${escapeHtml(row.PRODUTO || '-')}</td></tr>
         <tr><td><b>Peso tara</b></td><td>${escapeHtml(formatKgEmail(pesoTara))} kg</td></tr>
         <tr><td><b>Peso bruto</b></td><td>${escapeHtml(formatKgEmail(pesoBruto))} kg</td></tr>
@@ -3659,6 +3673,7 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
     const sql = `
       SELECT
         CAR.ID_CARREGAMENTO,
+        CAR.NR_PEDIDO,
         MO.NOME_MOTORISTA,
         CAR.PLACA_CAVALO,
         CAR.PESO_TARA,
@@ -3668,6 +3683,7 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
         CAR.PESO_BRUTO,
         CAR.DATA_BRUTO,
         CONCAT(CG.TIPO_DOC, ' ', CG.NUMERO_DOC) AS DOCUMENTO,
+        TP.*,
         FC_PERIODO_CARREGAMENTO(CAR.DATA_BRUTO) AS PERIODO_BRUTO,
         (CAR.PESO_BRUTO - CAR.PESO_TARA) AS PESO_LIQUIDO,
         (CAR.PESO_BRUTO - CAR.PESO_TARA - CAR.PESO_CARREGADO) AS DIFERENCA,
@@ -3679,6 +3695,7 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
       JOIN TIPO_VEICULO TV ON TV.COD_TIPO     = CAR.TIPO_VEICULO
       JOIN CARGA        CG ON CG.COD_OPERACAO = CAR.COD_OPERACAO
                            AND CG.COD_CARGA   = CAR.COD_CARGA
+      LEFT JOIN TRANSPORTADORA TP ON TP.COD_TRANSP = CAR.COD_TRANSP
       WHERE CAR.STATUS_CARREG = 3
         AND CAR.PESO_BRUTO > 0
         AND CAR.COD_OPERACAO = ?
