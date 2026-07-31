@@ -540,11 +540,10 @@ const validaDados2 = () => {
       showAlert('Veiculo pesado com sucesso!', 'success');
       removerVeiculoAtualDaLista();
       refreshData();
-      try {
-        await EnviarTicketPesagemEmail();
+      if (res.data?.email?.ok) {
         showAlert('Ticket enviado por e-mail!', 'success');
-      } catch (err) {
-        showAlert(err?.response?.data?.message || 'Erro ao enviar ticket por e-mail.', 'error');
+      } else {
+        showAlert(res.data?.email?.message || 'Erro ao enviar ticket por e-mail.', 'error');
       }
       FecharPesagem();
     }).catch((error) => console.log(error));
@@ -565,11 +564,10 @@ const SegundaPesagemComNF = () => {
     showAlert('Veículo pesado com sucesso!', 'success');
     removerVeiculoAtualDaLista();
     refreshData();
-    try {
-      await EnviarTicketPesagemEmail();
+    if (res.data?.email?.ok) {
       showAlert('Ticket enviado por e-mail!', 'success');
-    } catch (err) {
-      showAlert(err?.response?.data?.message || 'Erro ao enviar ticket por e-mail.', 'error');
+    } else {
+      showAlert(res.data?.email?.message || 'Erro ao enviar ticket por e-mail.', 'error');
     }
     FecharPesagem();
   })

@@ -144,14 +144,6 @@ const PesagemFinal = () => {
     return dt.toISOString().slice(0, 16).replace("T", " ");
   }
 
-  const EnviarTicketPesagemEmail = async () => {
-    await Axios.post(
-      `https://operacao.eurobraslogistica.com.br/api/pesagem/ticket-email/${i.ID_CARREGAMENTO}`,
-      {},
-      { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-    )
-  }
-
   const EntregarNotaMIC = async () => {
     const config = {
       method: 'post',
@@ -241,11 +233,10 @@ const PesagemFinal = () => {
           showAlert(res.data.sqlMessage, 'error')
         else {
           showAlert('Pesagem cadastrada com sucesso!', 'success');
-          try {
-            await EnviarTicketPesagemEmail()
+          if (res.data?.email?.ok) {
             showAlert('Ticket enviado por e-mail!', 'success')
-          } catch (err) {
-            showAlert(err?.response?.data?.message || 'Erro ao enviar ticket por e-mail.', 'error')
+          } else {
+            showAlert(res.data?.email?.message || 'Erro ao enviar ticket por e-mail.', 'error')
           }
           FecharPesagem()
         }

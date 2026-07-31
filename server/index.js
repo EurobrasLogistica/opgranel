@@ -3030,6 +3030,104 @@ const createPdfBuffer = (html) => new Promise((resolve, reject) => {
   });
 });
 
+async function sendTicketPesagemEmail(idCarregamento) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      CAR.ID_CARREGAMENTO,
+      CAR.TICKET,
+      CAR.PEDIDO_MIC,
+      CAR.PLACA_CAVALO,
+      CAR.PLACA_CARRETA,
+      CAR.PLACA_CARRETA2,
+      CAR.PLACA_CARRETA3,
+      CAR.PESO_TARA,
+      CAR.DATA_TARA,
+      CAR.PESO_CARREGADO,
+      CAR.DATA_CARREGAMENTO,
+      CAR.PESO_BRUTO,
+      CAR.DATA_BRUTO,
+      CAR.PESO_LIQUIDO,
+      MOT.NOME_MOTORISTA,
+      MOT.CPF_MOTORISTA,
+      TRA.NOME_TRANSP,
+      NAV.NOME_NAVIO,
+      OPE.RAP,
+      CARG.TIPO_DOC,
+      CARG.NUMERO_DOC,
+      PROD.PRODUTO,
+      DEST.NOME_DESTINO
+    FROM CARREGAMENTO CAR
+      LEFT JOIN MOTORISTA MOT ON MOT.COD_MOTORISTA = CAR.COD_MOTORISTA
+      LEFT JOIN TRANSPORTADORA TRA ON TRA.COD_TRANSP = CAR.COD_TRANSP
+      LEFT JOIN OPERACAO OPE ON OPE.COD_OPERACAO = CAR.COD_OPERACAO
+      LEFT JOIN NAVIO NAV ON NAV.COD_NAVIO = OPE.COD_NAVIO
+      LEFT JOIN CARGA CARG ON CARG.COD_OPERACAO = CAR.COD_OPERACAO
+                          AND CARG.COD_CARGA = CAR.COD_CARGA
+      LEFT JOIN PRODUTO PROD ON PROD.COD_PRODUTO = CARG.COD_PRODUTO
+      LEFT JOIN DESTINO DEST ON DEST.COD_DESTINO = CAR.COD_DESTINO
+    WHERE CAR.ID_CARREGAMENTO = ?
+    LIMIT 1
+    `,
+    [idCarregamento]
+  );
+
+  const row = rows[0];
+  if (!row) {
+    throw new Error('Carregamento nao encontrado.');
+  }
+
+  const pesoTara = Number(row.PESO_TARA || 0);
+  const pesoBruto = Number(row.PESO_BRUTO || 0) || (pesoTara + Number(row.PESO_LIQUIDO || row.PESO_CARREGADO || 0));
+  const pesoLiquido = Number(row.PESO_LIQUIDO || 0) || Math.max(pesoBruto - pesoTara, 0);
+  const html = renderTicketPesagemHtml(row);
+  const pdfBuffer = await createPdfBuffer(html);
+  const subject = `Ticket de Pesagem - ${row.NOME_NAVIO || 'Operacao'} - ${row.TICKET || idCarregamento}`;
+
+  const bodyHtml = `
+    <p>Prezados,</p>
+    <p>Segue em anexo o ticket de pesagem do carregamento abaixo.</p>
+    <table cellpadding="6" cellspacing="0" border="1" style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px;">
+      <tr><td><b>ID carregamento</b></td><td>${escapeHtml(row.ID_CARREGAMENTO)}</td></tr>
+      <tr><td><b>Ticket</b></td><td>${escapeHtml(row.TICKET || '-')}</td></tr>
+      <tr><td><b>Navio</b></td><td>${escapeHtml(row.NOME_NAVIO || '-')}</td></tr>
+      <tr><td><b>RAP</b></td><td>${escapeHtml(row.RAP || '-')}</td></tr>
+      <tr><td><b>Motorista</b></td><td>${escapeHtml(row.NOME_MOTORISTA || '-')}</td></tr>
+      <tr><td><b>Cavalo</b></td><td>${escapeHtml(row.PLACA_CAVALO || '-')}</td></tr>
+      <tr><td><b>Carretas</b></td><td>${escapeHtml([row.PLACA_CARRETA, row.PLACA_CARRETA2, row.PLACA_CARRETA3].filter(Boolean).join(' / ') || '-')}</td></tr>
+      <tr><td><b>Documento</b></td><td>${escapeHtml(`${row.TIPO_DOC || ''} ${row.NUMERO_DOC || ''}`.trim() || '-')}</td></tr>
+      <tr><td><b>Produto</b></td><td>${escapeHtml(row.PRODUTO || '-')}</td></tr>
+      <tr><td><b>Peso tara</b></td><td>${escapeHtml(formatKgEmail(pesoTara))} kg</td></tr>
+      <tr><td><b>Peso bruto</b></td><td>${escapeHtml(formatKgEmail(pesoBruto))} kg</td></tr>
+      <tr><td><b>Peso liquido</b></td><td>${escapeHtml(formatKgEmail(pesoLiquido))} kg</td></tr>
+      <tr><td><b>Data da pesagem</b></td><td>${escapeHtml(formatDateEmail(row.DATA_BRUTO || row.DATA_CARREGAMENTO))}</td></tr>
+    </table>
+    <p>Atenciosamente,<br>Operacao Granel</p>
+  `;
+
+  await ticketPesagemTransporter.sendMail({
+    from: `"Operacao Granel" <${ticketMailUser}>`,
+    to: ticketPesagemRecipients,
+    cc: ticketPesagemCc,
+    subject,
+    html: bodyHtml,
+    attachments: [
+      {
+        filename: `ticket_pesagem_${row.TICKET || idCarregamento}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ]
+  });
+
+  return {
+    ok: true,
+    message: 'Ticket de pesagem enviado por e-mail.',
+    to: ticketPesagemRecipients,
+    cc: ticketPesagemCc
+  };
+}
+
 app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) => {
   const idCarregamento = Number(req.params.idCarregamento);
 
@@ -3302,6 +3400,17 @@ app.put(`${API_PREFIX}/segundapesagem`, async (req, res) => {
       return res.status(404).json({ ok: false, error: "Carregamento não encontrado ao atualizar." });
     }
 
+    let email = { ok: false, message: 'Envio de e-mail nao executado.' };
+    try {
+      email = await sendTicketPesagemEmail(carregamentoId);
+    } catch (emailErr) {
+      console.error("[PUT /segundapesagem][EMAIL_ERR]", emailErr?.message || emailErr);
+      email = {
+        ok: false,
+        message: emailErr?.message || 'Erro ao enviar ticket por e-mail.'
+      };
+    }
+
     return res.json({
       ok: true,
       message:
@@ -3309,7 +3418,8 @@ app.put(`${API_PREFIX}/segundapesagem`, async (req, res) => {
           ? "Segunda pesagem registrada (tara=1000): STATUS=3, BRUTO atualizado."
           : "Segunda pesagem registrada: STATUS=2.",
       id: carregamentoId,
-      affectedRows: result.affectedRows
+      affectedRows: result.affectedRows,
+      email
     });
   } catch (err) {
     console.error("[PUT /segundapesagem][ERR]", err);
@@ -3386,11 +3496,23 @@ app.put(`${API_PREFIX}/segundapesagemcomnf`, async (req, res) => {
       return res.status(404).json({ ok: false, error: "Carregamento não encontrado." });
     }
 
+    let email = { ok: false, message: 'Envio de e-mail nao executado.' };
+    try {
+      email = await sendTicketPesagemEmail(carregamentoId);
+    } catch (emailErr) {
+      console.error("[PUT /segundapesagemcomnf][EMAIL_ERR]", emailErr?.message || emailErr);
+      email = {
+        ok: false,
+        message: emailErr?.message || 'Erro ao enviar ticket por e-mail.'
+      };
+    }
+
     return res.json({
       ok: true,
       message: "Segunda pesagem Com NF cadastrada com sucesso.",
       id: carregamentoId,
-      affectedRows: result.affectedRows
+      affectedRows: result.affectedRows,
+      email
     });
   } catch (err) {
     console.error("[PUT /segundapesagemcomnf][ERR]", err);
@@ -3421,42 +3543,62 @@ app.put(`${API_PREFIX}/operacao/concluir/docs`, (req, res) => {
   )
 })
 
-app.put(`${API_PREFIX}/ultimapesagem`, (req, res) => {
-  const peso3 = req.body.peso3
-  const data = req.body.data
-  const usuario = req.body.usuario
-  const status = 3
-  const id = req.body.id
+app.put(`${API_PREFIX}/ultimapesagem`, async (req, res) => {
+  const peso3 = req.body.peso3;
+  const data = req.body.data;
+  const usuario = req.body.usuario;
+  const status = 3;
+  const id = Number(req.body.id);
 
-  db.query(`
-        UPDATE 
-            CARREGAMENTO 
-        SET 
-            PESO_LIQUIDO = ?, 
-            DATA_BRUTO = ?, 
-            USUARIO_BRUTO = ?, 
-            STATUS_CARREG = ? 
-        WHERE ID_CARREGAMENTO = ?`,
-    [
-      peso3,
-      data,
-      usuario,
-      status,
-      id
-    ], (err, result) => {
-      console.log();
+  try {
+    const [result] = await db.query(`
+          UPDATE
+              CARREGAMENTO
+          SET
+              PESO_LIQUIDO = ?,
+              DATA_BRUTO = ?,
+              USUARIO_BRUTO = ?,
+              STATUS_CARREG = ?
+          WHERE ID_CARREGAMENTO = ?`,
+      [
+        peso3,
+        data,
+        usuario,
+        status,
+        id
+      ]
+    );
 
-      if (err) {
-        res.send(err)
-        console.log(err)
-      } else {
-        res.send("sucesso")
-        console.log('Ultima pesagem cadastrada!');
-        console.log(result);
-      }
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, message: 'Carregamento nao encontrado.' });
     }
-  )
-})
+
+    let email = { ok: false, message: 'Envio de e-mail nao executado.' };
+    try {
+      email = await sendTicketPesagemEmail(id);
+    } catch (emailErr) {
+      console.error("[PUT /ultimapesagem][EMAIL_ERR]", emailErr?.message || emailErr);
+      email = {
+        ok: false,
+        message: emailErr?.message || 'Erro ao enviar ticket por e-mail.'
+      };
+    }
+
+    console.log('Ultima pesagem cadastrada!');
+    return res.json({
+      ok: true,
+      message: 'Ultima pesagem cadastrada com sucesso.',
+      affectedRows: result.affectedRows,
+      email
+    });
+  } catch (err) {
+    console.error("[PUT /ultimapesagem][ERR]", err);
+    return res.status(500).json({
+      ok: false,
+      message: err?.sqlMessage || err?.message || 'Erro ao registrar ultima pesagem.'
+    });
+  }
+});
 // BUSCAR CARGAS POR OPERAÇÃO (mysql2/promise)
 app.get(`${API_PREFIX}/carga/busca/:id`, async (req, res) => {
   try {
