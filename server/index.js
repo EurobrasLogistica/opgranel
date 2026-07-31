@@ -1032,12 +1032,15 @@ app.get(`${API_PREFIX}/produtos`, async (req, res) => {
 // LISTAR OPERAÇÕES (simples)
 app.get(`${API_PREFIX}/operacao`, async (_req, res) => {
   try {
+    await ensureOperacaoTicketNavioColumn();
+
     const sql = `
       SELECT
         op.COD_OPERACAO,
         nv.NOME_NAVIO,
         be.NOME_BERCO,
         op.RAP,
+        op.TICKET_NAVIO,
         op.STATUS_OPERACAO,
         op.ETA,
         op.ATRACACAO_PREV,
@@ -1096,6 +1099,43 @@ app.get(`${API_PREFIX}/complementos`, async (req, res) => {
 
 
 // CRIAR OPERAÇÃO (mysql2/promise)
+let ensureOperacaoTicketNavioColumnPromise = null;
+
+async function ensureOperacaoTicketNavioColumn() {
+  if (!ensureOperacaoTicketNavioColumnPromise) {
+    ensureOperacaoTicketNavioColumnPromise = (async () => {
+      const [columns] = await db.query(
+        `SHOW COLUMNS FROM OPERACAO LIKE 'TICKET_NAVIO'`
+      );
+
+      if (!columns.length) {
+        await db.query(`
+          ALTER TABLE OPERACAO
+          ADD COLUMN TICKET_NAVIO varchar(64) DEFAULT NULL
+          COMMENT 'Ticket/comando do WhatsApp para identificar o navio'
+          AFTER TIPO
+        `);
+      }
+
+      const [indexes] = await db.query(
+        `SHOW INDEX FROM OPERACAO WHERE Key_name = 'IDX_OPERACAO_TICKET_NAVIO'`
+      );
+
+      if (!indexes.length) {
+        await db.query(`
+          ALTER TABLE OPERACAO
+          ADD KEY IDX_OPERACAO_TICKET_NAVIO (TICKET_NAVIO)
+        `);
+      }
+    })().catch((error) => {
+      ensureOperacaoTicketNavioColumnPromise = null;
+      throw error;
+    });
+  }
+
+  await ensureOperacaoTicketNavioColumnPromise;
+}
+
 app.post(`${API_PREFIX}/operacao/criar`, async (req, res) => {
   const t0 = Date.now();
 
@@ -1111,6 +1151,7 @@ app.post(`${API_PREFIX}/operacao/criar`, async (req, res) => {
     status,
     usuario,
     tipo,
+    ticket_navio,
     data        // esperado: 'YYYY-MM-DD HH:mm' (ou já com segundos)
   } = req.body;
 
@@ -1128,11 +1169,13 @@ app.post(`${API_PREFIX}/operacao/criar`, async (req, res) => {
     payload: {
       empresa, navio, rap, agente, berco,
       eta: etaSec, previsao: prevSec,
-      status, usuario, tipo, data: cadastroSec
+      status, usuario, tipo, ticket_navio, data: cadastroSec
     }
   });
 
   try {
+    await ensureOperacaoTicketNavioColumn();
+
     // Validação básica
     if (!empresa || !navio || !agente || !berco || !etaSec || !prevSec || !status || !usuario || !tipo || !cadastroSec) {
       console.warn('[OPERACAO_CREATE:WARN] Campos obrigatórios ausentes');
@@ -1146,9 +1189,9 @@ app.post(`${API_PREFIX}/operacao/criar`, async (req, res) => {
     const sql = `
       INSERT INTO OPERACAO
         (COD_EMPRESA, COD_NAVIO, RAP, COD_AGENTE, COD_BERCO,
-         ETA, ATRACACAO_PREV, STATUS_OPERACAO, USUARIO, TIPO, DAT_CADASTRO)
+         ETA, ATRACACAO_PREV, STATUS_OPERACAO, USUARIO, TIPO, TICKET_NAVIO, DAT_CADASTRO)
       VALUES (?,?,?,?,?,
-              ?, ?, ?, ?, ?, ?)
+              ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -1162,6 +1205,7 @@ app.post(`${API_PREFIX}/operacao/criar`, async (req, res) => {
       status,
       usuario,
       tipo,
+      ticket_navio || null,
       cadastroSec
     ];
 
@@ -4424,6 +4468,521 @@ app.post(`${API_PREFIX}/whatsapp/channels/:id/test`, async (req, res) => {
     });
   }
 });
+
+const getWhatsappIncomingText = (data) => normalizeText(
+  data?.msg?.message?.conversation ||
+  data?.msg?.message?.extendedTextMessage?.text ||
+  data?.msg?.message?.imageMessage?.caption ||
+  data?.msg?.message?.documentMessage?.caption ||
+  data?.message?.conversation ||
+  data?.message?.text ||
+  data?.body ||
+  data?.text ||
+  ''
+);
+
+const getWhatsappRemoteJid = (data) => normalizeText(
+  data?.msg?.key?.remoteJid ||
+  data?.key?.remoteJid ||
+  data?.remoteJid ||
+  data?.from ||
+  data?.number ||
+  data?.phone ||
+  ''
+);
+
+const normalizeWhatsappCommandText = (value) => normalizeText(value)
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s+/g, ' ')
+  .toUpperCase();
+
+const normalizeWhatsappTicket = (value) => normalizeWhatsappCommandText(value);
+
+const whatsappTicketCommands = [
+  'AUTOS EM ABERTO',
+  'SALDO PRODUTO',
+  'SALDO PEDIDO',
+  'SALDO NAVIO',
+  'SALDO DI',
+  'STATUS',
+  'AJUDA'
+];
+
+const parseWhatsappTicketCommand = (text) => {
+  const normalized = normalizeWhatsappCommandText(text);
+  if (!normalized) return null;
+
+  if (normalized === 'AJUDA') {
+    return { command: 'AJUDA', ticket: '', explicit: true };
+  }
+
+  for (const command of whatsappTicketCommands) {
+    if (normalized === command) {
+      return { command, ticket: '', explicit: true };
+    }
+
+    if (normalized.startsWith(`${command} `)) {
+      return {
+        command,
+        ticket: normalized.slice(command.length).trim(),
+        explicit: true
+      };
+    }
+  }
+
+  return { command: 'STATUS', ticket: normalized, explicit: false };
+};
+
+const resolveWhatsappTarget = (remoteJid) => {
+  const raw = normalizeText(remoteJid);
+  const isGroup = /@g\.us$/i.test(raw) || /-group$/i.test(raw);
+  const number = raw.replace(/@.*$/i, '').replace(/-group$/i, '').replace(/[^\d-]/g, '');
+  return { number, isGroup };
+};
+
+const resolveWhatsappSendEndpoint = (rawUrl, mode) => {
+  const endpointMode = mode || 'private';
+  const trimmed = normalizeWhatsappChannelUrl(rawUrl);
+  if (!trimmed) return trimmed;
+
+  try {
+    const parsed = new URL(trimmed);
+    let pathname = parsed.pathname.replace(/\/+$/, '');
+
+    if (endpointMode === 'group') {
+      if (!/\/group$/i.test(pathname)) pathname = `${pathname}/group`;
+    } else {
+      pathname = pathname.replace(/\/group$/i, '');
+    }
+
+    parsed.pathname = pathname || '/';
+    return parsed.toString();
+  } catch {
+    if (endpointMode === 'group') {
+      return /\/group\/?$/i.test(trimmed) ? trimmed : `${trimmed}/group`;
+    }
+    return trimmed.replace(/\/group\/?$/i, '');
+  }
+};
+
+const formatWhatsappTons = (kg) => {
+  const value = Number(kg || 0) / 1000;
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3
+  });
+};
+
+const formatWhatsappDate = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('pt-BR');
+};
+
+async function getActiveWhatsappChannels() {
+  await ensureWhatsappConfigTables();
+
+  const [rows] = await db.query(`
+    SELECT id, nome, url, token, webhook_provider, prioridade, ativo, created_at, updated_at
+    FROM whatsapp_channels
+    WHERE ativo = 1
+    ORDER BY prioridade ASC, id ASC
+  `);
+
+  return rows || [];
+}
+
+async function sendWhatsappWebhookReply(target, body) {
+  const channels = await getActiveWhatsappChannels();
+
+  if (!channels.length) {
+    throw new Error('Nenhum canal ativo configurado para resposta WhatsApp.');
+  }
+
+  const errors = [];
+  for (const channel of channels) {
+    try {
+      const response = await axios.post(
+        resolveWhatsappSendEndpoint(channel.url, target.isGroup ? 'group' : 'private'),
+        {
+          body,
+          number: target.number,
+          externalKey: 'OperacaoGranel'
+        },
+        {
+          headers: {
+            Authorization: channel.token,
+            'Content-Type': 'application/json'
+          },
+          timeout: 20000,
+          maxBodyLength: Infinity
+        }
+      );
+
+      return { channel, http_status: response.status };
+    } catch (err) {
+      const reason = err?.response?.data?.message || err?.response?.data?.error || err?.message || String(err);
+      errors.push(`${channel.nome}: ${reason}`);
+    }
+  }
+
+  throw new Error(`Falha ao responder WhatsApp. ${errors.join(' | ')}`);
+}
+
+async function findOperacaoByTicket(ticket) {
+  await ensureOperacaoTicketNavioColumn();
+
+  const normalizedTicket = normalizeWhatsappTicket(ticket);
+  if (!normalizedTicket) return null;
+
+  const [rows] = await db.query(
+    `
+    SELECT
+      OP.COD_OPERACAO,
+      OP.TICKET_NAVIO,
+      OP.RAP,
+      OP.STATUS_OPERACAO,
+      OP.ETA,
+      OP.ATRACACAO_PREV,
+      OP.ATRACACAO,
+      OP.LIBERACAO_OP,
+      OP.DESATRACACAO,
+      NA.NOME_NAVIO,
+      BE.NOME_BERCO
+    FROM OPERACAO OP
+      JOIN NAVIO NA ON NA.COD_NAVIO = OP.COD_NAVIO
+      LEFT JOIN BERCO BE ON BE.COD_BERCO = OP.COD_BERCO
+    WHERE OP.TICKET_NAVIO IS NOT NULL
+      AND TRIM(OP.TICKET_NAVIO) <> ''
+      AND UPPER(TRIM(CAST(OP.TICKET_NAVIO AS CHAR))) = ?
+    ORDER BY
+      CASE WHEN OP.STATUS_OPERACAO <> 'FECHADA' THEN 0 ELSE 1 END,
+      OP.COD_OPERACAO DESC
+    LIMIT 1
+    `,
+    [normalizedTicket]
+  );
+
+  return rows[0] || null;
+}
+
+async function getOperacaoResumoStats(codOperacao) {
+  const [[stats = {}]] = await db.query(
+    `
+    SELECT
+      COALESCE((SELECT SUM(QTDE_MANIFESTADA) FROM CARGA WHERE COD_OPERACAO = ?), 0) AS MANIFESTADO,
+      COALESCE((
+        SELECT SUM(PESO_BRUTO - PESO_TARA)
+        FROM CARREGAMENTO
+        WHERE COD_OPERACAO = ?
+          AND PESO_BRUTO > 0
+          AND STATUS_CARREG = 3
+      ), 0) AS DESCARREGADO,
+      COALESCE((
+        SELECT COUNT(*)
+        FROM CARREGAMENTO
+        WHERE COD_OPERACAO = ?
+          AND STATUS_CARREG = 1
+      ), 0) AS AUTOS_ABERTOS
+    `,
+    [codOperacao, codOperacao, codOperacao]
+  );
+
+  const manifestado = Number(stats.MANIFESTADO || 0);
+  const descarregado = Number(stats.DESCARREGADO || 0);
+
+  return {
+    manifestado,
+    descarregado,
+    saldo: manifestado - descarregado,
+    autosAbertos: Number(stats.AUTOS_ABERTOS || 0)
+  };
+}
+
+async function buildWhatsappStatusMessage(operacao) {
+  const stats = await getOperacaoResumoStats(operacao.COD_OPERACAO);
+
+  return [
+    `*STATUS DA OPERACAO*`,
+    `Navio: *${operacao.NOME_NAVIO || '-'}*`,
+    `RAP: ${operacao.RAP || '-'}`,
+    `Ticket: ${operacao.TICKET_NAVIO || '-'}`,
+    `Status: ${operacao.STATUS_OPERACAO || '-'}`,
+    `Berco: ${operacao.NOME_BERCO || '-'}`,
+    `ETA: ${formatWhatsappDate(operacao.ETA)}`,
+    `Atracacao prevista: ${formatWhatsappDate(operacao.ATRACACAO_PREV)}`,
+    `Atracacao: ${formatWhatsappDate(operacao.ATRACACAO)}`,
+    ``,
+    `Manifestado: ${formatWhatsappTons(stats.manifestado)} t`,
+    `Descarregado: ${formatWhatsappTons(stats.descarregado)} t`,
+    `Saldo: ${formatWhatsappTons(stats.saldo)} t`,
+    `Autos em aberto: ${stats.autosAbertos}`
+  ].join('\n');
+}
+
+async function buildWhatsappSaldoNavioMessage(operacao) {
+  const stats = await getOperacaoResumoStats(operacao.COD_OPERACAO);
+
+  return [
+    `*SALDO NAVIO*`,
+    `Navio: *${operacao.NOME_NAVIO || '-'}*`,
+    `Ticket: ${operacao.TICKET_NAVIO || '-'}`,
+    ``,
+    `Manifestado: ${formatWhatsappTons(stats.manifestado)} t`,
+    `Descarregado: ${formatWhatsappTons(stats.descarregado)} t`,
+    `Saldo: ${formatWhatsappTons(stats.saldo)} t`
+  ].join('\n');
+}
+
+async function buildWhatsappSaldoDiMessage(operacao) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      CG.TIPO_DOC,
+      CG.NUMERO_DOC,
+      PR.PRODUTO,
+      CG.QTDE_MANIFESTADA AS MANIFESTADO,
+      COALESCE((
+        SELECT SUM(CR.PESO_BRUTO - CR.PESO_TARA)
+        FROM CARREGAMENTO CR
+        WHERE CR.COD_OPERACAO = CG.COD_OPERACAO
+          AND CR.COD_CARGA = CG.COD_CARGA
+          AND CR.PESO_BRUTO > 0
+          AND CR.STATUS_CARREG = 3
+      ), 0) AS DESCARREGADO
+    FROM CARGA CG
+      LEFT JOIN PRODUTO PR ON PR.COD_PRODUTO = CG.COD_PRODUTO
+    WHERE CG.COD_OPERACAO = ?
+    ORDER BY CG.NUMERO_DOC
+    `,
+    [operacao.COD_OPERACAO]
+  );
+
+  if (!rows.length) {
+    return `*SALDO DI*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhuma DI encontrada.`;
+  }
+
+  let body = `*SALDO DI*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  rows.slice(0, 20).forEach((row) => {
+    const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
+    body += `DI: *${row.TIPO_DOC || ''} ${row.NUMERO_DOC || '-'}*\n`;
+    body += `Produto: ${row.PRODUTO || '-'}\n`;
+    body += `Manifestado: ${formatWhatsappTons(row.MANIFESTADO)} t\n`;
+    body += `Descarregado: ${formatWhatsappTons(row.DESCARREGADO)} t\n`;
+    body += `Saldo: ${formatWhatsappTons(saldo)} t\n\n`;
+  });
+
+  if (rows.length > 20) body += `Exibindo 20 de ${rows.length} registros.\n`;
+  return body.trim();
+}
+
+async function buildWhatsappSaldoProdutoMessage(operacao) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      X.PRODUTO,
+      SUM(X.MANIFESTADO) AS MANIFESTADO,
+      SUM(X.DESCARREGADO) AS DESCARREGADO
+    FROM (
+      SELECT
+        PR.PRODUTO,
+        CG.QTDE_MANIFESTADA AS MANIFESTADO,
+        COALESCE((
+          SELECT SUM(CR.PESO_BRUTO - CR.PESO_TARA)
+          FROM CARREGAMENTO CR
+          WHERE CR.COD_OPERACAO = CG.COD_OPERACAO
+            AND CR.COD_CARGA = CG.COD_CARGA
+            AND CR.PESO_BRUTO > 0
+            AND CR.STATUS_CARREG = 3
+        ), 0) AS DESCARREGADO
+      FROM CARGA CG
+        LEFT JOIN PRODUTO PR ON PR.COD_PRODUTO = CG.COD_PRODUTO
+      WHERE CG.COD_OPERACAO = ?
+    ) X
+    GROUP BY X.PRODUTO
+    ORDER BY X.PRODUTO
+    `,
+    [operacao.COD_OPERACAO]
+  );
+
+  if (!rows.length) {
+    return `*SALDO PRODUTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhum produto encontrado.`;
+  }
+
+  let body = `*SALDO PRODUTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  rows.forEach((row) => {
+    const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
+    body += `Produto: *${row.PRODUTO || '-'}*\n`;
+    body += `Manifestado: ${formatWhatsappTons(row.MANIFESTADO)} t\n`;
+    body += `Descarregado: ${formatWhatsappTons(row.DESCARREGADO)} t\n`;
+    body += `Saldo: ${formatWhatsappTons(saldo)} t\n\n`;
+  });
+
+  return body.trim();
+}
+
+async function buildWhatsappSaldoPedidoMessage(operacao) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      PD.NR_PEDIDO,
+      TP.NOME_TRANSP,
+      CG.NUMERO_DOC,
+      CG.QTDE_MANIFESTADA AS MANIFESTADO,
+      COALESCE((
+        SELECT SUM(CR.PESO_BRUTO - CR.PESO_TARA)
+        FROM CARREGAMENTO CR
+        WHERE CR.COD_OPERACAO = PD.COD_OPERACAO
+          AND CR.COD_CARGA = PD.COD_CARGA
+          AND (CR.NR_PEDIDO = PD.NR_PEDIDO OR PD.NR_PEDIDO IS NULL)
+          AND CR.PESO_BRUTO > 0
+          AND CR.STATUS_CARREG = 3
+      ), 0) AS DESCARREGADO
+    FROM PEDIDO PD
+      LEFT JOIN CARGA CG ON CG.COD_OPERACAO = PD.COD_OPERACAO
+                        AND CG.COD_CARGA = PD.COD_CARGA
+      LEFT JOIN TRANSPORTADORA TP ON TP.COD_TRANSP = PD.COD_TRANSP
+    WHERE PD.COD_OPERACAO = ?
+    ORDER BY PD.NR_PEDIDO
+    `,
+    [operacao.COD_OPERACAO]
+  );
+
+  if (!rows.length) {
+    return `*SALDO PEDIDO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhum pedido encontrado.`;
+  }
+
+  let body = `*SALDO PEDIDO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  rows.slice(0, 20).forEach((row) => {
+    const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
+    body += `Pedido: *${row.NR_PEDIDO || '-'}*\n`;
+    body += `Transportadora: ${row.NOME_TRANSP || '-'}\n`;
+    body += `DI: ${row.NUMERO_DOC || '-'}\n`;
+    body += `Saldo: ${formatWhatsappTons(saldo)} t\n\n`;
+  });
+
+  if (rows.length > 20) body += `Exibindo 20 de ${rows.length} pedidos.\n`;
+  return body.trim();
+}
+
+async function buildWhatsappAutosAbertosMessage(operacao) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      CA.ID_CARREGAMENTO,
+      MT.NOME_MOTORISTA,
+      CA.PLACA_CAVALO,
+      CA.PLACA_CARRETA,
+      CG.NUMERO_DOC,
+      CA.DATA_TARA
+    FROM CARREGAMENTO CA
+      LEFT JOIN MOTORISTA MT ON MT.COD_MOTORISTA = CA.COD_MOTORISTA
+      LEFT JOIN CARGA CG ON CG.COD_OPERACAO = CA.COD_OPERACAO
+                   AND CG.COD_CARGA = CA.COD_CARGA
+    WHERE CA.COD_OPERACAO = ?
+      AND CA.STATUS_CARREG = 1
+    ORDER BY CA.DATA_TARA DESC
+    LIMIT 20
+    `,
+    [operacao.COD_OPERACAO]
+  );
+
+  if (!rows.length) {
+    return `*AUTOS EM ABERTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\n\nNenhum auto em aberto.`;
+  }
+
+  let body = `*AUTOS EM ABERTO*\nNavio: *${operacao.NOME_NAVIO || '-'}*\nTicket: ${operacao.TICKET_NAVIO || '-'}\n\n`;
+  rows.forEach((row) => {
+    body += `#${row.ID_CARREGAMENTO} - ${row.PLACA_CAVALO || '-'} / ${row.PLACA_CARRETA || '-'}\n`;
+    body += `Motorista: ${row.NOME_MOTORISTA || '-'}\n`;
+    body += `DI: ${row.NUMERO_DOC || '-'}\n\n`;
+  });
+
+  return body.trim();
+}
+
+const buildWhatsappHelpMessage = () => [
+  '*COMANDOS OPERACAO GRANEL*',
+  '',
+  'Use o ticket cadastrado na operacao:',
+  '*STATUS <ticket>*',
+  '*SALDO NAVIO <ticket>*',
+  '*SALDO DI <ticket>*',
+  '*SALDO PRODUTO <ticket>*',
+  '*SALDO PEDIDO <ticket>*',
+  '*AUTOS EM ABERTO <ticket>*',
+  '',
+  'Exemplo: *SALDO NAVIO NAVIO01*',
+  '',
+  'Tambem e possivel enviar apenas o ticket para receber o status.'
+].join('\n');
+
+async function buildWhatsappTicketCommandMessage(command, operacao) {
+  if (command === 'AJUDA') return buildWhatsappHelpMessage();
+  if (command === 'SALDO NAVIO') return buildWhatsappSaldoNavioMessage(operacao);
+  if (command === 'SALDO DI') return buildWhatsappSaldoDiMessage(operacao);
+  if (command === 'SALDO PRODUTO') return buildWhatsappSaldoProdutoMessage(operacao);
+  if (command === 'SALDO PEDIDO') return buildWhatsappSaldoPedidoMessage(operacao);
+  if (command === 'AUTOS EM ABERTO') return buildWhatsappAutosAbertosMessage(operacao);
+  return buildWhatsappStatusMessage(operacao);
+}
+
+async function handleWhatsappTicketWebhook(req, res) {
+  const data = req.body || {};
+  const incomingText = getWhatsappIncomingText(data);
+  const parsed = parseWhatsappTicketCommand(incomingText);
+
+  if (!parsed) {
+    return res.status(204).send();
+  }
+
+  const remoteJid = getWhatsappRemoteJid(data);
+  const target = resolveWhatsappTarget(remoteJid);
+
+  if (!target.number) {
+    return res.status(400).json({ message: 'Numero de origem nao encontrado no webhook.' });
+  }
+
+  try {
+    if (parsed.command === 'AJUDA' && !parsed.ticket) {
+      await sendWhatsappWebhookReply(target, buildWhatsappHelpMessage());
+      return res.status(200).send('Ajuda enviada');
+    }
+
+    if (!parsed.ticket) {
+      await sendWhatsappWebhookReply(target, 'Informe o ticket da operacao. Exemplo: SALDO NAVIO NAVIO01');
+      return res.status(200).send('Comando sem ticket');
+    }
+
+    const operacao = await findOperacaoByTicket(parsed.ticket);
+
+    if (!operacao) {
+      if (!parsed.explicit) {
+        return res.status(204).send();
+      }
+
+      await sendWhatsappWebhookReply(
+        target,
+        `Nao encontrei operacao com TICKET_NAVIO "${parsed.ticket}". Verifique o cadastro da operacao.`
+      );
+      return res.status(200).send('Ticket nao encontrado');
+    }
+
+    const body = await buildWhatsappTicketCommandMessage(parsed.command, operacao);
+    await sendWhatsappWebhookReply(target, body);
+    return res.status(200).send('Comando processado');
+  } catch (err) {
+    console.error('Erro ao processar comando WhatsApp por TICKET_NAVIO:', err?.message || err);
+    return res.status(500).json({
+      message: err?.message || 'Erro ao processar comando WhatsApp.'
+    });
+  }
+}
+
+app.post(`${API_PREFIX}/whatsapp/webhook-izing`, handleWhatsappTicketWebhook);
+app.post('/whatsapp/webhook-izing', handleWhatsappTicketWebhook);
 
 app.get(`${API_PREFIX}/whatsapp/watchdog/state`, async (_req, res) => {
   try {

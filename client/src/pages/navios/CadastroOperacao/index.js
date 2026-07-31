@@ -28,6 +28,7 @@ const CadastroOperacao = () => {
   const [eta, setEta] = useState("");
   const [previsao, setPrevisao] = useState("");
   const [rap, setRap] = useState("");
+  const [ticketNavio, setTicketNavio] = useState("");
   const [berco, setBerco] = useState("");
 
   const userToken = localStorage.getItem("user_token");
@@ -75,6 +76,7 @@ const CadastroOperacao = () => {
         status: "AGUARDANDO DI/BL",
         usuario,
         tipo: tipoOp,
+        ticket_navio: ticketNavio.trim() || null,
         data: getDate(),
       };
 
@@ -261,6 +263,25 @@ const CadastroOperacao = () => {
                   <span>Locação</span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          {/* Linha 3: comando WhatsApp */}
+          <div className={style.formGridOne}>
+            <div className={style.field}>
+              <span className={style.labelTop}>Ticket navio WhatsApp</span>
+              <div className={style.control}>
+                <input
+                  type="text"
+                  className={style.input}
+                  value={ticketNavio}
+                  onChange={(e) => setTicketNavio(e.target.value)}
+                  placeholder="Comando ou ticket usado no WhatsApp"
+                />
+              </div>
+              <span className={style.help}>
+                Use este campo para apontar comandos recebidos pelo WhatsApp para esta operaÃ§Ã£o.
+              </span>
             </div>
           </div>
 
