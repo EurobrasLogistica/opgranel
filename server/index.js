@@ -5568,12 +5568,12 @@ async function buildWhatsappAutosAbertosMessage(operacao) {
   if (!rows.length) {
     return `*AUTOS EM ABERTO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\nNenhum auto em aberto.`;
   }
-
+ 
   let body = `*AUTOS EM ABERTO*\n🚢  *${operacao.NOME_NAVIO || '-'}*\n\n`;
   rows.forEach((row) => {
     body += `*Auto #${row.ID_CARREGAMENTO}*\n`;
     body += `Placas: ${row.PLACA_CAVALO || '-'} / ${row.PLACA_CARRETA || '-'}\n`;
-    body += `Motorista: ${row.NOME_MOTORISTA || '-'}\n`;
+    body += `Motorista: ${removeCnpjFromText(row.NOME_MOTORISTA) || '-'}\n`;
     body += `DI: ${row.NUMERO_DOC || '-'}\n`;
     body += `Pedido: ${row.PEDIDO_MIC || '-'}\n\n`;
   });
