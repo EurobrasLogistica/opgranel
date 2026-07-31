@@ -67,14 +67,16 @@ const ticketPesagemRecipients = [
 ];
 
 const ticketPesagemCc = ['contato.lucas23@gmail.com'];
+const ticketMailUser = process.env.TICKET_MAIL_USER || 'lucas.rodrigues@konexapp.com.br';
+const ticketMailPass = process.env.TICKET_MAIL_PASS || 'Luc@s262327158265';
 
 const ticketPesagemTransporter = nodemailer.createTransport({
   host: process.env.TICKET_MAIL_HOST || 'smtp.hostinger.com',
   port: Number(process.env.TICKET_MAIL_PORT || 465),
   secure: String(process.env.TICKET_MAIL_SECURE || 'true') === 'true',
   auth: {
-    user: process.env.TICKET_MAIL_USER || 'lucas.rodrigues@konexapp.com.br',
-    pass: process.env.TICKET_MAIL_PASS || 'Luc@s262327158265'
+    user: ticketMailUser,
+    pass: ticketMailPass
   },
   tls: { rejectUnauthorized: false }
 });
@@ -3035,13 +3037,6 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
     return res.status(400).json({ ok: false, message: 'ID de carregamento invalido.' });
   }
 
-  if (!process.env.TICKET_MAIL_PASS) {
-    return res.status(500).json({
-      ok: false,
-      message: 'Senha do e-mail de ticket nao configurada. Defina TICKET_MAIL_PASS no backend.'
-    });
-  }
-
   try {
     const [rows] = await db.query(
       `
@@ -3118,7 +3113,7 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
     `;
 
     await ticketPesagemTransporter.sendMail({
-      from: `"Operacao Granel" <${process.env.TICKET_MAIL_USER || 'lucas.rodrigues@konexapp.com.br'}>`,
+      from: `"Operacao Granel" <${ticketMailUser}>`,
       to: ticketPesagemRecipients,
       cc: ticketPesagemCc,
       subject,
