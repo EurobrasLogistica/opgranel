@@ -3046,7 +3046,7 @@ async function sendTicketPesagemEmail(idCarregamento) {
     SELECT
       CAR.ID_CARREGAMENTO,
       CAR.TICKET,
-      PD.NR_PEDIDO,
+      COALESCE(PD.NR_PEDIDO, CAR.PEDIDO_MIC) AS NR_PEDIDO,
       CAR.PEDIDO_MIC,
       CAR.PLACA_CAVALO,
       CAR.PLACA_CARRETA,
@@ -3156,7 +3156,7 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
       SELECT
         CAR.ID_CARREGAMENTO,
         CAR.TICKET,
-        PD.NR_PEDIDO,
+        COALESCE(PD.NR_PEDIDO, CAR.PEDIDO_MIC) AS NR_PEDIDO,
         CAR.PEDIDO_MIC,
         CAR.PLACA_CAVALO,
         CAR.PLACA_CARRETA,
@@ -3679,7 +3679,7 @@ app.post(`${API_PREFIX}/periodo/carregamentos/:id`, async (req, res) => {
     const sql = `
       SELECT
         CAR.ID_CARREGAMENTO,
-        PD.NR_PEDIDO,
+        COALESCE(PD.NR_PEDIDO, CAR.PEDIDO_MIC) AS NR_PEDIDO,
         MO.NOME_MOTORISTA,
         CAR.PLACA_CAVALO,
         CAR.PESO_TARA,
