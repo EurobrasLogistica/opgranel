@@ -3650,7 +3650,7 @@ app.post(`${API_PREFIX}/periodo/documentos/:id`, (req, res) => {
     GROUP BY CA2.DOCUMENTO, CA2.PERIODO
   `;
 
-  db.query(sql, [id, id], (err, rows) => {
+  db.query(sql, [id, periodo], (err, rows) => {
     if (err) {
       console.error("Erro em /periodo/documentos/:id", err);
       return res.status(500).json({
@@ -3712,7 +3712,7 @@ app.post(`${API_PREFIX}/periodo/autos/:id`, (req, res) => {
   // 1) id (numérico)
   // 2) periodo para filtrar
   // 3) periodo para a linha fallback zerada
-  db.query(sql, [id, id, id], (err, rows) => {
+  db.query(sql, [id, periodo, periodo], (err, rows) => {
     if (err) {
       console.error("Erro em /periodo/autos/:id", err);
       return res.status(500).json({
@@ -4775,6 +4775,19 @@ const normalizeWhatsappCommandText = (value) => normalizeText(value)
 
 const normalizeWhatsappTicket = (value) => normalizeWhatsappCommandText(value);
 
+const buildWhatsappTicketCandidates = (value) => {
+  const normalized = normalizeWhatsappTicket(value);
+  if (!normalized) return [];
+
+  const withoutSuffix = normalized
+    .replace(/@G\.US$/i, '')
+    .replace(/-GROUP$/i, '')
+    .trim();
+  const onlyDigitsAndDash = withoutSuffix.replace(/[^\d-]/g, '');
+
+  return [...new Set([normalized, withoutSuffix, onlyDigitsAndDash].filter(Boolean))];
+};
+
 const whatsappTicketCommands = [
   'AUTOS EM ABERTO',
   'SALDO PRODUTO',
@@ -4911,8 +4924,9 @@ async function sendWhatsappWebhookReply(target, body) {
 async function findOperacaoByTicket(ticket) {
   await ensureOperacaoTicketNavioColumn();
 
-  const normalizedTicket = normalizeWhatsappTicket(ticket);
-  if (!normalizedTicket) return null;
+  const ticketCandidates = buildWhatsappTicketCandidates(ticket);
+  if (!ticketCandidates.length) return null;
+  const placeholders = ticketCandidates.map(() => '?').join(', ');
 
   const [rows] = await db.query(
     `
@@ -4933,23 +4947,46 @@ async function findOperacaoByTicket(ticket) {
       LEFT JOIN BERCO BE ON BE.COD_BERCO = OP.COD_BERCO
     WHERE OP.TICKET_NAVIO IS NOT NULL
       AND TRIM(OP.TICKET_NAVIO) <> ''
-      AND UPPER(TRIM(CAST(OP.TICKET_NAVIO AS CHAR))) = ?
+      AND (
+        UPPER(TRIM(CAST(OP.TICKET_NAVIO AS CHAR))) IN (${placeholders})
+        OR REPLACE(
+             REPLACE(UPPER(TRIM(CAST(OP.TICKET_NAVIO AS CHAR))), '@G.US', ''),
+             '-GROUP',
+             ''
+           ) IN (${placeholders})
+      )
     ORDER BY
       CASE WHEN OP.STATUS_OPERACAO <> 'FECHADA' THEN 0 ELSE 1 END,
       OP.COD_OPERACAO DESC
     LIMIT 1
     `,
-    [normalizedTicket]
+    [...ticketCandidates, ...ticketCandidates]
   );
 
   return rows[0] || null;
+}
+
+async function findOperacaoByWhatsappTarget(target) {
+  if (!target?.number) return null;
+  return findOperacaoByTicket(target.number);
 }
 
 async function getOperacaoResumoStats(codOperacao) {
   const [[stats = {}]] = await db.query(
     `
     SELECT
-      COALESCE((SELECT SUM(QTDE_MANIFESTADA) FROM CARGA WHERE COD_OPERACAO = ?), 0) AS MANIFESTADO,
+      COALESCE((
+        SELECT COUNT(CAR.ID_CARREGAMENTO)
+        FROM CARREGAMENTO CAR
+        WHERE CAR.COD_OPERACAO = ?
+          AND CAR.STATUS_CARREG = 3
+          AND CAR.PESO_BRUTO > 0
+      ), 0) AS QTDE_AUTOS,
+      COALESCE((
+        SELECT SUM(QTDE_MANIFESTADA)
+        FROM CARGA
+        WHERE COD_OPERACAO = ?
+      ), 0) AS MANIFESTADO,
       COALESCE((
         SELECT SUM(PESO_BRUTO - PESO_TARA)
         FROM CARREGAMENTO
@@ -4958,22 +4995,31 @@ async function getOperacaoResumoStats(codOperacao) {
           AND STATUS_CARREG = 3
       ), 0) AS DESCARREGADO,
       COALESCE((
+        SELECT SUM(PESO_CARREGADO)
+        FROM CARREGAMENTO
+        WHERE COD_OPERACAO = ?
+          AND PESO_CARREGADO > 0
+          AND STATUS_CARREG = 3
+      ), 0) AS PESO_MOEGA,
+      COALESCE((
         SELECT COUNT(*)
         FROM CARREGAMENTO
         WHERE COD_OPERACAO = ?
           AND STATUS_CARREG = 1
       ), 0) AS AUTOS_ABERTOS
     `,
-    [codOperacao, codOperacao, codOperacao]
+    [codOperacao, codOperacao, codOperacao, codOperacao, codOperacao]
   );
 
   const manifestado = Number(stats.MANIFESTADO || 0);
   const descarregado = Number(stats.DESCARREGADO || 0);
 
   return {
+    carregados: Number(stats.QTDE_AUTOS || 0),
     manifestado,
     descarregado,
     saldo: manifestado - descarregado,
+    pesoMoega: Number(stats.PESO_MOEGA || 0),
     autosAbertos: Number(stats.AUTOS_ABERTOS || 0)
   };
 }
@@ -4992,8 +5038,10 @@ async function buildWhatsappStatusMessage(operacao) {
     `Atracacao prevista: ${formatWhatsappDate(operacao.ATRACACAO_PREV)}`,
     `Atracacao: ${formatWhatsappDate(operacao.ATRACACAO)}`,
     ``,
+    `Carregados: ${stats.carregados} autos`,
     `Manifestado: ${formatWhatsappTons(stats.manifestado)} t`,
     `Descarregado: ${formatWhatsappTons(stats.descarregado)} t`,
+    `Peso moega: ${formatWhatsappTons(stats.pesoMoega)} t`,
     `Saldo: ${formatWhatsappTons(stats.saldo)} t`,
     `Autos em aberto: ${stats.autosAbertos}`
   ].join('\n');
@@ -5007,8 +5055,10 @@ async function buildWhatsappSaldoNavioMessage(operacao) {
     `Navio: *${operacao.NOME_NAVIO || '-'}*`,
     `Ticket: ${operacao.TICKET_NAVIO || '-'}`,
     ``,
+    `Carregados: ${stats.carregados} autos`,
     `Manifestado: ${formatWhatsappTons(stats.manifestado)} t`,
     `Descarregado: ${formatWhatsappTons(stats.descarregado)} t`,
+    `Peso moega: ${formatWhatsappTons(stats.pesoMoega)} t`,
     `Saldo: ${formatWhatsappTons(stats.saldo)} t`
   ].join('\n');
 }
@@ -5017,22 +5067,35 @@ async function buildWhatsappSaldoDiMessage(operacao) {
   const [rows] = await db.query(
     `
     SELECT
-      CG.TIPO_DOC,
-      CG.NUMERO_DOC,
-      PR.PRODUTO,
-      CG.QTDE_MANIFESTADA AS MANIFESTADO,
-      COALESCE((
-        SELECT SUM(CR.PESO_BRUTO - CR.PESO_TARA)
-        FROM CARREGAMENTO CR
-        WHERE CR.COD_OPERACAO = CG.COD_OPERACAO
-          AND CR.COD_CARGA = CG.COD_CARGA
-          AND CR.PESO_BRUTO > 0
-          AND CR.STATUS_CARREG = 3
-      ), 0) AS DESCARREGADO
-    FROM CARGA CG
-      LEFT JOIN PRODUTO PR ON PR.COD_PRODUTO = CG.COD_PRODUTO
-    WHERE CG.COD_OPERACAO = ?
-    ORDER BY CG.NUMERO_DOC
+      CA.TIPO_DOC,
+      CA.NUMERO_DOC,
+      CL.NOME_REDUZIDO,
+      SUM(DISTINCT CA.QTDE_MANIFESTADA) AS MANIFESTADO,
+      SUM(
+        CASE
+          WHEN CR.STATUS_CARREG = 3
+           AND COALESCE(CR.PESO_BRUTO, 0) > 0
+           AND COALESCE(CR.PESO_TARA, 0) > 0
+          THEN CR.PESO_BRUTO - CR.PESO_TARA
+          ELSE 0
+        END
+      ) AS DESCARREGADO,
+      SUM(
+        CASE
+          WHEN CR.STATUS_CARREG = 3
+           AND COALESCE(CR.PESO_CARREGADO, 0) > 0
+          THEN CR.PESO_CARREGADO
+          ELSE 0
+        END
+      ) AS PESO_MOEGA
+    FROM CARGA CA
+      LEFT JOIN CARREGAMENTO CR
+        ON CR.COD_OPERACAO = CA.COD_OPERACAO
+       AND CR.COD_CARGA = CA.COD_CARGA
+      JOIN CLIENTE CL ON CL.COD_CLIENTE = CA.COD_CLIENTE
+    WHERE CA.COD_OPERACAO = ?
+    GROUP BY CA.COD_OPERACAO, CA.TIPO_DOC, CA.NUMERO_DOC, CA.COD_CARGA, CL.NOME_REDUZIDO
+    ORDER BY CA.NUMERO_DOC
     `,
     [operacao.COD_OPERACAO]
   );
@@ -5045,9 +5108,10 @@ async function buildWhatsappSaldoDiMessage(operacao) {
   rows.slice(0, 20).forEach((row) => {
     const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
     body += `DI: *${row.TIPO_DOC || ''} ${row.NUMERO_DOC || '-'}*\n`;
-    body += `Produto: ${row.PRODUTO || '-'}\n`;
+    body += `Cliente: ${row.NOME_REDUZIDO || '-'}\n`;
     body += `Manifestado: ${formatWhatsappTons(row.MANIFESTADO)} t\n`;
     body += `Descarregado: ${formatWhatsappTons(row.DESCARREGADO)} t\n`;
+    body += `Peso moega: ${formatWhatsappTons(row.PESO_MOEGA)} t\n`;
     body += `Saldo: ${formatWhatsappTons(saldo)} t\n\n`;
   });
 
@@ -5183,7 +5247,15 @@ async function buildWhatsappAutosAbertosMessage(operacao) {
 const buildWhatsappHelpMessage = () => [
   '*COMANDOS OPERACAO GRANEL*',
   '',
-  'Use o ticket cadastrado na operacao:',
+  'No grupo cadastrado em TICKET_NAVIO, use:',
+  '*STATUS*',
+  '*SALDO NAVIO*',
+  '*SALDO DI*',
+  '*SALDO PRODUTO*',
+  '*SALDO PEDIDO*',
+  '*AUTOS EM ABERTO*',
+  '',
+  'Fora do grupo cadastrado, informe o ticket:',
   '*STATUS <ticket>*',
   '*SALDO NAVIO <ticket>*',
   '*SALDO DI <ticket>*',
@@ -5191,9 +5263,7 @@ const buildWhatsappHelpMessage = () => [
   '*SALDO PEDIDO <ticket>*',
   '*AUTOS EM ABERTO <ticket>*',
   '',
-  'Exemplo: *SALDO NAVIO NAVIO01*',
-  '',
-  'Tambem e possivel enviar apenas o ticket para receber o status.'
+  'Exemplo: *SALDO NAVIO NAVIO01*'
 ].join('\n');
 
 async function buildWhatsappTicketCommandMessage(command, operacao) {
@@ -5228,14 +5298,19 @@ async function handleWhatsappTicketWebhook(req, res) {
       return res.status(200).send('Ajuda enviada');
     }
 
-    if (!parsed.ticket) {
-      await sendWhatsappWebhookReply(target, 'Informe o ticket da operacao. Exemplo: SALDO NAVIO NAVIO01');
-      return res.status(200).send('Comando sem ticket');
-    }
-
-    const operacao = await findOperacaoByTicket(parsed.ticket);
+    const operacao = parsed.ticket
+      ? await findOperacaoByTicket(parsed.ticket)
+      : await findOperacaoByWhatsappTarget(target);
 
     if (!operacao) {
+      if (!parsed.ticket) {
+        await sendWhatsappWebhookReply(
+          target,
+          `Nao encontrei operacao vinculada ao grupo ${target.number}. Cadastre esse identificador no campo TICKET_NAVIO da tabela OPERACAO ou informe o ticket no comando. Exemplo: SALDO NAVIO NAVIO01`
+        );
+        return res.status(200).send('Grupo sem operacao vinculada');
+      }
+
       if (!parsed.explicit) {
         return res.status(204).send();
       }
