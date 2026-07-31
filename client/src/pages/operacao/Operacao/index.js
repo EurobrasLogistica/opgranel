@@ -480,32 +480,12 @@ const validaDados2 = () => {
     encerrarPeriodo();
   };
 
-  // ===== MIC =====
-  const GerarNotaMIC = async () => {
+  // ===== Envio de ticket por e-mail =====
+  const EnviarTicketPesagemEmail = async () => {
     const v = getVeiculoAtual();
     if (!v) return;
-    if (v.STATUS_NOTA_MIC == 4) return;
 
-    const preparaPlaca = (placa) => {
-      if (!placa) return '';
-      return placa.replace(/\s/g, '').slice(0, 3) + ' ' + placa.replace(/\s/g, '').slice(3);
-    };
-
-    const input_data = {
-      placa1: preparaPlaca(v.PLACA_CARRETA),
-      placa2: preparaPlaca(v.PLACA_CARRETA2),
-      placa3: preparaPlaca(v.PLACA_CARRETA3),
-      placaCavalo: preparaPlaca(v.PLACA_CAVALO),
-      num_DI: v.NUMERO_DOC,
-      pedido_mic: v.PEDIDO_MIC,
-      peso_bruto: parseFloat(v.PESO_TARA || 0) + parseFloat(v.PESO_CARREGADO || peso2 || 0),
-      peso_liquido: parseFloat(v.PESO_CARREGADO || peso2 || 0),
-      tara: 1.0,
-      codTiquete: v.ID_CARREGAMENTO || id,
-      data: v.DATA_CARREGAMENTO || data
-    };
-
-    await api.post(`/gerarnotamic/${v.ID_CARREGAMENTO}`, input_data);
+    await api.post(`/pesagem/ticket-email/${v.ID_CARREGAMENTO}`);
     FecharPesagem();
   };
 
@@ -549,11 +529,18 @@ const validaDados2 = () => {
       usuario,
       ticket,
       id: i.ID_CARREGAMENTO,
-    }).then((res) => {
+    }).then(async (res) => {
       if (res.data.sqlMessage) return showAlert(res.data.sqlMessage, 'error');
       showAlert('Veiculo pesado com sucesso!', 'success');
-      // Emissão automática de NF se a flag vier "S"
-      if (shouldEmitNF(getVeiculoAtual())) GerarNotaMIC();
+      // Envio automático do ticket por e-mail se a flag de emissão vier "S"
+      if (shouldEmitNF(getVeiculoAtual())) {
+        try {
+          await EnviarTicketPesagemEmail();
+          showAlert('Ticket enviado por e-mail!', 'success');
+        } catch (err) {
+          showAlert(err?.response?.data?.message || 'Erro ao enviar ticket por e-mail.', 'error');
+        }
+      }
       FecharPesagem();
     }).catch((error) => console.log(error));
   };
@@ -566,13 +553,18 @@ const SegundaPesagemComNF = () => {
     ticket,
     id: i.ID_CARREGAMENTO,
   })
-  .then((res) => {
+  .then(async (res) => {
     if (res.data?.sqlMessage) {
       return showAlert(res.data.sqlMessage, 'error');
     }
     showAlert('Veículo pesado com sucesso!', 'success');
-    // Sempre emitir a NF nesta rota
-    GerarNotaMIC();
+    // Sempre enviar o ticket por e-mail nesta rota
+    try {
+      await EnviarTicketPesagemEmail();
+      showAlert('Ticket enviado por e-mail!', 'success');
+    } catch (err) {
+      showAlert(err?.response?.data?.message || 'Erro ao enviar ticket por e-mail.', 'error');
+    }
     FecharPesagem();
   })
   .catch((error) => {
@@ -755,16 +747,16 @@ const SegundaPesagemComNF = () => {
 
               {shouldEmitNF(getVeiculoAtual()) && getVeiculoAtual().STATUS_CARREG >= 3 && (
                 <div className={modal.nota}>
-                  <h2>MIC Sistemas</h2>
+                  <h2>Ticket por e-mail</h2>
                   {getVeiculoAtual().STATUS_NOTA_MIC == 4 &&
                     <div className={modal.gera_nota} onClick={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? DownloadNota : undefined} style={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? { "cursor": "pointer" } : { "cursor": "auto" }}>
                       <i className="fa fa-file-pdf icon"></i>
                       <h3>BAIXAR Nota Fiscal</h3>
                     </div>}
                   {![2, 4].includes(getVeiculoAtual().STATUS_NOTA_MIC) &&
-                    <div className={modal.gera_nota} onClick={GerarNotaMIC} style={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? { "cursor": "auto" } : { "cursor": "pointer" }}>
+                    <div className={modal.gera_nota} onClick={EnviarTicketPesagemEmail} style={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? { "cursor": "auto" } : { "cursor": "pointer" }}>
                       <i className="fa fa-file-pdf icon"></i>
-                      <h3>GERAR nota fiscal</h3>
+                      <h3>ENVIAR ticket</h3>
                     </div>}
                   {getVeiculoAtual().STATUS_NOTA_MIC != 4 &&
                     (<label className={modal['obs_nota_status_' + (getVeiculoAtual().STATUS_NOTA_MIC < 3 ? 'def' : getVeiculoAtual().STATUS_NOTA_MIC)]}>

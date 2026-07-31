@@ -144,43 +144,12 @@ const PesagemFinal = () => {
     return dt.toISOString().slice(0, 16).replace("T", " ");
   }
 
-  const GerarNotaMIC = async () => {
-    if (getVeiculoAtual().STATUS_NOTA_MIC == 4)
-      return
-    
-    const preparaPlaca = (placa) => {
-      if (placa == undefined || placa == '')
-        return ''
-
-      return placa.replace(/\s/g, '').slice(0, 3) + ' ' +  placa.replace(/\s/g, '').slice(3)
-    }
-
-    const data = {
-      placa1: preparaPlaca(i.PLACA_CARRETA),
-      placa2: preparaPlaca(i.PLACA_CARRETA2),
-      placa3: preparaPlaca(i.PLACA_CARRETA3),
-      placaCavalo: preparaPlaca(i.PLACA_CAVALO),
-      num_DI: i.NUMERO_DOC,
-      pedido_mic: i.PEDIDO_MIC,
-      tara: parseFloat(i.PESO_TARA),
-      peso_bruto: parseFloat(i.PESO_TARA) + parseFloat(i.PESO_LIQUIDO || pesoliquido),
-      peso_liquido: parseFloat(i.PESO_LIQUIDO),
-      codTiquete: i.TICKET || ticket,
-      data: i.DATA_CARREGAMENTO || data
-    };
-
-    const config = {
-      method: 'post',
-      maxBodyLength: Infinity,
-      url: `https://operacao.eurobraslogistica.com.br/api/gerarnotamic/${i.ID_CARREGAMENTO}`,
-      headers: { 
-        'Content-Type': 'application/json; charset=utf-8',
-      },
-      data: data
-    };
-
-    await Axios.request(config)
-    FecharPesagem()
+  const EnviarTicketPesagemEmail = async () => {
+    await Axios.post(
+      `https://operacao.eurobraslogistica.com.br/api/pesagem/ticket-email/${i.ID_CARREGAMENTO}`,
+      {},
+      { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+    )
   }
 
   const EntregarNotaMIC = async () => {
@@ -266,13 +235,18 @@ const PesagemFinal = () => {
       usuario: usuario,
       ticket: ticket,
       id: i.ID_CARREGAMENTO
-    }).then(function (res) {
+    }).then(async function (res) {
       console.log(res);
       if (res.data.sqlMessage)
           showAlert(res.data.sqlMessage, 'error')
         else {
           showAlert('Pesagem cadastrada com sucesso!', 'success');
-      //    GerarNotaMIC()
+          try {
+            await EnviarTicketPesagemEmail()
+            showAlert('Ticket enviado por e-mail!', 'success')
+          } catch (err) {
+            showAlert(err?.response?.data?.message || 'Erro ao enviar ticket por e-mail.', 'error')
+          }
           FecharPesagem()
         }
 
@@ -399,7 +373,7 @@ const PesagemFinal = () => {
               </div>
               {getVeiculoAtual().STATUS_CARREG == 3 && (
               <div className={modal.nota}>
-                <h2>MIC Sistemas</h2>
+                <h2>Ticket por e-mail</h2>
                 <div className={modal.gera_nota} onClick={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? DownloadNota : undefined} style={getVeiculoAtual().STATUS_NOTA_MIC == 4 ? {"cursor": "pointer"} : {"cursor": "auto"}}>
                   <i className="fa fa-file-pdf icon"></i>
                   <h3>BAIXAR Nota Fiscal</h3>

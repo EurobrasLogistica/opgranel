@@ -53,6 +53,32 @@ const transporter = nodemailer.createTransport({
   tls: { rejectUnauthorized: false }
 });
 
+const ticketPesagemRecipients = [
+  'claudiney.iglesias@anaconda.com.br',
+  'douglas.silva@anaconda.com.br',
+  'wadman.moraes@anaconda.com.br',
+  'claudenir.junior@anaconda.com.br',
+  'fernando.aguiar@anaconda.com.br',
+  'luiz.vieira@anaconda.com.br',
+  'lucas.lima@anaconda.com.br',
+  'edson.oliveira@anaconda.com.br',
+  'andre.silva@anaconda.com.br',
+  'brendo.luna@anaconda.com.br'
+];
+
+const ticketPesagemCc = ['contato.lucas23@gmail.com'];
+
+const ticketPesagemTransporter = nodemailer.createTransport({
+  host: process.env.TICKET_MAIL_HOST || 'smtp.hostinger.com',
+  port: Number(process.env.TICKET_MAIL_PORT || 465),
+  secure: String(process.env.TICKET_MAIL_SECURE || 'true') === 'true',
+  auth: {
+    user: process.env.TICKET_MAIL_USER || 'lucas.rodrigues@konexapp.com.br',
+    pass: process.env.TICKET_MAIL_PASS
+  },
+  tls: { rejectUnauthorized: false }
+});
+
 // ====== Middlewares (CORS robusto) ======
 const allowedOrigins = [
   'http://localhost:3008',
@@ -2891,6 +2917,228 @@ app.get(`${API_PREFIX}/impressao/busca/:idCarregamento`, (req, res) => {
   )
 })
 
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
+const formatKgEmail = (value) => {
+  const number = Number(value || 0);
+  return number.toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
+};
+
+const formatDateEmail = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('pt-BR');
+};
+
+const renderTicketPesagemHtml = (row) => {
+  const pesoTara = Number(row.PESO_TARA || 0);
+  const pesoBruto = Number(row.PESO_BRUTO || 0) || (pesoTara + Number(row.PESO_LIQUIDO || 0));
+  const pesoLiquido = Number(row.PESO_LIQUIDO || 0) || Math.max(pesoBruto - pesoTara, 0);
+
+  const line = (label, value) => `
+    <tr>
+      <td class="label">${escapeHtml(label)}</td>
+      <td>${escapeHtml(value)}</td>
+    </tr>
+  `;
+
+  return `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          body { font-family: Arial, sans-serif; color: #111827; margin: 24px; }
+          h1 { font-size: 20px; margin: 0 0 4px; }
+          h2 { font-size: 15px; margin: 22px 0 8px; color: #153240; }
+          .muted { color: #6b7280; font-size: 12px; margin-bottom: 14px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          td { border: 1px solid #d1d5db; padding: 7px 8px; vertical-align: top; }
+          .label { width: 34%; font-weight: bold; background: #f3f4f6; }
+          .header { border-bottom: 2px solid #153240; padding-bottom: 10px; margin-bottom: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Ticket de Pesagem</h1>
+          <div class="muted">Operacao Granel</div>
+        </div>
+
+        <h2>Carregamento</h2>
+        <table>
+          ${line('ID carregamento', row.ID_CARREGAMENTO || row.ID_CARREG || '-')}
+          ${line('Ticket', row.TICKET || '-')}
+          ${line('Navio', row.NOME_NAVIO || '-')}
+          ${line('RAP', row.RAP || '-')}
+          ${line('Documento', `${row.TIPO_DOC || ''} ${row.NUMERO_DOC || ''}`.trim() || '-')}
+          ${line('Produto', row.PRODUTO || '-')}
+          ${line('Pedido MIC', row.PEDIDO_MIC || '-')}
+          ${line('Destino', row.NOME_DESTINO || '-')}
+        </table>
+
+        <h2>Motorista e veiculo</h2>
+        <table>
+          ${line('Motorista', row.NOME_MOTORISTA || '-')}
+          ${line('CPF', row.CPF_MOTORISTA || '-')}
+          ${line('Cavalo', row.PLACA_CAVALO || '-')}
+          ${line('Carreta 1', row.PLACA_CARRETA || '-')}
+          ${line('Carreta 2', row.PLACA_CARRETA2 || '-')}
+          ${line('Carreta 3', row.PLACA_CARRETA3 || '-')}
+          ${line('Transportadora', row.NOME_TRANSP || '-')}
+        </table>
+
+        <h2>Pesagem</h2>
+        <table>
+          ${line('Data tara', formatDateEmail(row.DATA_TARA))}
+          ${line('Peso tara', `${formatKgEmail(pesoTara)} kg`)}
+          ${line('Data bruto', formatDateEmail(row.DATA_BRUTO || row.DATA_CARREGAMENTO))}
+          ${line('Peso bruto', `${formatKgEmail(pesoBruto)} kg`)}
+          ${line('Peso liquido', `${formatKgEmail(pesoLiquido)} kg`)}
+        </table>
+      </body>
+    </html>
+  `;
+};
+
+const createPdfBuffer = (html) => new Promise((resolve, reject) => {
+  pdf.create(html, {
+    format: 'A4',
+    border: '12mm',
+    timeout: 30000
+  }).toBuffer((err, buffer) => {
+    if (err) return reject(err);
+    return resolve(buffer);
+  });
+});
+
+app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) => {
+  const idCarregamento = Number(req.params.idCarregamento);
+
+  if (!Number.isInteger(idCarregamento) || idCarregamento <= 0) {
+    return res.status(400).json({ ok: false, message: 'ID de carregamento invalido.' });
+  }
+
+  if (!process.env.TICKET_MAIL_PASS) {
+    return res.status(500).json({
+      ok: false,
+      message: 'Senha do e-mail de ticket nao configurada. Defina TICKET_MAIL_PASS no backend.'
+    });
+  }
+
+  try {
+    const [rows] = await db.query(
+      `
+      SELECT
+        CAR.ID_CARREGAMENTO,
+        CAR.TICKET,
+        CAR.PEDIDO_MIC,
+        CAR.PLACA_CAVALO,
+        CAR.PLACA_CARRETA,
+        CAR.PLACA_CARRETA2,
+        CAR.PLACA_CARRETA3,
+        CAR.PESO_TARA,
+        CAR.DATA_TARA,
+        CAR.PESO_CARREGADO,
+        CAR.DATA_CARREGAMENTO,
+        CAR.PESO_BRUTO,
+        CAR.DATA_BRUTO,
+        CAR.PESO_LIQUIDO,
+        MOT.NOME_MOTORISTA,
+        MOT.CPF_MOTORISTA,
+        TRA.NOME_TRANSP,
+        NAV.NOME_NAVIO,
+        OPE.RAP,
+        CARG.TIPO_DOC,
+        CARG.NUMERO_DOC,
+        PROD.PRODUTO,
+        DEST.NOME_DESTINO
+      FROM CARREGAMENTO CAR
+        LEFT JOIN MOTORISTA MOT ON MOT.COD_MOTORISTA = CAR.COD_MOTORISTA
+        LEFT JOIN TRANSPORTADORA TRA ON TRA.COD_TRANSP = CAR.COD_TRANSP
+        LEFT JOIN OPERACAO OPE ON OPE.COD_OPERACAO = CAR.COD_OPERACAO
+        LEFT JOIN NAVIO NAV ON NAV.COD_NAVIO = OPE.COD_NAVIO
+        LEFT JOIN CARGA CARG ON CARG.COD_OPERACAO = CAR.COD_OPERACAO
+                            AND CARG.COD_CARGA = CAR.COD_CARGA
+        LEFT JOIN PRODUTO PROD ON PROD.COD_PRODUTO = CARG.COD_PRODUTO
+        LEFT JOIN DESTINO DEST ON DEST.COD_DESTINO = CAR.COD_DESTINO
+      WHERE CAR.ID_CARREGAMENTO = ?
+      LIMIT 1
+      `,
+      [idCarregamento]
+    );
+
+    const row = rows[0];
+    if (!row) {
+      return res.status(404).json({ ok: false, message: 'Carregamento nao encontrado.' });
+    }
+
+    const pesoTara = Number(row.PESO_TARA || 0);
+    const pesoBruto = Number(row.PESO_BRUTO || 0) || (pesoTara + Number(row.PESO_LIQUIDO || row.PESO_CARREGADO || 0));
+    const pesoLiquido = Number(row.PESO_LIQUIDO || 0) || Math.max(pesoBruto - pesoTara, 0);
+    const html = renderTicketPesagemHtml(row);
+    const pdfBuffer = await createPdfBuffer(html);
+    const subject = `Ticket de Pesagem - ${row.NOME_NAVIO || 'Operacao'} - ${row.TICKET || idCarregamento}`;
+
+    const bodyHtml = `
+      <p>Prezados,</p>
+      <p>Segue em anexo o ticket de pesagem do carregamento abaixo.</p>
+      <table cellpadding="6" cellspacing="0" border="1" style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px;">
+        <tr><td><b>ID carregamento</b></td><td>${escapeHtml(row.ID_CARREGAMENTO)}</td></tr>
+        <tr><td><b>Ticket</b></td><td>${escapeHtml(row.TICKET || '-')}</td></tr>
+        <tr><td><b>Navio</b></td><td>${escapeHtml(row.NOME_NAVIO || '-')}</td></tr>
+        <tr><td><b>RAP</b></td><td>${escapeHtml(row.RAP || '-')}</td></tr>
+        <tr><td><b>Motorista</b></td><td>${escapeHtml(row.NOME_MOTORISTA || '-')}</td></tr>
+        <tr><td><b>Cavalo</b></td><td>${escapeHtml(row.PLACA_CAVALO || '-')}</td></tr>
+        <tr><td><b>Carretas</b></td><td>${escapeHtml([row.PLACA_CARRETA, row.PLACA_CARRETA2, row.PLACA_CARRETA3].filter(Boolean).join(' / ') || '-')}</td></tr>
+        <tr><td><b>Documento</b></td><td>${escapeHtml(`${row.TIPO_DOC || ''} ${row.NUMERO_DOC || ''}`.trim() || '-')}</td></tr>
+        <tr><td><b>Produto</b></td><td>${escapeHtml(row.PRODUTO || '-')}</td></tr>
+        <tr><td><b>Peso tara</b></td><td>${escapeHtml(formatKgEmail(pesoTara))} kg</td></tr>
+        <tr><td><b>Peso bruto</b></td><td>${escapeHtml(formatKgEmail(pesoBruto))} kg</td></tr>
+        <tr><td><b>Peso liquido</b></td><td>${escapeHtml(formatKgEmail(pesoLiquido))} kg</td></tr>
+        <tr><td><b>Data da pesagem</b></td><td>${escapeHtml(formatDateEmail(row.DATA_BRUTO || row.DATA_CARREGAMENTO))}</td></tr>
+      </table>
+      <p>Atenciosamente,<br>Operacao Granel</p>
+    `;
+
+    await ticketPesagemTransporter.sendMail({
+      from: `"Operacao Granel" <${process.env.TICKET_MAIL_USER || 'lucas.rodrigues@konexapp.com.br'}>`,
+      to: ticketPesagemRecipients,
+      cc: ticketPesagemCc,
+      subject,
+      html: bodyHtml,
+      attachments: [
+        {
+          filename: `ticket_pesagem_${row.TICKET || idCarregamento}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ]
+    });
+
+    return res.status(200).json({
+      ok: true,
+      message: 'Ticket de pesagem enviado por e-mail.',
+      to: ticketPesagemRecipients,
+      cc: ticketPesagemCc
+    });
+  } catch (err) {
+    console.error('[POST /pesagem/ticket-email/:idCarregamento][ERR]', err?.message || err);
+    return res.status(500).json({
+      ok: false,
+      message: err?.message || 'Erro ao enviar ticket de pesagem por e-mail.'
+    });
+  }
+});
+
 // exemplo com mysql2/promise (pool)
 app.get(`${API_PREFIX}/ultimapesagem/busca/:id`, async (req, res) => {
   try {
@@ -4243,6 +4491,33 @@ const mapWhatsappChannel = (row, includeToken = false) => ({
   updated_at: row.updated_at
 });
 
+const normalizeWhatsappAuthToken = (token) => {
+  const value = normalizeText(token);
+  if (!value) return '';
+  return value.toLowerCase().startsWith('bearer ') ? value : `Bearer ${value}`;
+};
+
+const buildWhatsappAuthHeaders = (token, contentType = 'application/json') => {
+  const bearerToken = normalizeWhatsappAuthToken(token);
+  const rawToken = bearerToken.replace(/^Bearer\s+/i, '');
+  const headers = {
+    Authorization: bearerToken,
+    Accept: 'application/json'
+  };
+
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
+
+  if (rawToken) {
+    headers['X-Api-Key'] = rawToken;
+    headers['x-api-key'] = rawToken;
+    headers['access-token'] = rawToken;
+  }
+
+  return headers;
+};
+
 const resolveWhatsappTextEndpoint = (rawUrl) => {
   const trimmed = normalizeWhatsappChannelUrl(rawUrl);
   if (!trimmed) return trimmed;
@@ -4436,6 +4711,10 @@ app.post(`${API_PREFIX}/whatsapp/channels/:id/test`, async (req, res) => {
       return res.status(404).json({ message: 'Canal nao encontrado.' });
     }
 
+    if (!normalizeWhatsappAuthToken(channel.token)) {
+      return res.status(400).json({ message: 'Canal selecionado esta sem token configurado.' });
+    }
+
     const response = await axios.post(
       resolveWhatsappTextEndpoint(channel.url),
       {
@@ -4444,10 +4723,7 @@ app.post(`${API_PREFIX}/whatsapp/channels/:id/test`, async (req, res) => {
         externalKey: 'OperacaoGranel'
       },
       {
-        headers: {
-          Authorization: channel.token,
-          'Content-Type': 'application/json'
-        },
+        headers: buildWhatsappAuthHeaders(channel.token),
         timeout: 20000,
         maxBodyLength: Infinity
       }
@@ -4604,6 +4880,10 @@ async function sendWhatsappWebhookReply(target, body) {
   const errors = [];
   for (const channel of channels) {
     try {
+      if (!normalizeWhatsappAuthToken(channel.token)) {
+        throw new Error('Canal ativo sem token configurado.');
+      }
+
       const response = await axios.post(
         resolveWhatsappSendEndpoint(channel.url, target.isGroup ? 'group' : 'private'),
         {
@@ -4612,10 +4892,7 @@ async function sendWhatsappWebhookReply(target, body) {
           externalKey: 'OperacaoGranel'
         },
         {
-          headers: {
-            Authorization: channel.token,
-            'Content-Type': 'application/json'
-          },
+          headers: buildWhatsappAuthHeaders(channel.token),
           timeout: 20000,
           maxBodyLength: Infinity
         }
