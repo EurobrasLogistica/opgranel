@@ -2949,6 +2949,12 @@ const formatDateEmail = (value) => {
   return date.toLocaleString('pt-BR');
 };
 
+const formatCpf = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length !== 11) return value || '-';
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+};
+
 const formatTicketDocumento = (row) => {
   const documento = String(row.DOCUMENTO || `${row.TIPO_DOC || ''} ${row.NUMERO_DOC || ''}`.trim()).trim();
   const pedido = String(row.NR_PEDIDO || '').trim();
@@ -2962,7 +2968,7 @@ const getNomeReduzidoTransportadora = (row) => {
 const renderTicketPesagemHtml = (row) => {
   const pesoTara = Number(row.PESO_TARA || 0);
   const pesoBruto = Number(row.PESO_BRUTO || 0) || (pesoTara + Number(row.PESO_LIQUIDO || 0));
-  const pesoLiquido = Number(row.PESO_LIQUIDO || 0) || Math.max(pesoBruto - pesoTara, 0);
+  const pesoLiquido = Math.max(pesoBruto - pesoTara, 0);
 
   const line = (label, value) => `
     <tr>
@@ -2977,53 +2983,77 @@ const renderTicketPesagemHtml = (row) => {
       <head>
         <meta charset="utf-8" />
         <style>
-          body { font-family: Arial, sans-serif; color: #111827; margin: 24px; }
-          h1 { font-size: 20px; margin: 0 0 4px; }
-          h2 { font-size: 15px; margin: 22px 0 8px; color: #153240; }
-          .muted { color: #6b7280; font-size: 12px; margin-bottom: 14px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          td { border: 1px solid #d1d5db; padding: 7px 8px; vertical-align: top; }
-          .label { width: 34%; font-weight: bold; background: #f3f4f6; }
-          .header { border-bottom: 2px solid #153240; padding-bottom: 10px; margin-bottom: 12px; }
+          * { box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; color: #111827; margin: 0; font-size: 11px; }
+          h1 { font-size: 19px; margin: 0; letter-spacing: 0; }
+          h2 { font-size: 12px; margin: 12px 0 6px; color: #153240; text-transform: uppercase; }
+          table { width: 100%; border-collapse: collapse; }
+          td { border: 1px solid #d1d5db; padding: 5px 7px; vertical-align: top; }
+          .page { width: 100%; }
+          .header { border: 1px solid #153240; border-left: 5px solid #153240; padding: 10px 12px; margin-bottom: 10px; }
+          .muted { color: #6b7280; font-size: 11px; margin-top: 3px; }
+          .label { width: 30%; font-weight: bold; background: #f3f4f6; color: #374151; }
+          .section { margin-bottom: 8px; page-break-inside: avoid; }
+          .two-col td { width: 50%; }
+          .plate-label { display: block; color: #6b7280; font-size: 9px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+          .plate-value { font-size: 13px; font-weight: bold; color: #111827; }
+          .weight { font-size: 15px; font-weight: bold; }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>Ticket de Pesagem</h1>
-          <div class="muted">Operacao Granel</div>
+        <div class="page">
+          <div class="header">
+            <h1>Ticket de Pesagem</h1>
+            <div class="muted">Ticket ${escapeHtml(row.TICKET || row.ID_CARREGAMENTO || '-')} | Operacao Granel</div>
+          </div>
+
+          <div class="section">
+            <h2>Carregamento</h2>
+            <table>
+              ${line('ID carregamento', row.ID_CARREGAMENTO || row.ID_CARREG || '-')}
+              ${line('Navio', row.NOME_NAVIO || '-')}
+              ${line('RAP', row.RAP || '-')}
+              ${line('Documento', formatTicketDocumento(row))}
+              ${line('Pedido', row.NR_PEDIDO || row.PEDIDO_MIC || '-')}
+              ${line('Transportadora', getNomeReduzidoTransportadora(row))}
+              ${line('Produto', row.PRODUTO || '-')}
+              ${line('Destino', row.NOME_DESTINO || '-')}
+            </table>
+          </div>
+
+          <div class="section">
+            <h2>Motorista</h2>
+            <table>
+              ${line('Motorista', row.NOME_MOTORISTA || '-')}
+              ${line('CPF', formatCpf(row.CPF_MOTORISTA))}
+            </table>
+          </div>
+
+          <div class="section">
+            <h2>Placas</h2>
+            <table class="two-col">
+              <tr>
+                <td><span class="plate-label">Cavalo</span><span class="plate-value">${escapeHtml(row.PLACA_CAVALO || '-')}</span></td>
+                <td><span class="plate-label">Carreta 1</span><span class="plate-value">${escapeHtml(row.PLACA_CARRETA || '-')}</span></td>
+              </tr>
+              <tr>
+                <td><span class="plate-label">Carreta 2</span><span class="plate-value">${escapeHtml(row.PLACA_CARRETA2 || '-')}</span></td>
+                <td><span class="plate-label">Carreta 3</span><span class="plate-value">${escapeHtml(row.PLACA_CARRETA3 || '-')}</span></td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2>Pesagem</h2>
+            <table>
+              ${line('Data carregado', formatDateEmail(row.DATA_BRUTO || row.DATA_CARREGAMENTO))}
+              <tr>
+                <td class="label">Peso liquido</td>
+                <td class="weight">${escapeHtml(formatKgEmail(pesoLiquido))} kg</td>
+              </tr>
+            </table>
+          </div>
         </div>
-
-        <h2>Carregamento</h2>
-        <table>
-          ${line('ID carregamento', row.ID_CARREGAMENTO || row.ID_CARREG || '-')}
-          ${line('Ticket', row.TICKET || '-')}
-          ${line('Navio', row.NOME_NAVIO || '-')}
-          ${line('RAP', row.RAP || '-')}
-          ${line('Documento', formatTicketDocumento(row))}
-          ${line('Transportadora', getNomeReduzidoTransportadora(row))}
-          ${line('Produto', row.PRODUTO || '-')}
-          ${line('Pedido MIC', row.PEDIDO_MIC || '-')}
-          ${line('Destino', row.NOME_DESTINO || '-')}
-        </table>
-
-        <h2>Motorista e veiculo</h2>
-        <table>
-          ${line('Motorista', row.NOME_MOTORISTA || '-')}
-          ${line('CPF', row.CPF_MOTORISTA || '-')}
-          ${line('Cavalo', row.PLACA_CAVALO || '-')}
-          ${line('Carreta 1', row.PLACA_CARRETA || '-')}
-          ${line('Carreta 2', row.PLACA_CARRETA2 || '-')}
-          ${line('Carreta 3', row.PLACA_CARRETA3 || '-')}
-        </table>
-
-        <h2>Pesagem</h2>
-        <table>
-          ${line('Data tara', formatDateEmail(row.DATA_TARA))}
-          ${line('Peso tara', `${formatKgEmail(pesoTara)} kg`)}
-          ${line('Data bruto', formatDateEmail(row.DATA_BRUTO || row.DATA_CARREGAMENTO))}
-          ${line('Peso bruto', `${formatKgEmail(pesoBruto)} kg`)}
-          ${line('Peso liquido', `${formatKgEmail(pesoLiquido)} kg`)}
-        </table>
       </body>
     </html>
   `;
@@ -3032,7 +3062,7 @@ const renderTicketPesagemHtml = (row) => {
 const createPdfBuffer = (html) => new Promise((resolve, reject) => {
   pdf.create(html, {
     format: 'A4',
-    border: '12mm',
+    border: '8mm',
     timeout: 30000
   }).toBuffer((err, buffer) => {
     if (err) return reject(err);
@@ -3093,7 +3123,7 @@ async function sendTicketPesagemEmail(idCarregamento) {
 
   const pesoTara = Number(row.PESO_TARA || 0);
   const pesoBruto = Number(row.PESO_BRUTO || 0) || (pesoTara + Number(row.PESO_LIQUIDO || row.PESO_CARREGADO || 0));
-  const pesoLiquido = Number(row.PESO_LIQUIDO || 0) || Math.max(pesoBruto - pesoTara, 0);
+  const pesoLiquido = Math.max(pesoBruto - pesoTara, 0);
   const html = renderTicketPesagemHtml(row);
   const pdfBuffer = await createPdfBuffer(html);
   const subject = `Ticket de Pesagem - ${row.NOME_NAVIO || 'Operacao'} - ${row.TICKET || idCarregamento}`;
@@ -3112,10 +3142,8 @@ async function sendTicketPesagemEmail(idCarregamento) {
       <tr><td><b>Documento</b></td><td>${escapeHtml(formatTicketDocumento(row))}</td></tr>
       <tr><td><b>Transportadora</b></td><td>${escapeHtml(getNomeReduzidoTransportadora(row))}</td></tr>
       <tr><td><b>Produto</b></td><td>${escapeHtml(row.PRODUTO || '-')}</td></tr>
-      <tr><td><b>Peso tara</b></td><td>${escapeHtml(formatKgEmail(pesoTara))} kg</td></tr>
-      <tr><td><b>Peso bruto</b></td><td>${escapeHtml(formatKgEmail(pesoBruto))} kg</td></tr>
       <tr><td><b>Peso liquido</b></td><td>${escapeHtml(formatKgEmail(pesoLiquido))} kg</td></tr>
-      <tr><td><b>Data da pesagem</b></td><td>${escapeHtml(formatDateEmail(row.DATA_BRUTO || row.DATA_CARREGAMENTO))}</td></tr>
+      <tr><td><b>Data carregado</b></td><td>${escapeHtml(formatDateEmail(row.DATA_BRUTO || row.DATA_CARREGAMENTO))}</td></tr>
     </table>
     <p>Atenciosamente,<br>Operacao Granel</p>
   `;
@@ -3203,7 +3231,7 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
 
     const pesoTara = Number(row.PESO_TARA || 0);
     const pesoBruto = Number(row.PESO_BRUTO || 0) || (pesoTara + Number(row.PESO_LIQUIDO || row.PESO_CARREGADO || 0));
-    const pesoLiquido = Number(row.PESO_LIQUIDO || 0) || Math.max(pesoBruto - pesoTara, 0);
+    const pesoLiquido = Math.max(pesoBruto - pesoTara, 0);
     const html = renderTicketPesagemHtml(row);
     const pdfBuffer = await createPdfBuffer(html);
     const subject = `Ticket de Pesagem - ${row.NOME_NAVIO || 'Operacao'} - ${row.TICKET || idCarregamento}`;
@@ -3222,10 +3250,8 @@ app.post(`${API_PREFIX}/pesagem/ticket-email/:idCarregamento`, async (req, res) 
         <tr><td><b>Documento</b></td><td>${escapeHtml(formatTicketDocumento(row))}</td></tr>
         <tr><td><b>Transportadora</b></td><td>${escapeHtml(getNomeReduzidoTransportadora(row))}</td></tr>
         <tr><td><b>Produto</b></td><td>${escapeHtml(row.PRODUTO || '-')}</td></tr>
-        <tr><td><b>Peso tara</b></td><td>${escapeHtml(formatKgEmail(pesoTara))} kg</td></tr>
-        <tr><td><b>Peso bruto</b></td><td>${escapeHtml(formatKgEmail(pesoBruto))} kg</td></tr>
         <tr><td><b>Peso liquido</b></td><td>${escapeHtml(formatKgEmail(pesoLiquido))} kg</td></tr>
-        <tr><td><b>Data da pesagem</b></td><td>${escapeHtml(formatDateEmail(row.DATA_BRUTO || row.DATA_CARREGAMENTO))}</td></tr>
+        <tr><td><b>Data carregado</b></td><td>${escapeHtml(formatDateEmail(row.DATA_BRUTO || row.DATA_CARREGAMENTO))}</td></tr>
       </table>
       <p>Atenciosamente,<br>Operacao Granel</p>
     `;
