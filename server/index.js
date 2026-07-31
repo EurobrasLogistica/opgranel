@@ -874,8 +874,6 @@ app.get(`${API_PREFIX}/pedido/consultar`, async (_req, res) => {
     FROM PEDIDO PD
       LEFT JOIN CARREGAMENTO CR
         ON CR.COD_OPERACAO = PD.COD_OPERACAO
-       AND CR.COD_CARGA = PD.COD_CARGA
-       AND CR.COD_TRANSP = PD.COD_TRANSP
        AND CR.PEDIDO_MIC = PD.NR_PEDIDO
     GROUP BY
       PD.ID_PEDIDO,
@@ -5152,6 +5150,10 @@ const formatWhatsappTons = (kg) => {
   });
 };
 
+const removeCnpjFromText = (value) => normalizeText(value)
+  .replace(/\s*[-–—]?\s*\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\s*/g, '')
+  .trim();
+
 const formatWhatsappDate = (value) => {
   if (!value) return '-';
   const date = new Date(value);
@@ -5462,8 +5464,6 @@ async function buildWhatsappSaldoPedidoMessage(operacao) {
         SELECT SUM(CR.PESO_BRUTO - CR.PESO_TARA)
         FROM CARREGAMENTO CR
         WHERE CR.COD_OPERACAO = PD.COD_OPERACAO
-          AND CR.COD_CARGA = PD.COD_CARGA
-          AND CR.COD_TRANSP = PD.COD_TRANSP
           AND CR.PEDIDO_MIC = PD.NR_PEDIDO
           AND CR.PESO_BRUTO > 0
           AND CR.STATUS_CARREG = 3
@@ -5486,7 +5486,7 @@ async function buildWhatsappSaldoPedidoMessage(operacao) {
   rows.slice(0, 20).forEach((row) => {
     const saldo = Number(row.MANIFESTADO || 0) - Number(row.DESCARREGADO || 0);
     body += `Pedido: *${row.NR_PEDIDO || '-'}*\n`;
-    body += `Transportadora: ${row.NOME_TRANSP || '-'}\n`;
+    body += `Transportadora: ${removeCnpjFromText(row.NOME_TRANSP) || '-'}\n`;
     body += `DI: ${row.NUMERO_DOC || '-'}\n`;
     body += `Manifestado: ${formatWhatsappTons(row.MANIFESTADO)} t\n`;
     body += `Descarregado: ${formatWhatsappTons(row.DESCARREGADO)} t\n`;
@@ -6317,8 +6317,6 @@ app.get(`${API_PREFIX}/buscar/pedidos/:id`, async (req, res) => {
       FROM PEDIDO PD
         LEFT JOIN CARREGAMENTO CR
           ON CR.COD_OPERACAO = PD.COD_OPERACAO
-         AND CR.COD_CARGA = PD.COD_CARGA
-         AND CR.COD_TRANSP = PD.COD_TRANSP
          AND CR.PEDIDO_MIC = PD.NR_PEDIDO
       WHERE PD.COD_OPERACAO = ?
       GROUP BY
