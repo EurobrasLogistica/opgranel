@@ -4794,6 +4794,8 @@ const whatsappTicketCommands = [
   'SALDO PEDIDO',
   'SALDO NAVIO',
   'SALDO DI',
+  'HORA A HORA',
+  'HORA HORA',
   'STATUS',
   'AJUDA'
 ];
@@ -5241,12 +5243,94 @@ async function buildWhatsappAutosAbertosMessage(operacao) {
   return body.trim();
 }
 
+async function buildWhatsappHoraHoraMessage(operacao) {
+  const [rows] = await db.query(
+    `
+    WITH periodo_aberto AS (
+      SELECT
+        PO.DAT_INI_PERIODO AS INICIO,
+        CASE
+          WHEN TIME_FORMAT(PO.DAT_INI_PERIODO, '%H:%i:%s') BETWEEN '19:00:00' AND '23:59:59'
+            THEN CONCAT(DATE_FORMAT(DATE_ADD(PO.DAT_INI_PERIODO, INTERVAL 1 DAY), '%Y-%m-%d'), ' ', PE.FIM_PERIODO, ':00')
+          ELSE CONCAT(DATE_FORMAT(PO.DAT_INI_PERIODO, '%Y-%m-%d'), ' ', PE.FIM_PERIODO, ':00')
+        END AS FIM,
+        FC_PERIODO_CARREGAMENTO(PO.DAT_INI_PERIODO) AS PERIODO_LABEL
+      FROM PERIODO_OPERACAO PO
+        INNER JOIN PERIODO PE ON PE.COD_PERIODO = PO.COD_PERIODO
+      WHERE PO.COD_OPERACAO = ?
+        AND PO.DAT_FIM_PERIODO IS NULL
+      ORDER BY PO.DAT_INI_PERIODO DESC
+      LIMIT 1
+    ),
+    base_horas AS (
+      SELECT
+        H.HORARIO,
+        H.ORDEM
+      FROM VW_HORARIOS_2 H
+        JOIN periodo_aberto PA ON H.INI_PERIODO = HOUR(PA.INICIO)
+    ),
+    autos_hora AS (
+      SELECT
+        HOR.ORDEM,
+        COUNT(*) AS QTDE_AUTOS,
+        SUM(CAR.PESO_BRUTO - CAR.PESO_TARA) AS PESO_TOTAL
+      FROM CARREGAMENTO CAR
+        JOIN VW_HORARIOS_2 HOR ON HOR.HORA = HOUR(CAR.DATA_CARREGAMENTO)
+        CROSS JOIN periodo_aberto PA
+      WHERE CAR.COD_OPERACAO = ?
+        AND CAR.STATUS_CARREG = 3
+        AND CAR.PESO_BRUTO > 0
+        AND CAR.DATA_CARREGAMENTO >= PA.INICIO
+        AND CAR.DATA_CARREGAMENTO <= PA.FIM
+      GROUP BY HOR.ORDEM
+    )
+    SELECT
+      BH.HORARIO AS HORA,
+      COALESCE(AH.QTDE_AUTOS, 0) AS QTDE_AUTOS,
+      COALESCE(AH.PESO_TOTAL, 0) AS PESO_TOTAL,
+      PA.PERIODO_LABEL
+    FROM base_horas BH
+      CROSS JOIN periodo_aberto PA
+      LEFT JOIN autos_hora AH ON AH.ORDEM = BH.ORDEM
+    ORDER BY BH.ORDEM
+    `,
+    [operacao.COD_OPERACAO, operacao.COD_OPERACAO]
+  );
+
+  if (!rows.length) {
+    return `🚢 *${operacao.NOME_NAVIO || '-'}*\n\nNao encontrei periodo aberto para montar o HORA HORA.`;
+  }
+
+  let totalAutos = 0;
+  let totalPeso = 0;
+
+  const linhas = rows.map((row) => {
+    const autos = Number(row.QTDE_AUTOS || 0);
+    const peso = Number(row.PESO_TOTAL || 0);
+    totalAutos += autos;
+    totalPeso += peso;
+
+    return `*${row.HORA}* - ${autos} Autos - ${formatWhatsappTons(peso)} Tons`;
+  });
+
+  return [
+    `🚢 *${operacao.NOME_NAVIO || '-'}*`,
+    `*HORA HORA* - ${rows[0].PERIODO_LABEL || '-'}`,
+    ``,
+    ...linhas,
+    ``,
+    `Total: ${totalAutos} autos`,
+    `Descarregado: ${formatWhatsappTons(totalPeso)} Tons`
+  ].join('\n');
+}
+
 const buildWhatsappHelpMessage = () => [
   '*COMANDOS OPERACAO GRANEL*',
   '',
   'No grupo cadastrado em TICKET_NAVIO, use:',
   '*STATUS*',
   '*SALDO NAVIO*',
+  '*HORA HORA*',
   '*SALDO DI*',
   '*SALDO PRODUTO*',
   '*SALDO PEDIDO*',
@@ -5255,6 +5339,7 @@ const buildWhatsappHelpMessage = () => [
   'Fora do grupo cadastrado, informe o ticket:',
   '*STATUS <ticket>*',
   '*SALDO NAVIO <ticket>*',
+  '*HORA HORA <ticket>*',
   '*SALDO DI <ticket>*',
   '*SALDO PRODUTO <ticket>*',
   '*SALDO PEDIDO <ticket>*',
@@ -5266,6 +5351,7 @@ const buildWhatsappHelpMessage = () => [
 async function buildWhatsappTicketCommandMessage(command, operacao) {
   if (command === 'AJUDA') return buildWhatsappHelpMessage();
   if (command === 'SALDO NAVIO') return buildWhatsappSaldoNavioMessage(operacao);
+  if (command === 'HORA HORA' || command === 'HORA A HORA') return buildWhatsappHoraHoraMessage(operacao);
   if (command === 'SALDO DI') return buildWhatsappSaldoDiMessage(operacao);
   if (command === 'SALDO PRODUTO') return buildWhatsappSaldoProdutoMessage(operacao);
   if (command === 'SALDO PEDIDO') return buildWhatsappSaldoPedidoMessage(operacao);
